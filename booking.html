@@ -1,221 +1,190 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="js">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>احجز خدمتك — م. محمد خالد</title>
-<meta name="description" content="احجز خدمة تصميم موقع أو متجر إلكتروني أو متجر شوبيفاي مع م. محمد خالد — فورم سريع والرد يوصلك على الواتساب فورًا.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23a855f7'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>م</text></svg>">
+<title>ابدأ مشروعك — م. محمد خالد</title>
+<meta name="description" content="أربعة أسئلة قصيرة، ثم يصل طلبك على واتساب برسالة منسّقة. الرد خلال ساعات.">
+<meta name="theme-color" content="#050308">
+<script>document.documentElement.classList.add('js')</script>
+<link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/reem-kufi-arabic-700.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/readex-pro-arabic-400.woff2">
+<link rel="stylesheet" href="css/site.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' fill='%23050308'/><rect x='14' y='10' width='4' height='44' fill='%23B026FF'/><rect x='26' y='22' width='4' height='32' fill='%23EDE9F4' opacity='.5'/><rect x='38' y='32' width='4' height='22' fill='%23EDE9F4' opacity='.28'/></svg>">
 </head>
 <body>
 
-<div class="curtain"><div class="curtain-logo">م. محمد خالد</div></div>
+<div class="lamp" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="railbar" aria-hidden="true"><div class="ticks"></div><div class="cross"></div></div>
 
-<nav class="nav">
-  <div class="container nav-inner">
-    <a href="index.html" class="nav-logo"><span class="mark">مخ</span><span>محمد <span class="accent">خالد</span></span></a>
-    <ul class="nav-links">
-      <li><a href="index.html">الرئيسية</a></li>
-      <li><a href="works.html">الأعمال</a></li>
-      <li><a href="booking.html" class="active">الحجز</a></li>
-      <li><a href="contact.html">تواصل معنا</a></li>
-    </ul>
-    <a href="booking.html" class="btn btn-primary btn-cta-desk">ابدأ مشروعك</a>
-    <button class="burger" aria-label="القائمة"><i></i><i></i><i></i></button>
-  </div>
-</nav>
-<div class="nav-mobile">
+<header class="head">
+  <a href="index.html" class="name">محمد <b>خالد</b></a>
+  <nav class="nav">
+    <a href="index.html">الرئيسية</a>
+    <a href="works.html">الأعمال</a>
+    <a href="booking.html" aria-current="page">الحجز</a>
+    <a href="contact.html">تواصل</a>
+  </nav>
+  <div class="where">مهندس مواقع ومتاجر · القاهرة <i>⟵</i> الرياض</div>
+  <button class="burger" aria-expanded="false" aria-label="القائمة"><i></i><i></i><i></i></button>
+</header>
+<div class="mnav">
   <a href="index.html">الرئيسية</a>
   <a href="works.html">الأعمال</a>
-  <a href="booking.html" class="active">الحجز</a>
-  <a href="contact.html">تواصل معنا</a>
-  <a href="booking.html" class="btn btn-primary">ابدأ مشروعك</a>
+  <a href="booking.html">الحجز</a>
+  <a href="contact.html">تواصل</a>
+  <span class="where">مهندس مواقع ومتاجر · القاهرة <i>⟵</i> الرياض</span>
 </div>
 
-<div id="smooth-wrapper"><div id="smooth-content">
 <main>
+  <div class="wrap">
+    <div class="bk">
 
-  <header class="page-head" data-hero-zone>
-    <div class="orb orb-purple" style="width:480px;height:480px;top:-30%;inset-inline-start:-10%" data-speed="0.85"></div>
-    <div class="container" style="text-align:center">
-      <span class="eyebrow" data-hero="1" style="justify-content:center">احجز خدمتك</span>
-      <h1 data-split="load"><span class="split-inner">خلينا نبدأ <span class="accent">مشروعك</span></span></h1>
-      <p data-hero="2" style="margin-inline:auto">٤ خطوات بسيطة — وطلبك يوصلني على الواتساب فورًا وأرد عليك في أسرع وقت.</p>
-    </div>
-  </header>
+      <!-- ── يمينًا: السؤال الحالي ── -->
+      <div class="bk-q">
+        <div class="bk-step">
+          <span>الخطوة <i id="stepNow">٠١</i> من ٠٤</span>
+          <span class="bar"><em id="stepBar" style="width:25%"></em></span>
+        </div>
+        <h2 id="qTitle">ما نوع المشروع؟</h2>
+        <p class="hint" id="qHint">اختر الأقرب لما في ذهنك. لو غير محدّد بعد، اختر «أحتاج استشارة» وسنحدّده معًا.</p>
 
-  <section style="padding-top:20px">
-    <div class="container">
-      <div class="bk-wrap" data-hero="3" data-hero-fx="fade" data-hero-zone>
+        <div class="sheet" id="sheet" hidden>
+          <div class="sh-h">ورقة الطلب</div>
+          <dl id="sheetList"></dl>
+        </div>
+      </div>
 
-        <!-- مؤشر التقدم -->
-        <div class="bk-progress">
-          <div class="bkp-step current"><div class="bkp-dot">١</div><div class="bkp-line"></div></div>
-          <div class="bkp-step"><div class="bkp-dot">٢</div><div class="bkp-line"></div></div>
-          <div class="bkp-step"><div class="bkp-dot">٣</div><div class="bkp-line"></div></div>
-          <div class="bkp-step"><div class="bkp-dot">٤</div></div>
+      <!-- ── يسارًا: الإجابة ── -->
+      <div class="bk-panel">
+
+        <!-- ١ — نوع المشروع -->
+        <div class="bk-pane" data-pane="1">
+          <div class="opts" data-group="service">
+            <button type="button" class="opt" aria-pressed="false" data-value="موقع تعريفي / شركة">
+              <span><span class="ot">موقع تعريفي أو موقع شركة</span><span class="od">يعرّف بك وبخدماتك ويجمع طلبات التواصل.</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="متجر إلكتروني">
+              <span><span class="ot">متجر إلكتروني</span><span class="od">بوابة دفع وإدارة مخزون وشحن ولوحة تحكم.</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="متجر شوبيفاي">
+              <span><span class="ot">متجر شوبيفاي</span><span class="od">إنشاء أو إعادة بناء متجر Shopify بثيم مخصص.</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="صفحة هبوط">
+              <span><span class="ot">صفحة هبوط لحملة أو منتج</span><span class="od">صفحة واحدة مصمَّمة للتحويل، جاهزة للإعلانات.</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="منصة أو نظام خاص">
+              <span><span class="ot">منصة أو نظام خاص</span><span class="od">اشتراكات ولوحات تحكم ومزايا مخصّصة.</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="أحتاج استشارة">
+              <span><span class="ot">أحتاج استشارة أولًا</span><span class="od">عندي فكرة وأريد تحديد الأنسب قبل البدء.</span></span><span class="mark"></span></button>
+          </div>
+          <p class="field bad" data-err="service" hidden><span class="err">اختر نوع المشروع للمتابعة.</span></p>
         </div>
 
-        <div class="bk-steps">
-
-          <!-- الخطوة ١: نوع الخدمة -->
-          <div class="bk-step active" data-step="1">
-            <h2>إيه نوع الخدمة اللي محتاجها؟</h2>
-            <p class="bk-hint">اختار الخدمة الأقرب لمشروعك — ولو مش متأكد اختار «مش متحدد» وهنحددها مع بعض.</p>
-            <div class="opt-grid" data-group="service">
-              <div class="opt-card" data-value="موقع تعريفي / شركة"><span class="oc-check">✓</span><div class="oc-ic">💻</div><h3>موقع تعريفي / شركة</h3><p>موقع يعرّف بشركتك أو بيك وبخدماتك باحترافية</p></div>
-              <div class="opt-card" data-value="متجر إلكتروني"><span class="oc-check">✓</span><div class="oc-ic">🛍️</div><h3>متجر إلكتروني</h3><p>متجر كامل ببوابات دفع وإدارة مخزون وشحن</p></div>
-              <div class="opt-card" data-value="متجر شوبيفاي"><span class="oc-check">✓</span><div class="oc-ic">🛒</div><h3>متجر شوبيفاي</h3><p>إنشاء أو تطوير متجر Shopify بثيم مخصص</p></div>
-              <div class="opt-card" data-value="لاندنج بيدج"><span class="oc-check">✓</span><div class="oc-ic">🚀</div><h3>لاندنج بيدج</h3><p>صفحة هبوط مبهرة لحملة أو منتج أو تطبيق</p></div>
-              <div class="opt-card" data-value="منصة / نظام خاص"><span class="oc-check">✓</span><div class="oc-ic">⚙️</div><h3>منصة / نظام خاص</h3><p>منصة ويب بلوحة تحكم واشتراكات ومزايا خاصة</p></div>
-              <div class="opt-card" data-value="مش متحدد"><span class="oc-check">✓</span><div class="oc-ic">💡</div><h3>مش متحدد بعد</h3><p>عندي فكرة ومحتاج استشارة نحدد بيها الأنسب</p></div>
-            </div>
-            <div class="field" style="margin-top:16px"><div class="err" data-err="service">اختار نوع الخدمة الأول 👆</div></div>
+        <!-- ٢ — الميزانية والمدة -->
+        <div class="bk-pane" data-pane="2" hidden>
+          <div class="opts" data-group="budget">
+            <button type="button" class="opt" aria-pressed="false" data-value="أقل من ٥٠٠ دولار"><span><span class="ot">أقل من ٥٠٠ دولار</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="٥٠٠ إلى ١٥٠٠ دولار"><span><span class="ot">٥٠٠ إلى ١٥٠٠ دولار</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="١٥٠٠ إلى ٣٠٠٠ دولار"><span><span class="ot">١٥٠٠ إلى ٣٠٠٠ دولار</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="أكثر من ٣٠٠٠ دولار"><span><span class="ot">أكثر من ٣٠٠٠ دولار</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="غير محدّدة"><span><span class="ot">غير محدّدة بعد</span></span><span class="mark"></span></button>
           </div>
+          <p class="field bad" data-err="budget" hidden><span class="err">اختر ميزانية تقريبية.</span></p>
 
-          <!-- الخطوة ٢: الميزانية والمدة -->
-          <div class="bk-step" data-step="2">
-            <h2>الميزانية والمدة المتوقعة؟</h2>
-            <p class="bk-hint">تقديري مش نهائي — بيساعدني أرشحلك الحل الأنسب لإمكانياتك.</p>
-            <span class="bk-label">الميزانية المتوقعة (بالدولار)</span>
-            <div class="chip-row" data-group="budget">
-              <span class="chip" data-value="أقل من 500$">أقل من 500$</span>
-              <span class="chip" data-value="500$ – 1500$">500$ – 1500$</span>
-              <span class="chip" data-value="1500$ – 3000$">1500$ – 3000$</span>
-              <span class="chip" data-value="أكثر من 3000$">أكثر من 3000$</span>
-              <span class="chip" data-value="محتاج استشارة">محتاج استشارة</span>
-            </div>
-            <div class="field"><div class="err" data-err="budget">اختار الميزانية المتوقعة</div></div>
-            <span class="bk-label">المدة المطلوبة للتسليم</span>
-            <div class="chip-row" data-group="duration">
-              <span class="chip" data-value="أسبوعان">أسبوعان</span>
-              <span class="chip" data-value="شهر">شهر</span>
-              <span class="chip" data-value="شهر – شهرين">شهر – شهرين</span>
-              <span class="chip" data-value="مرن / مش مستعجل">مرن / مش مستعجل</span>
-            </div>
-            <div class="field"><div class="err" data-err="duration">اختار المدة المناسبة</div></div>
+          <h3 class="t-ui" style="margin:36px 0 4px;color:var(--ash)">المدة المطلوبة للتسليم</h3>
+          <div class="opts" data-group="duration">
+            <button type="button" class="opt" aria-pressed="false" data-value="أسبوعان"><span><span class="ot">أسبوعان</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="شهر"><span><span class="ot">شهر</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="شهر إلى شهرين"><span><span class="ot">شهر إلى شهرين</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="مرن"><span><span class="ot">مرن — الجودة أهم من السرعة</span></span><span class="mark"></span></button>
           </div>
-
-          <!-- الخطوة ٣: تفاصيل المشروع -->
-          <div class="bk-step" data-step="3">
-            <h2>احكيلي عن مشروعك</h2>
-            <p class="bk-hint">كل ما التفاصيل تكون أوضح، كل ما الرد يكون أدق وأسرع.</p>
-            <div class="field">
-              <label for="bk-desc">وصف المشروع</label>
-              <textarea id="bk-desc" placeholder="مثال: عايز متجر لبيع العطور، عندي حوالي ٥٠ منتج، ومحتاج ربط مع بوابة دفع وشركة شحن..."></textarea>
-              <div class="err" data-err="desc">اكتب وصف مختصر للمشروع (١٠ حروف على الأقل)</div>
-            </div>
-            <span class="bk-label">إضافات محتاجها؟ (اختياري — تقدر تختار أكتر من واحدة)</span>
-            <div class="chip-row" data-group="extras" data-multi="true">
-              <span class="chip" data-value="هوية بصرية / لوجو">هوية بصرية / لوجو</span>
-              <span class="chip" data-value="ربط بوابة دفع">ربط بوابة دفع</span>
-              <span class="chip" data-value="لوحة تحكم">لوحة تحكم</span>
-              <span class="chip" data-value="تحسين SEO">تحسين SEO</span>
-              <span class="chip" data-value="كتابة محتوى">كتابة محتوى</span>
-              <span class="chip" data-value="صيانة شهرية">صيانة شهرية</span>
-            </div>
-          </div>
-
-          <!-- الخطوة ٤: بيانات التواصل + الملخص -->
-          <div class="bk-step" data-step="4">
-            <h2>آخر خطوة — بياناتك</h2>
-            <p class="bk-hint">راجع ملخص طلبك، واضغط إرسال — هيفتح واتساب برسالة جاهزة على رقمي مباشرة.</p>
-            <div class="field">
-              <label for="bk-name">الاسم</label>
-              <input type="text" id="bk-name" placeholder="اسمك الكريم">
-              <div class="err" data-err="name">اكتب اسمك</div>
-            </div>
-            <div class="field">
-              <label for="bk-phone">رقم الواتساب</label>
-              <input type="tel" id="bk-phone" placeholder="مثال: 0501234567" dir="ltr" style="text-align:right">
-              <div class="err" data-err="phone">اكتب رقم واتساب صحيح (٨ أرقام على الأقل)</div>
-            </div>
-            <div class="field">
-              <label for="bk-country">الدولة</label>
-              <select id="bk-country">
-                <option value="مصر">مصر</option>
-                <option value="السعودية" selected>السعودية</option>
-                <option value="الإمارات">الإمارات</option>
-                <option value="الكويت">الكويت</option>
-                <option value="قطر">قطر</option>
-                <option value="أخرى">أخرى</option>
-              </select>
-            </div>
-            <div class="bk-summary">
-              <h3>📋 ملخص طلبك</h3>
-              <ul id="bk-summary-list"></ul>
-            </div>
-          </div>
-
-          <!-- شاشة النجاح -->
-          <div class="bk-step" data-step="5">
-            <div class="bk-done">
-              <div class="big">🎉</div>
-              <h2>تمام! فتحنالك الواتساب</h2>
-              <p>لو الرسالة مفتحتش تلقائيًا، اضغط الزرار تحت — وهرد عليك في أسرع وقت إن شاء الله.</p>
-              <div style="margin-top:26px">
-                <a href="#" id="bk-wa-again" class="btn btn-wa" target="_blank">فتح واتساب مرة تانية</a>
-              </div>
-            </div>
-          </div>
-
+          <p class="field bad" data-err="duration" hidden><span class="err">اختر مدة تقريبية.</span></p>
         </div>
 
-        <div class="bk-nav">
-          <button class="btn btn-back" id="bk-back" style="visibility:hidden">→ رجوع</button>
-          <button class="btn btn-primary magnetic" id="bk-next">التالي ←</button>
+        <!-- ٣ — تفاصيل المشروع -->
+        <div class="bk-pane" data-pane="3" hidden>
+          <div class="field">
+            <label for="desc">اشرح المشروع بكلماتك</label>
+            <textarea id="desc" placeholder="مثال: متجر عطور فيه حوالي ٥٠ منتجًا، أحتاج ربط بوابة دفع وشركة شحن، وعندي هوية بصرية جاهزة."></textarea>
+            <span class="err">اكتب سطرين على الأقل حتى يصلني تصوّر واضح.</span>
+          </div>
+          <h3 class="t-ui" style="margin:36px 0 4px;color:var(--ash)">تحتاج شيئًا من هذه؟ (اختياري)</h3>
+          <div class="opts" data-group="extras" data-multi="true">
+            <button type="button" class="opt" aria-pressed="false" data-value="هوية بصرية ولوجو"><span><span class="ot">هوية بصرية ولوجو</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="ربط بوابة دفع"><span><span class="ot">ربط بوابة دفع</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="كتابة محتوى"><span><span class="ot">كتابة محتوى</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="تحسين ظهور البحث"><span><span class="ot">تحسين ظهور البحث</span></span><span class="mark"></span></button>
+            <button type="button" class="opt" aria-pressed="false" data-value="صيانة شهرية"><span><span class="ot">صيانة شهرية بعد التسليم</span></span><span class="mark"></span></button>
+          </div>
+        </div>
+
+        <!-- ٤ — بيانات التواصل -->
+        <div class="bk-pane" data-pane="4" hidden>
+          <div class="field">
+            <label for="nm">الاسم</label>
+            <input type="text" id="nm" autocomplete="name" placeholder="اسمك الكريم">
+            <span class="err">اكتب اسمك.</span>
+          </div>
+          <div class="field">
+            <label for="ph">رقم الواتساب</label>
+            <input type="tel" id="ph" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="05xxxxxxxx">
+            <span class="err">اكتب رقم واتساب صحيحًا (٨ أرقام على الأقل).</span>
+          </div>
+          <div class="field">
+            <label for="co">الدولة</label>
+            <input type="text" id="co" list="countries" autocomplete="country-name" placeholder="السعودية">
+            <datalist id="countries">
+              <option value="السعودية"></option><option value="الإمارات"></option><option value="الكويت"></option>
+              <option value="قطر"></option><option value="البحرين"></option><option value="عُمان"></option><option value="مصر"></option>
+            </datalist>
+          </div>
+        </div>
+
+        <!-- تم -->
+        <div class="bk-done" id="done">
+          <h2 class="t-chapter">وصلني طلبك.</h2>
+          <p class="t-body" style="margin-top:18px">
+            فتحنا لك واتساب برسالة جاهزة تحمل تفاصيل مشروعك. لو لم تُفتح تلقائيًا، اضغط الزر تحت.
+            أرد خلال ساعات.
+          </p>
+          <div style="margin-top:32px;display:flex;gap:16px;flex-wrap:wrap">
+            <a class="btn btn-solid" id="againBtn" href="#" target="_blank" rel="noopener">فتح واتساب</a>
+            <a class="ulink" href="works.html">تصفّح الأعمال ←</a>
+          </div>
+        </div>
+
+        <div class="bk-nav" id="bkNav">
+          <button class="btn btn-line" id="backBtn" style="visibility:hidden">رجوع</button>
+          <button class="btn btn-solid" id="nextBtn">التالي</button>
         </div>
 
       </div>
     </div>
-  </section>
-
+  </div>
 </main>
 
-<footer class="footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div>
-        <a href="index.html" class="nav-logo" style="margin-bottom:18px"><span class="mark">مخ</span><span>محمد <span class="accent">خالد</span></span></a>
-        <p>مهندس مواقع محترف — أصمم وأطور مواقع ومتاجر إلكترونية تجمع بين الإبهار البصري والنتائج الحقيقية.</p>
-        <div class="f-social">
-          <a href="https://wa.me/201099576398" target="_blank" aria-label="واتساب">✆</a>
-          <a href="mailto:mkbusiness747@gmail.com" aria-label="إيميل">✉</a>
-          <a href="tel:+201099576398" aria-label="اتصال">☎</a>
-        </div>
-      </div>
-      <div>
-        <h4>روابط سريعة</h4>
-        <ul>
-          <li><a href="index.html">الرئيسية</a></li>
-          <li><a href="works.html">الأعمال</a></li>
-          <li><a href="booking.html">احجز خدمتك</a></li>
-          <li><a href="contact.html">تواصل معنا</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>تواصل معايا</h4>
-        <ul class="f-contact">
-          <li><span class="ic">📱</span><span dir="ltr">+20 109 957 6398</span></li>
-          <li><span class="ic">✉️</span><span>mkbusiness747@gmail.com</span></li>
-          <li><span class="ic">📍</span><span>مصر — أعمل مع عملاء الخليج عن بُعد</span></li>
-        </ul>
-      </div>
+<footer class="foot">
+  <div class="fgrid">
+    <div class="flines">
+      <a href="works.html" data-r>الأعمال</a>
+      <a href="booking.html" data-r>احجز مشروعك</a>
+      <a href="contact.html" data-r>تواصل معي</a>
     </div>
-    <div class="footer-bottom">© 2026 م. محمد خالد — جميع الحقوق محفوظة</div>
+    <div class="fmeta">
+      <span>واتساب واتصال · <span class="t-data">+20 109 957 6398</span></span>
+      <span>البريد · <span class="t-data">mkbusiness747@gmail.com</span></span>
+      <span>أعمل عن بُعد مع عملاء السعودية والخليج</span>
+    </div>
+  </div>
+  <div class="fbot">
+    <span class="ar">م. محمد خالد — مهندس مواقع ومتاجر</span>
+    <span>© 2026 MOHAMED KHALED</span>
   </div>
 </footer>
-</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollSmoother.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
-<script src="js/main.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/Flip.min.js"></script>
+<script src="js/site.js"></script>
 <script src="js/booking.js"></script>
 </body>
 </html>

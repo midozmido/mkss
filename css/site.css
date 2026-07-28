@@ -1,0 +1,280 @@
+/* ============================================================
+   م. محمد خالد — «الضوء الواحد»
+   غرفة سوداء فيها مصدر ضوء بنفسجي واحد؛ الشغل هو ما يقع عليه الضوء.
+   البنفسجي ضوء لا طلاء.
+   ============================================================ */
+
+/* ─── الخطوط ─── */
+@font-face{font-family:'Reem Kufi';font-style:normal;font-weight:700;font-display:swap;
+  src:url(../assets/fonts/reem-kufi-arabic-700.woff2) format('woff2');
+  unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:'Reem Kufi';font-style:normal;font-weight:700;font-display:swap;
+  src:url(../assets/fonts/reem-kufi-latin-700.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Readex Pro';font-style:normal;font-weight:200;font-display:swap;
+  src:url(../assets/fonts/readex-pro-arabic-200.woff2) format('woff2');
+  unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:'Readex Pro';font-style:normal;font-weight:400;font-display:swap;
+  src:url(../assets/fonts/readex-pro-arabic-400.woff2) format('woff2');
+  unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:'Readex Pro';font-style:normal;font-weight:400;font-display:swap;
+  src:url(../assets/fonts/readex-pro-latin-400.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Plex Ar';font-style:normal;font-weight:600;font-display:swap;
+  src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-600.woff2) format('woff2');
+  unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:'Plex Ar';font-style:normal;font-weight:600;font-display:swap;
+  src:url(../assets/fonts/ibm-plex-sans-arabic-latin-600.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Plex Mono';font-style:normal;font-weight:500;font-display:swap;
+  src:url(../assets/fonts/ibm-plex-mono-latin-500.woff2) format('woff2');
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+/* ─── التوكنز ─── */
+:root{
+  --void:#050308;        /* أرضية كل الصفحات — أسود مائل للبنفسجي، ليس #000 */
+  --stage:#0B0812;       /* الطبقة المرتفعة */
+  --rule:#221B33;        /* لون كل خيط 1px — مصمت لا شفاف */
+  --beam:#B026FF;        /* البنفسجي — خمسة مواضع فقط */
+  --wash:#3D0B70;
+  --flare:#E9D8FF;       /* قلب الضوء */
+  --silver:#EDE9F4;      /* النص الأساسي — لا #fff في الموقع */
+  --ash:#8B8399;         /* الثانوي */
+  --ink-on-beam:#0A0610;
+
+  --beam-strength:1;     /* مقبض واحد لكل توهّج في الموقع */
+
+  --gap:24px;
+  --margin:6vw;
+  --rail:32px;
+
+  --f-display:'Reem Kufi',serif;
+  --f-body:'Readex Pro',system-ui,sans-serif;
+  --f-ui:'Plex Ar',system-ui,sans-serif;
+  --f-mono:'Plex Mono',ui-monospace,monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* clip لا hidden: يقصّ فائض 100vw (عرض شريط التمرير) بدون إنشاء حاوية تمرير
+   تكسر position:sticky وتثبيت ScrollTrigger */
+html{scroll-behavior:auto;-webkit-text-size-adjust:100%;overflow-x:clip}
+body{
+  background:var(--void);color:var(--silver);
+  font-family:var(--f-body);font-weight:400;font-size:17px;line-height:1.9;
+  overflow-x:clip;-webkit-font-smoothing:antialiased;
+  letter-spacing:0;                       /* قاعدة: صفر تباعد حروف على العربية */
+}
+img,canvas,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit;background:none;border:0;border-radius:0}
+button{cursor:pointer}
+::selection{background:rgba(176,38,255,.32);color:var(--flare)}
+
+/* لا زوايا مستديرة في الموقع — الاستثناء الوحيد الزر الأساسي */
+*{border-radius:0}
+
+:focus-visible{outline:2px solid var(--flare);outline-offset:3px}
+
+/* ─── الطبقة الضوئية الثابتة ─── */
+.lamp{
+  position:fixed;inset:0;z-index:0;pointer-events:none;contain:strict;
+  background:radial-gradient(900px circle at 88% 6%,
+    rgba(176,38,255,calc(.16*var(--beam-strength))) 0%,
+    rgba(61,11,112,.08) 40%, transparent 62%);
+}
+/* نسيج ساكن — طبقة واحدة، بلا حركة */
+.grain{
+  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.045;
+  mix-blend-mode:overlay;contain:strict;
+  background-image:var(--grain-src);background-size:128px 128px;
+}
+@media (max-width:767px){.grain{opacity:.03;mix-blend-mode:normal}}
+
+/* ─── الشبكة ─── */
+.wrap{width:100%;padding-inline:var(--margin);position:relative;z-index:2}
+.g12{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--gap)}
+/* التقسيمات المسموحة فقط: 7/5 · 9/3 · 8/4 · 10/2 */
+.c7{grid-column:span 7}.c5{grid-column:span 5}
+.c9{grid-column:span 9}.c3{grid-column:span 3}
+.c8{grid-column:span 8}.c4{grid-column:span 4}
+.c10{grid-column:span 10}.c2{grid-column:span 2}
+.c12{grid-column:1/-1}
+
+/* ─── سلّم التايبوغرافي (٧ درجات) ─── */
+.t-poster{font-family:var(--f-display);font-weight:700;
+  font-size:clamp(44px,10.4vw,156px);line-height:1.3;word-spacing:.04em}
+.t-chapter{font-family:var(--f-display);font-weight:700;
+  font-size:clamp(34px,5.2vw,72px);line-height:1.3}
+.t-name{font-family:var(--f-display);font-weight:700;
+  font-size:clamp(26px,2.8vw,40px);line-height:1.32}
+.t-statement{font-family:var(--f-body);font-weight:200;
+  font-size:clamp(30px,3.6vw,46px);line-height:1.45}
+.t-lead{font-family:var(--f-body);font-weight:400;
+  font-size:clamp(19px,1.8vw,24px);line-height:1.85;color:#B4ADC0;max-width:34em}
+.t-body{font-family:var(--f-body);font-weight:400;font-size:17px;line-height:1.9;
+  color:var(--ash);max-width:34em}
+.t-ui{font-family:var(--f-ui);font-weight:600;font-size:15px;line-height:1.45;word-spacing:.12em}
+.t-data{font-family:var(--f-mono);font-weight:500;font-size:13px;line-height:1.4;
+  letter-spacing:.1em;font-variant-numeric:tabular-nums;
+  unicode-bidi:isolate;direction:ltr;color:var(--ash)}
+
+.dim{color:var(--ash)}
+.hot{color:var(--flare)}
+
+/* أقنعة الكشف — الحشو يمنع قصّ النقاط والنازلات */
+.mask{display:block;overflow:hidden;padding-block:.18em;margin-block:-.18em}
+
+/* ─── الترويسة ─── */
+.head{
+  position:fixed;top:0;inset-inline:0;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  padding:20px var(--margin);
+  border-bottom:1px solid var(--rule);
+  background:linear-gradient(to bottom,var(--void) 55%,transparent);
+}
+.head .name{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1}
+.head .name b{color:var(--beam);font-weight:700}
+.nav{display:flex;gap:30px}
+.nav a{font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;
+  color:var(--ash);position:relative;padding-block:4px;transition:color .28s ease}
+.nav a::after{content:'';position:absolute;inset-inline:0;bottom:0;height:1px;background:var(--beam);
+  transform:scaleX(0);transform-origin:right;transition:transform .38s ease}
+.nav a:hover{color:var(--flare)}
+.nav a:hover::after{transform:scaleX(1);transition-duration:.28s}
+.nav a[aria-current="page"]{color:var(--silver)}
+.nav a[aria-current="page"]::after{transform:scaleX(1);background:var(--rule)}
+.head .where{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash)}
+.head .where i{font-style:normal;color:var(--beam);padding-inline:4px}
+
+.burger{display:none;width:40px;height:40px;border:1px solid var(--rule);position:relative}
+.burger i{position:absolute;inset-inline:10px;height:1px;background:var(--silver);transition:transform .35s ease,opacity .25s}
+.burger i:nth-child(1){top:14px}.burger i:nth-child(2){top:19px}.burger i:nth-child(3){top:24px}
+.burger[aria-expanded="true"] i:nth-child(1){top:19px;transform:rotate(45deg)}
+.burger[aria-expanded="true"] i:nth-child(2){opacity:0}
+.burger[aria-expanded="true"] i:nth-child(3){top:19px;transform:rotate(-45deg)}
+.mnav{display:none;position:fixed;inset:69px 0 auto;z-index:59;background:var(--void);
+  border-bottom:1px solid var(--rule);padding:8px var(--margin) 26px}
+.mnav a{display:block;font-family:var(--f-display);font-weight:700;font-size:30px;
+  padding-block:16px;border-bottom:1px solid var(--rule)}
+.mnav .where{display:block;margin-top:20px;font-family:var(--f-ui);font-weight:600;font-size:14px;color:var(--ash)}
+
+/* ─── الريل (الحافة اليسرى) ─── */
+/* الحافة اليسرى فيزيائيًا — اليمين في RTL هو نقطة دخول العين في كل سطر،
+   فالمسطرة تعيش في الطرف المقابل. `left` مقصود: inset-inline-start ينقلب لليمين. */
+.railbar{position:fixed;inset-block:0;left:0;width:var(--rail);z-index:40;
+  pointer-events:none;border-right:1px solid var(--rule);overflow:hidden}
+/* مسطرة حقيقية: علامات قصيرة كل 8px وعلامة أطول كل 40px، مرتكزة على الحافة
+   المواجهة للمحتوى. الدورة 40px فيصير اللف بـ translateY غير مرئي. */
+.railbar .ticks{position:absolute;inset-inline:0;top:-50vh;height:200vh;
+  background-image:
+    repeating-linear-gradient(to bottom,var(--rule) 0 1px,transparent 1px 8px),
+    repeating-linear-gradient(to bottom,#3E3357 0 1px,transparent 1px 40px);
+  background-size:9px 100%,19px 100%;
+  background-position:right top,right top;
+  background-repeat:repeat-y,repeat-y;
+  will-change:transform}
+.railbar .cross{position:absolute;inset-inline:0;top:50%;height:1px;background:var(--beam);
+  box-shadow:0 0 40px rgba(176,38,255,calc(.22*var(--beam-strength)))}
+@media (max-width:1024px){
+  .railbar{width:1px;border:0;background:var(--rule)}
+  .railbar .ticks,.railbar .cross{display:none}
+}
+
+/* ─── الأزرار ─── */
+.btn{display:inline-flex;align-items:center;gap:12px;
+  font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;
+  padding:16px 32px;transition:transform .25s ease,box-shadow .25s ease,color .25s ease,border-color .25s ease}
+.btn-solid{background:var(--beam);color:var(--ink-on-beam);border-radius:2px;
+  box-shadow:0 0 34px rgba(176,38,255,calc(.30*var(--beam-strength)))}
+.btn-solid:hover{transform:translateX(2px);
+  box-shadow:0 0 56px rgba(176,38,255,calc(.55*var(--beam-strength)))}
+.btn-line{border:1px solid var(--rule);color:var(--silver);padding-block:15px}
+.btn-line:hover{border-color:var(--beam);color:var(--flare)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+/* رابط نصّي بخيط ماسح */
+.ulink{position:relative;display:inline-block;padding-bottom:6px;
+  font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;
+  transition:color .28s ease}
+.ulink::after{content:'';position:absolute;inset-inline:0;bottom:0;height:1px;background:var(--beam);
+  transform:scaleX(0);transform-origin:right;transition:transform .38s ease}
+.ulink:hover{color:var(--flare)}
+.ulink:hover::after{transform:scaleX(1);transition-duration:.28s}
+
+/* ─── الانقطاع بين الأقسام (خيط حامل للمعلومة) ─── */
+.brk{position:relative;height:clamp(160px,24vh,260px);z-index:2}
+.brk .leak{position:absolute;top:50%;inset-inline:0;height:1px;transform:scaleX(0);transform-origin:right;
+  background:linear-gradient(to left,rgba(176,38,255,calc(.34*var(--beam-strength))),var(--rule) 38%,transparent)}
+.brk .tag{position:absolute;top:50%;inset-inline-start:33%;transform:translateY(-50%);
+  background:var(--void);padding-inline:16px;
+  font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;color:var(--ash)}
+
+/* ─── الأقسام ─── */
+.sec{position:relative;z-index:2;padding-block:clamp(120px,16vh,200px) clamp(70px,9vh,110px)}
+.sec-tight{padding-block:clamp(70px,9vh,110px)}
+
+/* ─── الصور ─── */
+.still{position:relative;overflow:hidden;background:var(--stage)}
+.still img{width:100%;height:100%;object-fit:cover;object-position:center 18%;
+  filter:saturate(.88) contrast(1.06) brightness(.92)}
+.still::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(255deg,rgba(176,38,255,.13) 0%,transparent 42%),
+    linear-gradient(to top,rgba(5,3,8,.5) 0%,transparent 38%);
+  transition:opacity .45s ease}
+.still:hover::after{opacity:0}
+/* علامات التسجيل على شكل L — للصور غير النازفة فقط */
+.framed{border:1px solid var(--rule);position:relative}
+.framed::before,.framed::after,
+.framed>.reg::before,.framed>.reg::after{
+  content:'';position:absolute;width:10px;height:10px;pointer-events:none;z-index:3;
+  border-color:var(--rule);border-style:solid;border-width:0}
+.framed::before{top:-1px;right:-1px;border-top-width:1px;border-right-width:1px}
+.framed::after{top:-1px;left:-1px;border-top-width:1px;border-left-width:1px}
+.framed>.reg::before{bottom:-1px;right:-1px;border-bottom-width:1px;border-right-width:1px}
+.framed>.reg::after{bottom:-1px;left:-1px;border-bottom-width:1px;border-left-width:1px}
+
+.bleed{width:100vw;margin-inline-start:calc(50% - 50vw);position:relative;z-index:2}
+
+/* تعليق الصورة — خارجها دائمًا، ولا يخلط نظامَي الأرقام في سطر */
+.cap{margin-top:18px;display:flex;flex-direction:column;gap:6px}
+.cap .who{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.32}
+.cap .win{font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;color:var(--silver)}
+.cap .meta{font-family:var(--f-mono);font-weight:500;font-size:13px;letter-spacing:.1em;
+  color:var(--ash);unicode-bidi:isolate;direction:ltr}
+
+/* ─── الفوتر ─── */
+.foot{position:relative;z-index:2;border-top:1px solid var(--rule);
+  padding:clamp(60px,9vh,100px) var(--margin) 36px}
+.foot .fgrid{display:grid;grid-template-columns:7fr 5fr;gap:var(--gap);align-items:end}
+.foot .flines a{display:block;font-family:var(--f-display);font-weight:700;
+  font-size:clamp(26px,3vw,40px);line-height:1.5}
+.foot .fmeta{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash)}
+.foot .fmeta span{display:block;padding-block:7px}
+.foot .fbot{margin-top:56px;padding-top:22px;border-top:1px solid var(--rule);
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  font-family:var(--f-mono);font-weight:500;font-size:13px;letter-spacing:.1em;color:var(--ash)}
+.foot .fbot .ar{font-family:var(--f-ui);font-size:14px;letter-spacing:0;word-spacing:.12em}
+
+/* ─── حارس الوميض (لا يشمل البوستر أبدًا) ─── */
+.js [data-r]{opacity:0}
+@media (prefers-reduced-motion:reduce){.js [data-r]{opacity:1!important}}
+
+/* ─── التجاوب ─── */
+@media (max-width:1024px){
+  :root{--margin:7vw}
+  .head .where{display:none}
+}
+@media (max-width:860px){
+  .nav{display:none}
+  .burger{display:block}
+  .foot .fgrid{grid-template-columns:1fr;gap:40px;align-items:start}
+}
+@media (max-width:620px){
+  :root{--margin:8vw;--gap:16px}
+  body{font-size:16px}
+  .g12{grid-template-columns:1fr}
+  .c7,.c5,.c9,.c3,.c8,.c4,.c10,.c2{grid-column:1/-1}
+  .brk .tag{inset-inline-start:0}
+}

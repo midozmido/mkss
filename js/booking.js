@@ -1,213 +1,222 @@
 /* ============================================================
-   فورم الحجز متعدد الخطوات — يرسل ملخص الطلب على الواتساب
+   فورم الحجز — أربع خطوات، ورقة طلب تتجمّع، ثم رسالة واتساب منسّقة
+   الترقيم العربي-الهندي هنا فقط في الموقع، لأنه تسلسل حقيقي.
    ============================================================ */
 (function () {
   "use strict";
 
-  var WA_NUMBER = "201099576398";
+  var WA = "201099576398";
+  var AR = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
+  function arNum(n) { return String(n).split("").map(function (d) { return AR[+d] || d; }).join(""); }
 
-  var data = {
-    service: "",
-    budget: "",
-    duration: "",
-    desc: "",
-    extras: [],
-    name: "",
-    phone: "",
-    country: ""
-  };
+  var data = { service: "", budget: "", duration: "", desc: "", extras: [], name: "", phone: "", country: "" };
+  var step = 1, TOTAL = 4;
 
-  var current = 1;
-  var TOTAL = 4;
-
-  var steps = document.querySelectorAll(".bk-step");
-  var dots = document.querySelectorAll(".bkp-step");
-  var btnNext = document.getElementById("bk-next");
-  var btnBack = document.getElementById("bk-back");
-  if (!steps.length || !btnNext) return;
+  var panes = document.querySelectorAll(".bk-pane");
+  var nextBtn = document.getElementById("nextBtn");
+  var backBtn = document.getElementById("backBtn");
+  var bkNav = document.getElementById("bkNav");
+  var done = document.getElementById("done");
+  var sheet = document.getElementById("sheet");
+  var sheetList = document.getElementById("sheetList");
+  var qTitle = document.getElementById("qTitle");
+  var qHint = document.getElementById("qHint");
+  var stepNow = document.getElementById("stepNow");
+  var stepBar = document.getElementById("stepBar");
+  if (!panes.length || !nextBtn) return;
 
   var hasGsap = typeof gsap !== "undefined";
+  var hasFlip = typeof Flip !== "undefined";
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* ---------- اختيارات الكروت والرقائق ---------- */
+  var COPY = [
+    null,
+    { t: "ما نوع المشروع؟", h: "اختر الأقرب لما في ذهنك. لو غير محدّد بعد، اختر «أحتاج استشارة» وسنحدّده معًا." },
+    { t: "ما الميزانية والمدة؟", h: "تقدير تقريبي يكفي. هذا يحدّد نطاق العمل الذي أرشّحه لك، لا أكثر." },
+    { t: "احكِ لي عن المشروع", h: "كلما وضحت الصورة، جاء ردّي أدقّ وأسرع — وبسعر أقرب للواقع." },
+    { t: "أين أرسل الرد؟", h: "راجع ورقة الطلب على اليمين، ثم أرسل. تفتح رسالة واتساب جاهزة على رقمي." }
+  ];
+
+  /* ── الاختيارات ── */
   document.querySelectorAll("[data-group]").forEach(function (group) {
     var key = group.dataset.group;
     var multi = group.dataset.multi === "true";
     group.addEventListener("click", function (e) {
-      var item = e.target.closest(".opt-card, .chip");
-      if (!item) return;
+      var btn = e.target.closest(".opt");
+      if (!btn) return;
       if (multi) {
-        item.classList.toggle("selected");
-        data[key] = Array.prototype.map.call(
-          group.querySelectorAll(".selected"),
-          function (el) { return el.dataset.value; }
-        );
+        var on = btn.getAttribute("aria-pressed") === "true";
+        btn.setAttribute("aria-pressed", String(!on));
+        data[key] = Array.prototype.map.call(group.querySelectorAll('[aria-pressed="true"]'),
+          function (b) { return b.dataset.value; });
       } else {
-        group.querySelectorAll(".selected").forEach(function (el) { el.classList.remove("selected"); });
-        item.classList.add("selected");
-        data[key] = item.dataset.value;
-        hideErr(key);
+        group.querySelectorAll(".opt").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+        btn.setAttribute("aria-pressed", "true");
+        data[key] = btn.dataset.value;
+        clearErr(key);
       }
       if (hasGsap && !reduce) {
-        gsap.fromTo(item, { scale: 0.96 }, { scale: 1, duration: 0.35, ease: "back.out(2)", overwrite: true });
+        gsap.fromTo(btn.querySelector(".mark"), { scale: 0.7 },
+          { scale: 1, duration: 0.35, ease: "back.out(2.4)", overwrite: true });
       }
     });
   });
 
-  /* ---------- أخطاء التحقق ---------- */
+  /* ── الأخطاء ── */
   function showErr(key) {
-    var el = document.querySelector('[data-err="' + key + '"]');
-    if (!el) return;
-    el.style.display = "block";
-    var f = el.closest(".field");
-    if (f) f.classList.add("invalid");
-    if (hasGsap && !reduce) gsap.fromTo(el, { x: 0 }, { x: -7, duration: 0.07, repeat: 5, yoyo: true, clearProps: "x" });
+    var box = document.querySelector('[data-err="' + key + '"]');
+    if (box) { box.hidden = false; if (hasGsap && !reduce) gsap.fromTo(box, { x: 0 }, { x: -6, duration: .07, repeat: 5, yoyo: true, clearProps: "x" }); }
   }
-  function hideErr(key) {
-    var el = document.querySelector('[data-err="' + key + '"]');
-    if (!el) return;
-    el.style.display = "none";
+  function clearErr(key) {
+    var box = document.querySelector('[data-err="' + key + '"]');
+    if (box) box.hidden = true;
+  }
+  function fieldErr(el, bad) {
     var f = el.closest(".field");
-    if (f) f.classList.remove("invalid");
+    if (!f) return;
+    f.classList.toggle("bad", bad);
+    if (bad && hasGsap && !reduce) gsap.fromTo(f, { x: 0 }, { x: -6, duration: .07, repeat: 5, yoyo: true, clearProps: "x" });
   }
 
-  function validate(step) {
+  function validate(s) {
     var ok = true;
-    if (step === 1 && !data.service) { showErr("service"); ok = false; }
-    if (step === 2) {
+    if (s === 1 && !data.service) { showErr("service"); ok = false; }
+    if (s === 2) {
       if (!data.budget) { showErr("budget"); ok = false; }
       if (!data.duration) { showErr("duration"); ok = false; }
     }
-    if (step === 3) {
-      data.desc = document.getElementById("bk-desc").value.trim();
-      if (data.desc.length < 10) { showErr("desc"); ok = false; } else hideErr("desc");
+    if (s === 3) {
+      var d = document.getElementById("desc");
+      data.desc = d.value.trim();
+      var bad = data.desc.length < 12;
+      fieldErr(d, bad);
+      if (bad) ok = false;
     }
-    if (step === 4) {
-      data.name = document.getElementById("bk-name").value.trim();
-      data.phone = document.getElementById("bk-phone").value.replace(/\D/g, "");
-      data.country = document.getElementById("bk-country").value;
-      if (!data.name) { showErr("name"); ok = false; } else hideErr("name");
-      if (data.phone.length < 8) { showErr("phone"); ok = false; } else hideErr("phone");
+    if (s === 4) {
+      var n = document.getElementById("nm"), p = document.getElementById("ph"), c = document.getElementById("co");
+      data.name = n.value.trim();
+      data.phone = p.value.replace(/[^\d+]/g, "");
+      data.country = c.value.trim() || "غير محدّدة";
+      var nb = !data.name, pb = data.phone.replace(/\D/g, "").length < 8;
+      fieldErr(n, nb); fieldErr(p, pb);
+      if (nb || pb) ok = false;
     }
     return ok;
   }
 
-  /* ---------- الملخص ---------- */
-  function renderSummary() {
-    var list = document.getElementById("bk-summary-list");
-    if (!list) return;
-    var rows = [
-      ["الخدمة", data.service],
-      ["الميزانية", data.budget],
-      ["المدة", data.duration],
-      ["الإضافات", data.extras.length ? data.extras.join("، ") : "بدون"],
-      ["التفاصيل", data.desc.length > 90 ? data.desc.slice(0, 90) + "…" : data.desc]
-    ];
-    list.innerHTML = rows.map(function (r) {
-      return "<li><b>" + r[0] + "</b><span>" + escapeHtml(r[1]) + "</span></li>";
-    }).join("");
+  /* ── ورقة الطلب: تتجمّع سطرًا سطرًا ── */
+  function rowsFor(s) {
+    if (s === 1) return [["نوع المشروع", data.service]];
+    if (s === 2) return [["الميزانية", data.budget], ["المدة", data.duration]];
+    if (s === 3) return [["التفاصيل", data.desc.length > 64 ? data.desc.slice(0, 64) + "…" : data.desc],
+                         ["إضافات", data.extras.length ? data.extras.join("، ") : "بدون"]];
+    return [];
   }
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  function addRows(s) {
+    var rows = rowsFor(s);
+    if (!rows.length) return;
+    sheet.hidden = false;
+    var state = (hasFlip && !reduce) ? Flip.getState(sheetList.children) : null;
+    var added = [];
+    rows.forEach(function (r) {
+      var dt = document.createElement("dt"); dt.textContent = r[0];
+      var dd = document.createElement("dd"); dd.textContent = r[1];
+      sheetList.appendChild(dt); sheetList.appendChild(dd);
+      added.push(dt, dd);
     });
+    if (state) {
+      Flip.from(state, { duration: 0.5, ease: "power3.inOut" });
+      gsap.fromTo(added, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, ease: "power3.out" });
+    }
+  }
+  function trimRows(s) {
+    /* عند الرجوع نحذف صفوف الخطوة التي غادرناها */
+    var n = rowsFor(s).length * 2;
+    for (var i = 0; i < n && sheetList.lastChild; i++) sheetList.removeChild(sheetList.lastChild);
+    if (!sheetList.children.length) sheet.hidden = true;
   }
 
-  /* ---------- رسالة الواتساب ---------- */
-  function buildWaUrl() {
-    var msg =
-      "🚀 *طلب حجز جديد من الموقع*\n" +
-      "─────────────\n" +
-      "👤 الاسم: " + data.name + "\n" +
-      "📱 واتساب: " + data.phone + "\n" +
-      "🌍 الدولة: " + data.country + "\n" +
-      "─────────────\n" +
-      "🛠 الخدمة: " + data.service + "\n" +
-      "💰 الميزانية: " + data.budget + "\n" +
-      "⏱ المدة: " + data.duration + "\n" +
-      "➕ إضافات: " + (data.extras.length ? data.extras.join("، ") : "بدون") + "\n" +
-      "─────────────\n" +
-      "📝 التفاصيل:\n" + data.desc;
-    return "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg);
+  /* ── رسالة واتساب ── */
+  function waUrl() {
+    var m =
+      "*طلب مشروع جديد من الموقع*\n" +
+      "──────────────\n" +
+      "الاسم: " + data.name + "\n" +
+      "واتساب: " + data.phone + "\n" +
+      "الدولة: " + data.country + "\n" +
+      "──────────────\n" +
+      "نوع المشروع: " + data.service + "\n" +
+      "الميزانية: " + data.budget + "\n" +
+      "المدة: " + data.duration + "\n" +
+      "إضافات: " + (data.extras.length ? data.extras.join("، ") : "بدون") + "\n" +
+      "──────────────\n" +
+      "التفاصيل:\n" + data.desc;
+    return "https://wa.me/" + WA + "?text=" + encodeURIComponent(m);
   }
 
-  /* ---------- التنقل بين الخطوات ---------- */
-  function goTo(step) {
-    var from = document.querySelector('.bk-step[data-step="' + current + '"]');
-    var to = document.querySelector('.bk-step[data-step="' + step + '"]');
-    var dir = step > current ? 1 : -1;
-    current = step;
+  /* ── الانتقال ── */
+  function go(to) {
+    var from = document.querySelector('.bk-pane[data-pane="' + step + '"]');
+    var dir = to > step ? 1 : -1;
 
-    /* ارجع لأول الفورم مع كل خطوة */
-    var wrap = document.querySelector(".bk-wrap");
-    if (wrap) {
-      var sm = window.MK && window.MK.smoother && window.MK.smoother();
-      if (sm) sm.scrollTo(wrap, true, "top 90px");
-      else window.scrollTo({ top: wrap.getBoundingClientRect().top + window.pageYOffset - 90, behavior: reduce ? "auto" : "smooth" });
+    if (dir > 0 && step <= 3) addRows(step);
+    if (dir < 0) trimRows(to);
+
+    step = to;
+
+    if (step > TOTAL) {
+      if (from) from.hidden = true;
+      bkNav.hidden = true;
+      done.classList.add("on");
+      qTitle.textContent = "تم الإرسال";
+      qHint.textContent = "شكرًا لثقتك. الرد يصلك على نفس الرقم خلال ساعات.";
+      stepNow.textContent = arNum(TOTAL);
+      stepBar.style.width = "100%";
+      if (hasGsap && !reduce) {
+        gsap.fromTo(done.children, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .7, stagger: .08, ease: "power3.out" });
+      }
+      return;
     }
 
-    /* مؤشر التقدم */
-    dots.forEach(function (d, i) {
-      d.classList.toggle("current", i === Math.min(step, TOTAL) - 1);
-      d.classList.toggle("done", i < Math.min(step, TOTAL) - 1);
-    });
-
-    /* أزرار التنقل */
-    btnBack.style.visibility = (step > 1 && step <= TOTAL) ? "visible" : "hidden";
-    if (step === TOTAL) {
-      btnNext.textContent = "إرسال عبر واتساب ✆";
-      btnNext.classList.remove("btn-primary");
-      btnNext.classList.add("btn-wa");
-    } else {
-      btnNext.textContent = "التالي ←";
-      btnNext.classList.add("btn-primary");
-      btnNext.classList.remove("btn-wa");
-    }
-    if (step > TOTAL) { btnNext.style.display = "none"; btnBack.style.visibility = "hidden"; }
-
-    if (step === TOTAL) renderSummary();
+    var to_ = document.querySelector('.bk-pane[data-pane="' + step + '"]');
+    stepNow.textContent = "٠" + arNum(step);
+    stepBar.style.width = (step / TOTAL * 100) + "%";
+    qTitle.textContent = COPY[step].t;
+    qHint.textContent = COPY[step].h;
+    backBtn.style.visibility = step > 1 ? "visible" : "hidden";
+    nextBtn.textContent = step === TOTAL ? "أرسل عبر واتساب" : "التالي";
 
     if (!hasGsap || reduce) {
-      from.classList.remove("active");
-      to.classList.add("active");
+      if (from) from.hidden = true;
+      to_.hidden = false;
       return;
     }
     gsap.timeline()
       .to(from, {
-        autoAlpha: 0, x: 40 * dir, duration: 0.3, ease: "power2.in",
-        onComplete: function () {
-          from.classList.remove("active");
-          gsap.set(from, { clearProps: "all" });
-          to.classList.add("active");
-        }
+        opacity: 0, x: 30 * dir, duration: .28, ease: "power2.in",
+        onComplete: function () { from.hidden = true; gsap.set(from, { clearProps: "all" }); to_.hidden = false; }
       })
-      .fromTo(to, { autoAlpha: 0, x: -46 * dir }, { autoAlpha: 1, x: 0, duration: 0.5, ease: "power3.out" })
-      .fromTo(to.querySelectorAll(".opt-card, .chip, .field, .bk-summary, h2, .bk-hint, .bk-label, .bk-done"),
-        { y: 18, autoAlpha: 0 },
-        { y: 0, autoAlpha: 1, duration: 0.4, stagger: 0.045, ease: "power2.out" }, "-=0.3");
+      .fromTo(to_, { opacity: 0, x: -34 * dir }, { opacity: 1, x: 0, duration: .5, ease: "power3.out" })
+      .fromTo(to_.querySelectorAll(".opt, .field, h3"), { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: .45, stagger: .05, ease: "power3.out" }, "-=.32");
   }
 
-  btnNext.addEventListener("click", function () {
-    if (!validate(current)) return;
-    if (current === TOTAL) {
-      var url = buildWaUrl();
-      var again = document.getElementById("bk-wa-again");
+  nextBtn.addEventListener("click", function () {
+    if (!validate(step)) return;
+    if (step === TOTAL) {
+      var url = waUrl();
+      var again = document.getElementById("againBtn");
       if (again) again.href = url;
-      window.open(url, "_blank");
-      goTo(TOTAL + 1);
+      window.open(url, "_blank", "noopener");
+      go(TOTAL + 1);
       return;
     }
-    goTo(current + 1);
+    go(step + 1);
   });
-  btnBack.addEventListener("click", function () {
-    if (current > 1) goTo(current - 1);
-  });
+  backBtn.addEventListener("click", function () { if (step > 1) go(step - 1); });
 
-  /* مسح الخطأ أول ما المستخدم يكتب */
-  ["bk-desc", "bk-name", "bk-phone"].forEach(function (id) {
+  ["desc", "nm", "ph"].forEach(function (id) {
     var el = document.getElementById(id);
-    if (el) el.addEventListener("input", function () {
-      hideErr(id.replace("bk-", "").replace("desc", "desc").replace("name", "name").replace("phone", "phone"));
-    });
+    if (el) el.addEventListener("input", function () { fieldErr(el, false); });
   });
 })();
