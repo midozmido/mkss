@@ -230,6 +230,16 @@
   padding-block:9px;border-bottom:1px solid var(--rule);text-align:left}
 .bk-done{display:none}
 .bk-done.on{display:block}
+
+/* بلا جافاسكربت: الفورم متعدد الخطوات لا يعمل — نخفيه ونعرض مسارًا بديلًا صريحًا
+   بدل ترك المستخدم أمام أزرار لا تستجيب. */
+.ns{display:none}
+html:not(.js) .bk-pane,
+html:not(.js) .bk-nav{display:none}
+html:not(.js) .ns{display:block;padding-top:8px}
+html:not(.js) .ns p{font-family:var(--f-body);font-size:17px;line-height:1.9;
+  color:var(--ash);max-width:34em;margin-bottom:28px}
+html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
 .bk-done .t-chapter{max-width:14ch}
 @media (max-width:860px){
   .bk{grid-template-columns:1fr;gap:36px}
