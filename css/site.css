@@ -119,6 +119,7 @@ button{cursor:pointer}
   letter-spacing:.1em;font-variant-numeric:tabular-nums;
   unicode-bidi:isolate;direction:ltr;color:var(--ash)}
 
+.ltr{unicode-bidi:isolate;direction:ltr;display:inline-block}
 .dim{color:var(--ash)}
 .hot{color:var(--flare)}
 
