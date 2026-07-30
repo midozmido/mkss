@@ -279,3 +279,49 @@ button{cursor:pointer}
   .c7,.c5,.c9,.c3,.c8,.c4,.c10,.c2{grid-column:1/-1}
   .brk .tag{inset-inline-start:0}
 }
+
+/* ════════════════════════════════════════════════════════════
+   الإضافات — الدفعة الثانية
+   ════════════════════════════════════════════════════════════ */
+
+/* ─── البريلودر: دائرة تتوسّع من المركز ─── */
+/* اللوح مصمت بالكامل عند البداية؛ الجافاسكربت يحفر فيه فتحة دائرية تكبر من المركز.
+   القناع (لا clip-path) لأن المطلوب إخفاء اللوح لا إظهاره. */
+.pre{position:fixed;inset:0;z-index:9000;background:var(--void);
+  display:grid;place-items:center}
+.pre-in{text-align:center;display:flex;flex-direction:column;align-items:center;gap:26px}
+.pre-name{font-family:var(--f-display);font-weight:700;
+  font-size:clamp(30px,5vw,64px);line-height:1.32;overflow:hidden}
+.pre-name span{display:inline-block}
+.pre-name b{color:var(--beam);font-weight:700}
+.pre-bar{width:min(280px,54vw);height:1px;background:var(--rule);position:relative;overflow:hidden}
+.pre-bar i{position:absolute;inset:0;background:var(--beam);transform:scaleX(0);transform-origin:right;
+  box-shadow:0 0 18px rgba(176,38,255,calc(.7*var(--beam-strength)))}
+.pre-lbl{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash)}
+/* حلقة الضوء التي تسبق الفتح */
+.pre-ring{position:absolute;width:10px;height:10px;border-radius:50%;
+  border:1px solid var(--beam);opacity:0;pointer-events:none}
+html.pre-on{overflow:hidden}
+html.pre-on body{overflow:hidden}
+@media (prefers-reduced-motion:reduce){.pre{display:none!important}}
+
+/* ─── شريط تقدّم القراءة تحت الترويسة ─── */
+.head .prog{position:absolute;inset-inline:0;bottom:-1px;height:1px;background:var(--beam);
+  transform:scaleX(0);transform-origin:right;
+  box-shadow:0 0 12px rgba(176,38,255,calc(.6*var(--beam-strength)))}
+
+/* زرار الدعوة الثابت في الترويسة */
+.head .hcta{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;
+  background:var(--beam);color:var(--ink-on-beam);border-radius:2px;padding:11px 22px;
+  transition:box-shadow .3s ease,transform .25s ease;white-space:nowrap}
+.head .hcta:hover{transform:translateX(2px);
+  box-shadow:0 0 34px rgba(176,38,255,calc(.55*var(--beam-strength)))}
+.head-right{display:flex;align-items:center;gap:22px}
+
+/* ─── قائمة الموبايل: شاشة كاملة ─── */
+.mnav{inset:0;top:0;height:100dvh;padding:calc(var(--nav-h,72px) + 30px) var(--margin) 40px;
+  display:none;flex-direction:column;justify-content:center;gap:0}
+.mnav a{font-size:clamp(30px,9vw,46px);padding-block:20px}
+.mnav a:first-of-type{border-top:1px solid var(--rule)}
+.mnav .mcta{margin-top:32px;border:0;padding:0}
+.mnav .mcta .btn{width:100%;justify-content:center}

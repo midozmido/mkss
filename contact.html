@@ -6,7 +6,7 @@
 <title>تواصل — م. محمد خالد</title>
 <meta name="description" content="واتساب واتصال وبريد م. محمد خالد. الرد خلال ساعات، والعمل عن بُعد مع عملاء السعودية والخليج.">
 <meta name="theme-color" content="#050308">
-<script>document.documentElement.classList.add('js')</script>
+<script>document.documentElement.classList.add('js','pre-on')</script>
 <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/reem-kufi-arabic-700.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/readex-pro-arabic-400.woff2">
 <link rel="stylesheet" href="css/site.css">
@@ -15,20 +15,32 @@
 </head>
 <body>
 
+<div class="pre" role="status" aria-live="polite">
+  <div class="pre-in">
+    <div class="pre-name"><span>محمد</span> <span><b>خالد</b></span></div>
+    <div class="pre-bar"><i></i></div>
+    <div class="pre-lbl">جارٍ التحميل</div>
+  </div>
+</div>
+
 <div class="lamp" aria-hidden="true"></div>
 <div class="grain" aria-hidden="true"></div>
 <div class="railbar" aria-hidden="true"><div class="ticks"></div><div class="cross"></div></div>
 
 <header class="head">
   <a href="index.html" class="name">محمد <b>خالد</b></a>
-  <nav class="nav">
-    <a href="index.html">الرئيسية</a>
-    <a href="works.html">الأعمال</a>
-    <a href="booking.html">الحجز</a>
-    <a href="contact.html" aria-current="page">تواصل</a>
-  </nav>
+  <div class="head-right">
+    <nav class="nav">
+      <a href="index.html">الرئيسية</a>
+      <a href="works.html">الأعمال</a>
+      <a href="booking.html">الحجز</a>
+      <a href="contact.html" aria-current="page">تواصل</a>
+    </nav>
+    <a href="booking.html" class="hcta">ابدأ مشروعك</a>
+  </div>
   <div class="where">مهندس مواقع ومتاجر · القاهرة <i>⟵</i> الرياض</div>
   <button class="burger" aria-expanded="false" aria-label="القائمة"><i></i><i></i><i></i></button>
+  <span class="prog" aria-hidden="true"></span>
 </header>
 <div class="mnav">
   <a href="index.html">الرئيسية</a>
@@ -36,6 +48,7 @@
   <a href="booking.html">الحجز</a>
   <a href="contact.html">تواصل</a>
   <span class="where">مهندس مواقع ومتاجر · القاهرة <i>⟵</i> الرياض</span>
+  <div class="mcta"><a href="booking.html" class="btn btn-solid">ابدأ مشروعك</a></div>
 </div>
 
 <main>
@@ -105,6 +118,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
+<script src="js/preloader.js"></script>
 <script src="js/site.js"></script>
 </body>
 </html>

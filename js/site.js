@@ -42,7 +42,10 @@
     doc.classList.remove("js");
     return;
   }
-  gsap.registerPlugin(ScrollTrigger);
+  var PLUGINS = [ScrollTrigger];
+  if (window.SplitText) PLUGINS.push(SplitText);
+  if (window.Flip) PLUGINS.push(Flip);
+  gsap.registerPlugin.apply(gsap, PLUGINS);
   gsap.defaults({ ease: "power3.out", duration: 1.0 });
 
   var mm = gsap.matchMedia();
@@ -144,14 +147,106 @@
     });
   }
 
+
+  /* ══════════ ٧) كشف العناوين سطرًا بسطر ══════════
+     بالسطور فقط — التقسيم بالحروف يفكّ اتصال العربية. */
+  function splitHeads() {
+    if (!window.SplitText || reduce) return;
+    gsap.utils.toArray("[data-split]").forEach(function (el) {
+      if (el.closest(".pre")) return;
+      SplitText.create(el, {
+        type: "lines", mask: "lines", autoSplit: true, aria: "auto", linesClass: "sline",
+        onSplit: function (self) {
+          if (el._done) return gsap.set(self.lines, { yPercent: 0 });
+          return gsap.from(self.lines, {
+            yPercent: 112, duration: 1.05, stagger: 0.1, ease: "power4.out",
+            onComplete: function () { el._done = true; },
+            scrollTrigger: { trigger: el, start: "top 86%", once: true }
+          });
+        }
+      });
+    });
+  }
+
+  /* ══════════ ٨) عدّادات الأرقام ══════════ */
+  var AR_DIGITS = ["٠","١","٢","٣","٤","٥","٦","٧","٨","٩"];
+  function toAr(n) { return String(n).split("").map(function (d) { return AR_DIGITS[+d] !== undefined ? AR_DIGITS[+d] : d; }).join(""); }
+  function counters() {
+    gsap.utils.toArray("[data-count]").forEach(function (el) {
+      var target = parseFloat(el.dataset.count);
+      var pre = el.dataset.pre || "", post = el.dataset.post || "";
+      if (reduce) { el.textContent = pre + toAr(target) + post; return; }
+      var o = { v: 0 };
+      gsap.to(o, {
+        v: target, duration: 1.7, ease: "power2.out", snap: { v: 1 },
+        onUpdate: function () { el.textContent = pre + toAr(Math.round(o.v)) + post; },
+        scrollTrigger: { trigger: el, start: "top 88%", once: true }
+      });
+    });
+  }
+
+  /* ══════════ ٩) شريط تقدّم القراءة ══════════ */
+  function progressBar() {
+    var el = document.querySelector(".head .prog");
+    if (!el || reduce) return;
+    gsap.fromTo(el, { scaleX: 0 }, {
+      scaleX: 1, ease: "none",
+      scrollTrigger: { trigger: document.body, start: "top top", end: "bottom bottom", scrub: 0.25 }
+    });
+  }
+
+  /* ══════════ ١٠) ماركيه بتسارع حسب سرعة السكرول ══════════ */
+  function marquee() {
+    document.querySelectorAll(".marq-in").forEach(function (track) {
+      if (reduce) return;
+      var tw = gsap.to(track, { xPercent: 50, repeat: -1, duration: 30, ease: "none" });
+      ScrollTrigger.create({
+        onUpdate: function (self) {
+          var boost = gsap.utils.clamp(1, 4, 1 + Math.abs(self.getVelocity()) / 1400);
+          gsap.to(tw, { timeScale: boost, duration: 0.4, overwrite: true });
+        }
+      });
+    });
+  }
+
+  /* ══════════ ١١) تشوّه خفيف حسب سرعة السكرول ══════════ */
+  function velocitySkew() {
+    if (reduce) return;
+    var targets = gsap.utils.toArray("[data-skew]");
+    if (!targets.length) return;
+    mm.add(DESK, function () {
+      var setters = targets.map(function (t) { return gsap.quickSetter(t, "skewY", "deg"); });
+      var proxy = { s: 0 };
+      var clamp = gsap.utils.clamp(-5, 5);
+      var st = ScrollTrigger.create({
+        onUpdate: function (self) {
+          var v = clamp(self.getVelocity() / -420);
+          if (Math.abs(v) > Math.abs(proxy.s)) {
+            proxy.s = v;
+            gsap.to(proxy, {
+              s: 0, duration: 0.7, ease: "power3", overwrite: true,
+              onUpdate: function () { setters.forEach(function (fn) { fn(proxy.s); }); }
+            });
+          }
+        }
+      });
+      return function () { st.kill(); setters.forEach(function (fn) { fn(0); }); };
+    });
+  }
+
   /* ── التشغيل ── */
   function boot() {
     heroSweep();
     heroIn();
+    splitHeads();
     reveals();
     leaks();
     rail();
     parallax();
+    counters();
+    progressBar();
+    marquee();
+    velocitySkew();
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(function () { ScrollTrigger.refresh(); });
     }
