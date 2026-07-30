@@ -2,7 +2,7 @@
    مسرح الجُمَل — الشاشة تثبت، والجملة تصعد من تحت قناع، تثبت،
    ثم تنزل تحته وتحلّ محلّها التالية. بعد الأخيرة يولد خيط ضوء
    في المنتصف ويتمدّد لعرض الشاشة، فيصير فاصل القسم التالي.
-   ديسكتوب فقط؛ دونه تظهر القائمة الرأسية (`.reel-list`) من CSS.
+   يعمل على كل المقاسات؛ القائمة الرأسية (`.reel-list`) للحالات بلا حركة فقط.
    ============================================================ */
 (function () {
   "use strict";
@@ -34,7 +34,8 @@
       return [el];
     }
 
-    mm.add(DESK, function () {
+    mm.add({ wide: DESK, narrow: "(max-width: 1024px)" }, function (ctx) {
+      var wide = !!ctx.conditions.wide;
       var groups = stmts.map(linesOf);
       var N = stmts.length;
 
@@ -50,7 +51,7 @@
         scrollTrigger: {
           trigger: reel,
           start: "top top",
-          end: "+=" + Math.round(N * 95 * SPEED / 1.6) + "%",
+          end: "+=" + Math.round(N * (wide ? 95 : 76) * SPEED / 1.6) + "%",
           pin: pin,
           scrub: 1.05,
           anticipatePin: 1,

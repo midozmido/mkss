@@ -6,8 +6,10 @@
    الغلاف يُثبَّت، اللوحة تتمدّد من ٥٠٪ لملء الشاشة، ثم يدخل النص متمركزًا.
    القسم نفسه بارتفاع واحد فقط؛ مسافة السكرول الإضافية يضيفها التثبيت. */
 .hero{position:relative;z-index:2}
+/* الحشو العلوي يساوي ارتفاع الترويسة الثابتة — بدونه يختفي أول سطر تحتها */
 .hero-pin{position:relative;height:100svh;overflow:hidden;
-  display:flex;flex-direction:column;align-items:center;justify-content:center}
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding-block:clamp(92px,11vh,124px) clamp(28px,4.5vh,60px)}
 
 /* اللوحة: تملأ الغلاف، ويُقصّ منها شبّاك يفتح مع السكرول */
 .hero-stage{position:absolute;inset:0;z-index:0;pointer-events:none;
@@ -53,20 +55,17 @@ html:not(.js) .hero-hint{display:none}
   .hero-frame,.hero-cap,.hero-hint{display:none}
   .hero-stage{clip-path:none}
 }
-@media (max-width:1024px){
-  .hero-pin{height:auto;min-height:100svh;overflow:visible;
-    padding-block:clamp(110px,17vh,170px) clamp(60px,9vh,110px)}
-  .hero-frame,.hero-cap,.hero-hint{display:none}
-  .hero-stage{clip-path:none!important}
-}
+
 
 /* البوستر: سطران متمركزان.
    ارتفاع السطر 1.3 لأن الهمزة على الألف ترتفع فوق الحرف — 1.14 يضمن التصادم.
    `.p-line` صار inline-block كي يحتضن نصّه: لولا ذلك لبقيت نافذة العبور
    (`.sweep{right:0}`) على حافة الكتلة لا على حافة النص، فينكسر التسجيل. */
 .poster{position:relative;max-width:min(1060px,94%);margin-inline:auto}
-/* في الهيرو المتمركز نخفض المقاس: العنوان بالحجم الكامل يلامس الترويسة */
-.hero .t-poster{font-size:clamp(40px,8.4vw,124px)}
+/* في الهيرو المتمركز نخفض المقاس، ونقيّده بارتفاع الشاشة كذلك:
+   العنوان وحده قد يبتلع الشاشة القصيرة (١٢٨٠×٨٠٠ مثلًا) فيُقصّ الباقي. */
+.hero .t-poster{font-size:min(clamp(40px,8.4vw,124px),12.2vh)}
+.hero .hero-lead{font-size:min(clamp(19px,1.8vw,24px),2.7vh);line-height:1.7}
 .p-line{position:relative;display:inline-block;white-space:nowrap}
 
 /* آلية العبور: النافذة تتحرك يسارًا والنسخة تتحرك عكسها ⇒ النص يبقى مسجَّلًا فوق الأصل.
@@ -83,10 +82,34 @@ html:not(.js) .hero-hint{display:none}
   background:linear-gradient(to left,transparent,var(--beam) 50%,transparent);
   box-shadow:0 0 30px rgba(176,38,255,calc(.5*var(--beam-strength)))}
 
-.hero-lead{margin:clamp(26px,4vh,46px) auto 0;max-width:34em}
-.hero-acts{margin-top:clamp(26px,4vh,42px);display:flex;gap:16px;flex-wrap:wrap;
+/* سطر التعريف فوق العنوان — يقول من أنا وماذا أقدّم قبل أي شيء */
+.hero-eyebrow{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;
+  justify-content:center;margin-bottom:min(clamp(12px,2.2vh,26px),2.4vh);
+  font-family:var(--f-ui);font-weight:600;font-size:clamp(14px,1.35vw,17px);
+  word-spacing:.12em;color:var(--ash);
+  border:1px solid var(--rule);padding:9px 18px}
+.hero-eyebrow span:nth-of-type(1){color:var(--silver)}
+.hero-eyebrow i{font-style:normal;color:var(--beam)}
+.hero-eyebrow .dot{width:6px;height:6px;background:var(--beam);flex:none;
+  box-shadow:0 0 12px rgba(176,38,255,calc(.9*var(--beam-strength)))}
+
+.hero-lead{margin:min(clamp(20px,3.4vh,40px),3.6vh) auto 0;max-width:36em}
+.hero-lead b{color:var(--silver);font-weight:400}
+
+/* شرائط الخدمات — تقول ما أقدّمه في سطر واحد */
+.hero-tags{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;
+  gap:8px;margin-top:min(clamp(14px,2.4vh,26px),2.6vh)}
+.hero-tags li{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.1em;
+  color:var(--ash);border:1px solid var(--rule);padding:7px 15px;
+  transition:border-color .3s ease,color .3s ease}
+.hero-tags li:hover{border-color:var(--beam);color:var(--flare)}
+
+/* الشاشة الضيقة: نفس التثبيت، بمقاسات مضغوطة كي يسع المحتوى 100svh */
+
+
+.hero-acts{margin-top:min(clamp(20px,3.2vh,36px),3.4vh);display:flex;gap:16px;flex-wrap:wrap;
   justify-content:center}
-.hero-foot{margin:clamp(40px,6.5vh,76px) auto 0;display:flex;gap:clamp(24px,3vw,44px);flex-wrap:wrap;
+.hero-foot{margin:min(clamp(20px,3.4vh,48px),3.6vh) auto 0;display:flex;gap:clamp(24px,3vw,44px);flex-wrap:wrap;
   justify-content:center;padding-top:22px;border-top:1px solid var(--rule);
   max-width:min(920px,100%)}
 .hero-foot div{display:flex;flex-direction:column;align-items:center;gap:3px}
@@ -95,6 +118,41 @@ html:not(.js) .hero-hint{display:none}
   color:var(--silver);unicode-bidi:isolate;direction:ltr}
 .hero-foot .v-ar{font-family:var(--f-ui);font-weight:600;font-size:15px;color:var(--silver);
   word-spacing:.12em;letter-spacing:0;direction:rtl}
+
+@media (max-width:1024px){
+  .hero-pin{padding-block:clamp(80px,11vh,104px) clamp(16px,2.4vh,32px)}
+  .hero .t-poster{font-size:min(clamp(32px,8.6vw,60px),11vh)}
+  /* سطر واحد لا يلتفّ: الالتفاف يأكل ٥٠ بكسل من شاشة ضيّقة أصلًا */
+  .hero-eyebrow{font-size:12.5px;padding:6px 12px;gap:7px;margin-bottom:12px;
+    flex-wrap:nowrap;white-space:nowrap;max-width:100%;overflow:hidden}
+  .hero-eyebrow .dot{width:5px;height:5px}
+  .hero-lead{margin-top:14px;font-size:min(14.5px,2.4vh);line-height:1.62;max-width:30em}
+  /* صف واحد يُسحب أفقيًا بدل ثلاثة صفوف ملتفّة */
+  .hero-tags{margin-top:12px;gap:6px}
+  .hero-tags li{font-size:12px;padding:5px 11px;flex:none}
+  .hero-acts{margin-top:16px;gap:10px}
+  .hero-acts .btn{padding:12px 20px;font-size:14px}
+  /* شبكة ٢×٢ بدل صفّ يلتفّ إلى أربعة أسطر */
+  .hero-foot{margin-top:16px;padding-top:14px;
+    display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;max-width:340px}
+  .hero-foot .k{font-size:11.5px}
+  .hero-foot .v,.hero-foot .v-ar{font-size:13.5px}
+  .hero-cap .n{font-size:clamp(24px,6.4vw,34px)}
+  .hero-cap .s{font-size:13px;word-spacing:.2em}
+}
+/* شاشة قصيرة جدًا: نُسقط ما هو مكرَّر في الصفحة أدناه */
+@media (max-height:700px){
+  .hero-foot{display:none}
+}
+@media (max-width:1024px) and (max-height:620px){
+  .hero-tags{display:none}
+}
+/* الشاشة الضيقة جدًا: نكتفي بالاسم في سطر التعريف */
+/* الشاشة الضيقة جدًا: يبقى الاسم ويُختصر الدور */
+@media (max-width:400px){
+  .hero-eyebrow i,.hero-eyebrow span:nth-of-type(3){display:none}
+}
+
 
 /* ══════════════ البيان — مسرح جُمَل مثبّت ══════════════
    الجملة تصعد من تحت قناع، تثبت، ثم تنزل تحته — وهكذا أربع مرات،
@@ -137,8 +195,10 @@ html:not(.js) .hero-hint{display:none}
 .reel-list p:last-child{margin-bottom:0}
 .reel-list em{font-style:normal;color:var(--beam)}
 @media (max-width:1024px){
-  .reel-pin{display:none}
-  .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
+  .reel-stack{min-height:clamp(180px,26vh,260px)}
+  .rst{font-size:clamp(24px,6.4vw,40px);max-width:20ch}
+  .reel-dots{left:12px;gap:8px}
+  .reel-dots i{height:20px}
 }
 html:not(.js) .reel-pin{display:none}
 html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
@@ -157,7 +217,7 @@ html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
   transform:scaleX(0);transform-origin:right;transition:transform .45s ease;
   box-shadow:0 0 18px rgba(176,38,255,calc(.5*var(--beam-strength)))}
 .srow:hover::after,.srow:focus-within::after{transform:scaleX(1)}
-.srow h3{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,2.4vw,32px);line-height:1.32;
+.srow h3{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,2.4vw,32px);line-height:1.32;
   transition:color .3s ease,transform .35s ease}
 .srow:hover h3{color:var(--flare);transform:translateX(-8px)}
 .srow p{font-family:var(--f-body);font-weight:400;font-size:16px;line-height:1.75;color:var(--ash);
@@ -188,13 +248,22 @@ html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
   box-shadow:0 0 16px rgba(176,38,255,calc(.6*var(--beam-strength)))}
 .seq-cap{position:absolute;inset-inline-end:var(--margin);bottom:clamp(34px,6vh,60px);z-index:3;
   max-width:30ch;text-align:left}
-.seq-cap b{display:block;font-family:var(--f-display);font-weight:700;font-size:clamp(26px,2.2vw,30px);
+.seq-cap b{display:block;font-family:var(--f-display);font-weight:800;font-size:clamp(26px,2.2vw,30px);
   line-height:1.32;margin-bottom:8px}
 .seq-cap span{font-family:var(--f-body);font-weight:400;font-size:15px;line-height:1.8;color:var(--ash)}
+/* الشاشة الضيقة: القسم يبقى بارتفاع الشاشة ليصحّ التثبيت،
+   والتعليق ينتقل أسفل الإطار داخل نفس المسرح. */
 @media (max-width:1024px){
-  .seq{height:auto;aspect-ratio:16/10}
-  .seq-marks{inset-inline-start:6vw;gap:14px}
-  .seq-cap{position:static;margin:20px var(--margin) 0;text-align:right;max-width:none}
+  .seq-marks{inset-inline-start:12px;gap:12px;font-size:12px}
+  .seq-marks span::before{width:14px}
+  .seq-marks span.on::before{width:26px}
+  .seq-cap{inset-inline:var(--margin);bottom:clamp(24px,4vh,40px);
+    max-width:none;text-align:right}
+  .seq-cap b{font-size:clamp(22px,5.6vw,28px)}
+  .seq-cap span{font-size:14px;line-height:1.7}
+}
+@media (max-width:1024px) and (max-height:680px){
+  .seq-cap span{display:none}
 }
 
 /* ══════════════ الأعمال المختارة (الرئيسية) ══════════════ */
@@ -244,7 +313,7 @@ html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
   transform:scaleX(0);transform-origin:right;transition:transform .45s ease;
   box-shadow:0 0 18px rgba(176,38,255,calc(.5*var(--beam-strength)))}
 .irow:hover::after,.irow:focus-within::after{transform:scaleX(1)}
-.irow h3{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,2.1vw,30px);line-height:1.32;
+.irow h3{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,2.1vw,30px);line-height:1.32;
   transition:color .3s ease}
 .irow:hover h3{color:var(--flare)}
 .irow .type{font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;color:var(--ash)}
@@ -283,7 +352,7 @@ html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
 .bk-step .bar{flex:1;height:1px;background:var(--rule);position:relative;max-width:140px}
 .bk-step .bar em{position:absolute;inset-block:0;inset-inline-start:0;background:var(--beam);
   box-shadow:0 0 14px rgba(176,38,255,calc(.6*var(--beam-strength)));transition:width .55s ease}
-.bk-q h2{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,2.8vw,40px);line-height:1.32}
+.bk-q h2{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,2.8vw,40px);line-height:1.32}
 .bk-q .hint{margin-top:16px;font-size:16px;line-height:1.85;color:var(--ash);max-width:34em}
 
 .bk-panel{min-height:340px}
@@ -296,7 +365,7 @@ html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
 .opt:hover::after,.opt[aria-pressed="true"]::after{transform:scaleX(1)}
 /* العنوان والوصف يجب أن يتراصّا عموديًا — span داخل span يتدفّق سطريًا فيتداخلان */
 .opt>span:first-child{display:flex;flex-direction:column;gap:6px;min-width:0}
-.opt .ot{display:block;font-family:var(--f-display);font-weight:700;
+.opt .ot{display:block;font-family:var(--f-display);font-weight:800;
   font-size:clamp(26px,1.9vw,28px);line-height:1.32;transition:color .3s ease}
 .opt .od{display:block;font-family:var(--f-body);font-weight:400;font-size:15px;
   line-height:1.7;color:var(--ash);max-width:42ch}
@@ -387,10 +456,10 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
 /* الرسالة شريط علوي مقروء — لا علامة مائية مقصوصة.
    المشاهد تبدأ تحتها بحشو مقابل فلا تتصادم. */
 .stage-msg{position:absolute;inset-inline:var(--margin);top:clamp(96px,13vh,138px);
-  z-index:2;pointer-events:none;height:clamp(70px,10vh,104px)}
+  z-index:2;pointer-events:none;height:clamp(62px,8.6vh,96px)}
 .stage-msg .m{position:absolute;inset-inline:0;top:0;opacity:0;
-  font-family:var(--f-display);font-weight:700;
-  font-size:clamp(22px,2.7vw,40px);line-height:1.34;max-width:26ch;
+  font-family:var(--f-display);font-weight:800;
+  font-size:min(clamp(19px,2.15vw,32px),4.4vh);line-height:1.34;max-width:34ch;
   color:rgba(237,233,244,.4)}
 .stage-msg .m em{font-style:normal;color:rgba(176,38,255,.85)}
 
@@ -407,7 +476,7 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
   background:linear-gradient(255deg,rgba(176,38,255,.13) 0%,transparent 42%)}
 .slide .info{display:flex;flex-direction:column;gap:14px}
 .slide .kind{font-family:var(--f-ui);font-weight:600;font-size:15px;word-spacing:.12em;color:var(--beam)}
-.slide h3{font-family:var(--f-display);font-weight:700;
+.slide h3{font-family:var(--f-display);font-weight:800;
   font-size:clamp(26px,3.4vw,48px);line-height:1.32}
 .slide .win{font-family:var(--f-body);font-weight:400;font-size:17px;line-height:1.85;
   color:var(--ash);max-width:30em}
@@ -423,6 +492,7 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
   transform:scaleX(var(--p,0));transform-origin:right;
   box-shadow:0 0 10px rgba(176,38,255,calc(.6*var(--beam-strength)))}
 .stage-skip{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash);
+  white-space:nowrap;flex:none;
   border-bottom:1px solid var(--rule);padding-bottom:5px;transition:color .3s,border-color .3s}
 .stage-skip:hover{color:var(--flare);border-color:var(--beam)}
 .stage-cta{position:absolute;z-index:5;inset-inline-start:var(--margin);
@@ -436,11 +506,37 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
 .sl .shot img{width:100%;height:100%;object-fit:cover;object-position:center top;
   filter:saturate(.88) contrast(1.06) brightness(.92)}
 .sl .kind{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--beam);display:block;margin-bottom:8px}
-.sl h3{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,6vw,32px);line-height:1.32;margin-bottom:10px}
+.sl h3{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,6vw,32px);line-height:1.32;margin-bottom:10px}
 .sl .win{font-size:16px;line-height:1.8;color:var(--ash)}
 .sl .meta{font-family:var(--f-mono);font-weight:500;font-size:13px;letter-spacing:.1em;color:var(--ash);
   unicode-bidi:isolate;direction:ltr;display:block;margin-top:10px}
+/* الشاشة الضيقة: عمود واحد — اللقطة فوق والمعلومات تحتها، والدخول
+   من اليمين والشمال كما هو. القائمة الرأسية تبقى للحالات بلا حركة. */
 @media (max-width:1024px){
+  .stage-msg{top:clamp(94px,12.5vh,118px);height:clamp(52px,7.4vh,74px)}
+  .stage-msg .m{font-size:min(clamp(15px,3.9vw,21px),3.4vh);line-height:1.36;max-width:26ch}
+  .slide{grid-template-columns:1fr;grid-template-rows:auto auto;
+    gap:clamp(14px,3vh,24px);align-content:center;
+    padding:clamp(140px,20vh,190px) var(--margin) clamp(80px,12vh,110px)}
+  .slide .shot{aspect-ratio:16/10}
+  .slide .info{gap:8px}
+  .slide h3{font-size:clamp(24px,6.2vw,34px)}
+  .slide .win{font-size:15px;line-height:1.7}
+  .slide .kind{font-size:13px}
+  .slide .meta{font-size:12px}
+  .stage-hud{gap:12px}
+  .stage-skip{font-size:12.5px}
+  .stage-dots i{width:16px}
+  .stage-cta{inset-inline-start:var(--margin);bottom:clamp(66px,10vh,96px)}
+  .stage-cta .btn{padding:12px 20px;font-size:14px}
+}
+@media (max-width:1024px) and (max-height:680px){
+  .slide .win{display:none}
+}
+/* القائمة الرأسية: فقط حين يتعذّر التثبيت */
+html:not(.js) .stage{display:none}
+html:not(.js) .stage-list{display:block}
+@media (prefers-reduced-motion:reduce){
   .stage{display:none}
   .stage-list{display:block}
 }
@@ -464,7 +560,7 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
   border-top:1px solid var(--rule);text-align:center;overflow:hidden}
 .band::before{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(620px circle at 50% 0%,rgba(176,38,255,calc(.12*var(--beam-strength))),transparent 66%)}
-.band h2{position:relative;font-family:var(--f-display);font-weight:700;
+.band h2{position:relative;font-family:var(--f-display);font-weight:800;
   font-size:clamp(34px,7vw,104px);line-height:1.3;max-width:14ch;margin-inline:auto}
 .band h2 em{font-style:normal;color:var(--beam)}
 .band .sub{position:relative;margin:22px auto 0;max-width:36em;color:var(--ash);font-size:17px;line-height:1.9}
@@ -474,7 +570,7 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
 .marq{position:relative;z-index:2;overflow:hidden;border-block:1px solid var(--rule);padding-block:22px}
 .marq-in{display:flex;width:max-content;will-change:transform}
 .marq-g{display:flex;align-items:center;flex-shrink:0}
-.marq-g span{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,2.4vw,34px);
+.marq-g span{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,2.4vw,34px);
   color:rgba(237,233,244,.16);padding-inline:30px;white-space:nowrap}
 .marq-g i{font-style:normal;color:rgba(176,38,255,.5);font-size:14px}
 
@@ -493,7 +589,7 @@ html:not(.js) .stage-list{display:block}
 .hero-cap{position:absolute;z-index:1;left:50%;top:50%;transform:translate(-50%,-50%);
   display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
   pointer-events:none}
-.hero-cap .n{font-family:var(--f-display);font-weight:700;
+.hero-cap .n{font-family:var(--f-display);font-weight:800;
   font-size:clamp(26px,3vw,42px);line-height:1.3;color:var(--silver)}
 .hero-cap .n b{color:var(--beam);font-weight:700}
 .hero-cap .s{font-family:var(--f-ui);font-weight:600;font-size:15px;

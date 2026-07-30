@@ -50,10 +50,20 @@
     }
 
     var conn = navigator.connection || {};
-    var slow = conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType || "");
-    if (reduce || slow || !window.matchMedia(DESK).matches || !canvas) { showStatic(); return; }
+    var slow = conn.saveData === true || /(^|-)(2g|slow-2g)$/.test(conn.effectiveType || "");
+    /* الشبكة البطيئة أو حفظ البيانات وحدهما يُلغيان المتتالية — لا مقاس الشاشة */
+    if (reduce || slow || !canvas) { showStatic(); return; }
 
-    mm.add(DESK, function () {
+    mm.add({ wide: DESK, narrow: "(max-width: 1024px)" }, function (mmCtx) {
+      var wide = !!mmCtx.conditions.wide;
+      /* الموبايل يحمّل إطارًا من كل اثنين: نصف الوزن ونصف الفكّ، وبنفس السلاسة
+         تقريبًا لأن مسافة السكرول أقصر أصلًا. */
+      var STEP = wide ? 1 : 2;
+      var IDX = [];
+      for (var q = 0; q < FRAMES; q += STEP) IDX.push(q);
+      if (IDX[IDX.length - 1] !== FRAMES - 1) IDX.push(FRAMES - 1);
+      var N = IDX.length;
+
       var ctx = canvas.getContext("2d");
       var dpr = Math.min(2, window.devicePixelRatio || 1);
       var imgs = [], cur = -1;
@@ -76,14 +86,14 @@
         var w = im.naturalWidth * s, h = im.naturalHeight * s;
         ctx.clearRect(0, 0, cw, ch);
         ctx.drawImage(im, (cw - w) / 2, (ch - h) / 2, w, h);
-        marks.forEach(function (m, k) { m.classList.toggle("on", i >= MARK_AT[k]); });
+        marks.forEach(function (m, k) { m.classList.toggle("on", IDX[i] >= MARK_AT[k]); });
       }
 
       var st = null, resizeHandler = null, killed = false;
 
-      Promise.all(Array.from({ length: FRAMES }, function (_, i) {
+      Promise.all(IDX.map(function (frame, i) {
         var im = new Image();
-        im.src = SRC(i);
+        im.src = SRC(frame);
         imgs[i] = im;
         return im.decode ? im.decode().catch(function () {}) : Promise.resolve();
       })).then(function () {
@@ -95,12 +105,12 @@
         st = ScrollTrigger.create({
           trigger: sec,
           start: "top top",
-          end: "+=125%",   /* قُصّرت: الصفحة صارت تحمل أربعة أقسام مثبّتة */
+          end: "+=" + (wide ? 125 : 95) + "%",
           pin: true,
           scrub: 0.6,
           anticipatePin: 1,
           invalidateOnRefresh: true,
-          onUpdate: function (self) { draw(Math.round(self.progress * (FRAMES - 1))); }
+          onUpdate: function (self) { draw(Math.round(self.progress * (N - 1))); }
         });
         ScrollTrigger.refresh();
       });
@@ -112,7 +122,5 @@
       };
     });
 
-    /* دون الديسكتوب: إطار ساكن، صفر تحميل للمتتالية */
-    mm.add("(max-width: 1024px)", function () { showStatic(); });
   });
 })();

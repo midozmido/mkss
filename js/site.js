@@ -155,7 +155,8 @@
     });
   }
 
-  /* ══════════ ٥) الريل — التدريج يمرّ تحت شعرة التصويب ══════════ */
+  /* ══════════ ٥) الريل — التدريج يمرّ تحت شعرة التصويب ══════════
+     على الموبايل يختفي الريل من CSS، فنتحقق من ظهوره لا من عرض الشاشة. */
   function rail() {
     var ticks = document.querySelector(".railbar .ticks");
     if (!ticks || reduce) return;
@@ -169,14 +170,17 @@
     });
   }
 
-  /* ══════════ ٦) بارالاكس الصور النازفة — ديسكتوب فقط ══════════ */
+  /* ══════════ ٦) بارالاكس الصور النازفة — على كل المقاسات ══════════
+     المدى أقصر على الشاشة الضيقة: نفس الإزاحة على شاشة صغيرة تبدو قفزًا. */
   function parallax() {
     if (reduce) return;
-    mm.add(DESK, function () {
+    mm.add({ wide: DESK, narrow: "(max-width: 1024px)" }, function (ctx) {
+      var amp = ctx.conditions.wide ? 9 : 5;
+      var zoom = ctx.conditions.wide ? 1.12 : 1.08;
       var tws = gsap.utils.toArray("[data-px] img").map(function (img) {
-        gsap.set(img, { scale: 1.12 });
-        return gsap.fromTo(img, { yPercent: -9 }, {
-          yPercent: 9, ease: "none",
+        gsap.set(img, { scale: zoom });
+        return gsap.fromTo(img, { yPercent: -amp }, {
+          yPercent: amp, ease: "none",
           scrollTrigger: { trigger: img.closest("[data-px]"), start: "top bottom", end: "bottom top", scrub: true }
         });
       });
@@ -258,10 +262,11 @@
     if (reduce) return;
     var targets = gsap.utils.toArray("[data-skew]");
     if (!targets.length) return;
-    mm.add(DESK, function () {
+    mm.add({ wide: DESK, narrow: "(max-width: 1024px)" }, function (ctx) {
+      var lim = ctx.conditions.wide ? 5 : 3;
       var setters = targets.map(function (t) { return gsap.quickSetter(t, "skewY", "deg"); });
       var proxy = { s: 0 };
-      var clamp = gsap.utils.clamp(-5, 5);
+      var clamp = gsap.utils.clamp(-lim, lim);
       var st = ScrollTrigger.create({
         onUpdate: function (self) {
           var v = clamp(self.getVelocity() / -420);

@@ -20,7 +20,8 @@
       /* مع تقليل الحركة يُخفى المسرح من CSS وتظهر القائمة — لا نبني شيئًا هنا */
       if (reduce) return;
 
-      mm.add(DESK, function () {
+      mm.add({ wide: DESK, narrow: "(max-width: 1024px)" }, function (ctx) {
+        var wide = !!ctx.conditions.wide;
         var N = slides.length;
         /* كل مشهد: دخول ← ثبات ← خروج. نبني تايم لاين واحدة مربوطة بالسكرول. */
         var IN = 0.42, HOLD = 0.34, OUT = 0.24;   /* نِسَب داخل المشهد الواحد */
@@ -34,7 +35,7 @@
           scrollTrigger: {
             trigger: stage,
             start: "top top",
-            end: "+=" + (N * 85) + "%",
+            end: "+=" + (N * (wide ? 95 : 78)) + "%",
             pin: true,
             scrub: 0.7,
             anticipatePin: 1,
@@ -56,10 +57,12 @@
           var at = i;                              /* المشهد i يبدأ عند الثانية i */
 
           /* دخول */
+          var ENTER = wide ? 118 : 106;         /* مسافة الدخول الأفقي */
+          var INFO = wide ? -70 : -46;
           tl.fromTo(sl, { opacity: 0 }, { opacity: 1, duration: IN * 0.5 }, at)
-            .fromTo(shot, { xPercent: 118 * dir, rotate: 1.6 * dir },
+            .fromTo(shot, { xPercent: ENTER * dir, rotate: (wide ? 1.6 : 1) * dir },
               { xPercent: 0, rotate: 0, duration: IN, ease: "power3.out" }, at)
-            .fromTo(info, { xPercent: -70 * dir, opacity: 0 },
+            .fromTo(info, { xPercent: INFO * dir, opacity: 0 },
               { xPercent: 0, opacity: 1, duration: IN, ease: "power3.out" }, at + 0.06);
 
           /* ثبات مع انجراف خفيف — يمنع الإحساس بالجمود */
@@ -67,9 +70,9 @@
 
           /* خروج للجهة المقابلة (المشهد الأخير يبقى) */
           if (i < N - 1) {
-            tl.to(shot, { xPercent: -108 * dir, rotate: -1.2 * dir, duration: OUT, ease: "power2.in" },
-              at + IN + HOLD)
-              .to(info, { xPercent: 60 * dir, opacity: 0, duration: OUT, ease: "power2.in" },
+            tl.to(shot, { xPercent: -(wide ? 108 : 100) * dir, rotate: -(wide ? 1.2 : .8) * dir,
+                          duration: OUT, ease: "power2.in" }, at + IN + HOLD)
+              .to(info, { xPercent: (wide ? 60 : 42) * dir, opacity: 0, duration: OUT, ease: "power2.in" },
                 at + IN + HOLD)
               .to(sl, { opacity: 0, duration: OUT * 0.7 }, at + IN + HOLD + OUT * 0.3);
           }
@@ -91,21 +94,6 @@
         return function () { tl.scrollTrigger && tl.scrollTrigger.kill(); tl.kill(); };
       });
 
-      /* دون الديسكتوب: القائمة الرأسية تظهر بكشف عادي */
-      mm.add("(max-width: 1024px)", function () {
-        var list = stage.parentNode.querySelector(".stage-list");
-        if (!list) return;
-        var items = gsap.utils.toArray(list.querySelectorAll(".sl"));
-        if (reduce) { gsap.set(items, { opacity: 1, y: 0 }); return; }
-        var b = ScrollTrigger.batch(items, {
-          start: "top 82%", once: true,
-          onEnter: function (batch) {
-            gsap.fromTo(batch, { opacity: 0, y: 34 },
-              { opacity: 1, y: 0, duration: 1.0, stagger: 0.09, ease: "power3.out", overwrite: true });
-          }
-        });
-        return function () { b.forEach(function (t) { t.kill(); }); };
-      });
     });
 
     /* زرار التخطّي */

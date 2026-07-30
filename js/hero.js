@@ -107,7 +107,12 @@
 
     if (e.detail.reduce) { openState(); return; }
 
-    mm.add(DESK, function () {
+    /* التثبيت على كل المقاسات — القيم فقط هي التي تتغيّر.
+       على الشاشة الضيقة: شبّاك أوسع قليلًا (٦٠٪ لا ٥٠٪) ومسافة سكرول أقصر. */
+    mm.add({ wide: DESK, narrow: "(max-width: 1024px)" }, function (ctx) {
+      var wide = !!ctx.conditions.wide;
+      var START = wide ? 25 : 20;              /* إزاحة الشبّاك المبدئية بالنسبة المئوية */
+      var LEN = wide ? 150 : 110;              /* طول مسافة السكرول */
       var heads = gsap.utils.toArray(hero.querySelectorAll(".poster .mask"));
       var bits = gsap.utils.toArray(hero.querySelectorAll("[data-hero]"))
         .sort(function (a, b) { return (+a.dataset.hero || 0) - (+b.dataset.hero || 0); });
@@ -116,10 +121,10 @@
       gsap.set(heads, { opacity: 0 });
       gsap.set(hero.querySelectorAll(".poster .p-line"), { yPercent: 118 });
       gsap.set(bits, { opacity: 0, y: 42 });
-      gsap.set(stage, { clipPath: "inset(25%)" });
-      gsap.set(media, { scale: 1.12 });
-      gsap.set(veil, { opacity: 0.32 });
-      gsap.set(frame, { opacity: 1, inset: "25%" });
+      gsap.set(stage, { clipPath: "inset(" + START + "%)" });
+      gsap.set(media, { scale: wide ? 1.12 : 1.08 });
+      gsap.set(veil, { opacity: wide ? 0.32 : 0.46 });
+      gsap.set(frame, { opacity: 1, inset: START + "%" });
       if (cap) gsap.set(cap, { opacity: 1 });
       if (hint) gsap.to(hint, { opacity: 1, duration: 1.1, delay: 1.4, ease: "power2.out" });
 
@@ -128,7 +133,7 @@
         scrollTrigger: {
           trigger: sect,
           start: "top top",
-          end: "+=" + Math.round(150 * SPEED) + "%",
+          end: "+=" + Math.round(LEN * SPEED) + "%",
           pin: hero,
           scrub: 0.9,
           anticipatePin: 1,
@@ -139,7 +144,7 @@
       /* ① الشبّاك يفتح من ٥٠٪ إلى ملء الشاشة */
       tl.to(stage, { clipPath: "inset(0%)", duration: 0.52, ease: "power2.inOut" }, 0)
         .to(media, { scale: 1, duration: 0.52, ease: "power2.inOut" }, 0)
-        .to(veil, { opacity: 0.68, duration: 0.52 }, 0)
+        .to(veil, { opacity: wide ? 0.68 : 0.82, duration: 0.52 }, 0)
         .to(frame, { top: "0%", right: "0%", bottom: "0%", left: "0%", duration: 0.52, ease: "power2.inOut" }, 0)
         .to(frame, { opacity: 0, duration: 0.22 }, 0.30);
       if (hint) tl.to(hint, { opacity: 0, duration: 0.12 }, 0);
@@ -160,18 +165,6 @@
       };
     });
 
-    /* دون الديسكتوب: بلا تثبيت — اللوحة مفتوحة والنص يدخل عند التحميل */
-    mm.add("(max-width: 1024px)", function () {
-      openState();
-      var bits = gsap.utils.toArray(hero.querySelectorAll("[data-hero]"))
-        .sort(function (a, b) { return (+a.dataset.hero || 0) - (+b.dataset.hero || 0); });
-      var lines = hero.querySelectorAll(".poster .p-line");
-      var tw = gsap.timeline({ delay: 0.1 })
-        .fromTo(lines, { yPercent: 118 }, { yPercent: 0, duration: 1.4 * SPEED, stagger: 0.14, ease: "power4.out" })
-        .fromTo(bits, { opacity: 0, y: 40 },
-          { opacity: 1, y: 0, duration: 1.3 * SPEED, stagger: 0.16, ease: "expo.out" }, "-=0.9");
-      return function () { tw.kill(); };
-    });
   });
 
   /* ══════════ ٣) العبور الضوئي على العنوان ══════════ */
