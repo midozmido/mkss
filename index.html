@@ -18,8 +18,12 @@
 <div class="pre" role="status" aria-live="polite">
   <div class="pre-in">
     <div class="pre-name"><span>محمد</span> <span><b>خالد</b></span></div>
+    <div class="pre-tag"><span>هندسة الإقناع</span></div>
     <div class="pre-bar"><i></i></div>
-    <div class="pre-lbl">جارٍ التحميل</div>
+    <div class="pre-meta">
+      <span class="pre-lbl">جارٍ التحميل</span>
+      <span class="pre-pct">٠٪</span>
+    </div>
   </div>
 </div>
 
@@ -52,31 +56,53 @@
 </div>
 
 <main>
-  <!-- ══════════ الهيرو ══════════ -->
+  <!-- ══════════ الهيرو — لوحة ضوء تتمدّد من ٥٠٪ إلى ملء الشاشة ══════════ -->
   <section class="hero">
-    <div class="hero-in">
-      <h1 class="poster t-poster">
-        <span class="mask"><span class="p-line">مواقع تقنع<span class="sweep" aria-hidden="true"><span class="copy">مواقع تقنع</span></span></span></span>
-        <span class="mask"><span class="p-line">قبل أن تقرأ<span class="sweep" aria-hidden="true"><span class="copy">قبل أن تقرأ</span></span></span></span>
-        <span class="beam-line" aria-hidden="true"></span>
-      </h1>
+    <!-- الغلاف المثبّت: يبقى في الشاشة بينما اللوحة تتمدّد ثم يظهر النص -->
+    <div class="hero-pin">
 
-      <p class="hero-lead t-lead" data-hero="1" data-r>
-        م. محمد خالد — مهندس مواقع ومتاجر. أعمل مع علامات في السعودية والخليج على مواقع
-        ومتاجر <b style="color:var(--silver);font-weight:400">يُقاس أثرها بالمبيعات، لا بالإعجاب</b>.
-      </p>
+      <div class="hero-stage" aria-hidden="true">
+        <div class="hero-media">
+          <video class="hero-vid" muted playsinline loop preload="none"
+                 poster="assets/hero/poster.webp" width="1440" height="810"></video>
+          <canvas class="hero-fb" width="1440" height="810"></canvas>
+        </div>
+        <span class="hero-veil"></span>
+      </div>
+      <span class="hero-frame" aria-hidden="true"></span>
 
-      <div class="hero-acts" data-hero="2" data-r>
-        <a class="btn btn-solid" href="booking.html">ابدأ مشروعك</a>
-        <a class="btn btn-line" href="works.html">شاهد الأعمال</a>
+      <!-- سطر التعريف داخل اللوحة الصغيرة — يتلاشى مع اتساع الشبّاك -->
+      <div class="hero-cap" aria-hidden="true">
+        <span class="n">محمد <b>خالد</b></span>
+        <span class="s">هندسة الإقناع</span>
       </div>
 
-      <div class="hero-foot" data-hero="3" data-r>
-        <div><span class="k">سنوات الخبرة</span><span class="v-ar" data-count="6" data-post=" سنوات">٦ سنوات</span></div>
-        <div><span class="k">مشروع مسلَّم</span><span class="v-ar" data-count="120" data-post=" مشروعًا">١٢٠ مشروعًا</span></div>
-        <div><span class="k">عملاء سابقون</span><span class="v">TDA · KD</span></div>
-        <div><span class="k">زمن الرد</span><span class="v-ar">خلال ساعات</span></div>
+      <div class="hero-in">
+        <h1 class="poster t-poster">
+          <span class="mask"><span class="p-line">مواقع تقنع<span class="sweep" aria-hidden="true"><span class="copy">مواقع تقنع</span></span></span></span>
+          <span class="mask"><span class="p-line">قبل أن تقرأ<span class="sweep" aria-hidden="true"><span class="copy">قبل أن تقرأ</span></span></span></span>
+          <span class="beam-line" aria-hidden="true"></span>
+        </h1>
+
+        <p class="hero-lead t-lead" data-hero="1">
+          م. محمد خالد — مهندس مواقع ومتاجر. أعمل مع علامات في السعودية والخليج على مواقع
+          ومتاجر <b style="color:var(--silver);font-weight:400">يُقاس أثرها بالمبيعات، لا بالإعجاب</b>.
+        </p>
+
+        <div class="hero-acts" data-hero="2">
+          <a class="btn btn-solid" href="booking.html">ابدأ مشروعك</a>
+          <a class="btn btn-line" href="works.html">شاهد الأعمال</a>
+        </div>
+
+        <div class="hero-foot" data-hero="3">
+          <div><span class="k">سنوات الخبرة</span><span class="v-ar" data-count="6" data-post=" سنوات">٦ سنوات</span></div>
+          <div><span class="k">مشروع مسلَّم</span><span class="v-ar" data-count="120" data-post=" مشروعًا">١٢٠ مشروعًا</span></div>
+          <div><span class="k">عملاء سابقون</span><span class="v">TDA · KD</span></div>
+          <div><span class="k">زمن الرد</span><span class="v-ar">خلال ساعات</span></div>
+        </div>
       </div>
+
+      <span class="hero-hint" aria-hidden="true"><i></i>مرّر</span>
     </div>
   </section>
 
@@ -96,9 +122,26 @@
     </div>
   </div>
 
-  <!-- ══════════ البيان — الاستثناء الوحيد للتمركز ══════════ -->
-  <section class="sec manifest">
-    <p class="t-statement" data-r>موقعك ليس معرضًا لذوقك. <em>هو أقصر مسافة بين زائر وقرار شراء.</em></p>
+  <!-- ══════════ البيان — أربع جُمَل تطلع وتنزل، ثم تُسلّم للقسم التالي ══════════ -->
+  <section class="reel" aria-label="لماذا الموقع مهم">
+    <div class="reel-pin">
+      <div class="reel-stack">
+        <p class="rst" data-i="0">موقعك ليس معرضًا لذوقك. <em>هو أقصر مسافة بين زائر وقرار شراء.</em></p>
+        <p class="rst" data-i="1">الزائر لا يقرأ صفحتك. <em>يمسحها في ثلاث ثوانٍ ثم يقرّر.</em></p>
+        <p class="rst" data-i="2">السرعة ليست رفاهية تقنية. <em>كل ثانية تأخير تأكل من سلّة الشراء.</em></p>
+        <p class="rst" data-i="3">التصميم الذي لا يبيع <em>زينة باهظة الثمن.</em></p>
+      </div>
+      <span class="reel-hand" aria-hidden="true"></span>
+      <div class="reel-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    </div>
+
+    <!-- بديل بلا تثبيت: موبايل · بلا جافاسكربت · تقليل الحركة -->
+    <div class="reel-list">
+      <p class="t-statement" data-r>موقعك ليس معرضًا لذوقك. <em>هو أقصر مسافة بين زائر وقرار شراء.</em></p>
+      <p class="t-statement" data-r>الزائر لا يقرأ صفحتك. <em>يمسحها في ثلاث ثوانٍ ثم يقرّر.</em></p>
+      <p class="t-statement" data-r>السرعة ليست رفاهية تقنية. <em>كل ثانية تأخير تأكل من سلّة الشراء.</em></p>
+      <p class="t-statement" data-r>التصميم الذي لا يبيع <em>زينة باهظة الثمن.</em></p>
+    </div>
   </section>
 
   <div class="brk"><span class="leak"></span><span class="tag">ما أعمل عليه</span></div>
@@ -342,8 +385,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
+<script src="js/hero-scene.js"></script>
 <script src="js/preloader.js"></script>
+<script src="js/hero.js"></script>
 <script src="js/site.js"></script>
+<script src="js/reel.js"></script>
 <script src="js/showcase.js"></script>
 <script src="js/home.js"></script>
 </body>

@@ -95,7 +95,7 @@
         st = ScrollTrigger.create({
           trigger: sec,
           start: "top top",
-          end: "+=200%",
+          end: "+=125%",   /* قُصّرت: الصفحة صارت تحمل أربعة أقسام مثبّتة */
           pin: true,
           scrub: 0.6,
           anticipatePin: 1,

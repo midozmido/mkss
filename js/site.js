@@ -46,16 +46,23 @@
   if (window.SplitText) PLUGINS.push(SplitText);
   if (window.Flip) PLUGINS.push(Flip);
   gsap.registerPlugin.apply(gsap, PLUGINS);
-  gsap.defaults({ ease: "power3.out", duration: 1.0 });
+  /* ══════════ مقبض السرعة الوحيد ══════════
+     كل مدد الكشف والعناوين والعدّادات تُضرب فيه.
+     1 = الإيقاع القديم السريع · 1.6 = الإيقاع الحالي · 2.2 = أبطأ. */
+  var SPEED = 1.6;
+
+  gsap.defaults({ ease: "power3.out", duration: 1.0 * SPEED });
 
   var mm = gsap.matchMedia();
   var DESK = "(min-width: 1025px)";
+  var HAS_HERO_PIN = !!document.querySelector(".hero-pin");   /* الرئيسية تدير هيروها بنفسها */
 
   /* ══════════ ١) عبور الضوء على البوستر — مرة واحدة عند التحميل ══════════
      النافذة تتحرك يسارًا والنسخة تتحرك عكسها بنفس المقدار،
      فيبقى النص مسجَّلًا فوق الأصل بينما تعبر النافذة.
      العنوان مضاء بالكامل من الفريم الأول — لا حالة مطفأة. */
   function heroSweep() {
+    if (HAS_HERO_PIN) return null;              /* hero.js يشغّله بعد اكتمال التمدد */
     var poster = document.querySelector(".poster");
     if (!poster || reduce) return null;
     var lines = poster.querySelectorAll(".p-line");
@@ -84,27 +91,57 @@
 
   /* ══════════ ٢) دخول عناصر الهيرو ══════════ */
   function heroIn() {
+    if (HAS_HERO_PIN) return;                   /* hero.js يتولّى ترتيب دخول الرئيسية */
     var els = gsap.utils.toArray("[data-hero]");
     if (!els.length) return;
     if (reduce) { gsap.set(els, { opacity: 1, y: 0 }); return; }
     els.sort(function (a, b) { return (+a.dataset.hero || 0) - (+b.dataset.hero || 0); });
-    gsap.fromTo(els, { opacity: 0, y: 34 },
-      { opacity: 1, y: 0, duration: 1.0, stagger: 0.09, ease: "power3.out", delay: 0.35 });
+
+    /* لا نبدأ تحت ستارة البريلودر — ننتظر انفتاحها */
+    function run() {
+      gsap.fromTo(els, { opacity: 0, y: 52 },
+        { opacity: 1, y: 0, duration: 1.35 * SPEED, stagger: 0.15, ease: "expo.out", delay: 0.18 });
+    }
+    if (doc.classList.contains("pre-on")) document.addEventListener("mk:opened", run, { once: true });
+    else run();
   }
 
   /* ══════════ ٣) الكشف عند السكرول ══════════ */
   function reveals() {
     var els = gsap.utils.toArray("[data-r]").filter(function (el) { return !el.hasAttribute("data-hero"); });
     if (!els.length) return;
-    if (reduce) { gsap.set(els, { opacity: 1, y: 0 }); return; }
+    if (reduce) { gsap.set(els, { opacity: 1, y: 0, filter: "none" }); return; }
+
+    function show(batch) {
+      gsap.fromTo(batch,
+        { opacity: 0, y: 58, filter: "blur(7px)" },
+        { opacity: 1, y: 0, filter: "blur(0px)",
+          duration: 1.6 * SPEED, stagger: 0.17, ease: "expo.out", overwrite: true,
+          onComplete: function () { gsap.set(this.targets(), { clearProps: "filter" }); } });
+    }
+
     ScrollTrigger.batch(els, {
-      start: "top 78%",
-      once: true,
+      start: "top 88%", once: true,
       onEnter: function (batch) {
-        gsap.fromTo(batch, { opacity: 0, y: 34 },
-          { opacity: 1, y: 0, duration: 1.0, stagger: 0.09, ease: "power3.out", overwrite: true });
+        batch.forEach(function (el) { el._mkShown = true; });
+        show(batch);
       }
     });
+
+    /* شبكة أمان: في صفحة قصيرة قد لا يصل عنصر أسفل الطيّة إلى نقطة التحفيز
+       أبدًا لأن الصفحة لا تسكرول بما يكفي — فيبقى بشفافية صفر إلى الأبد. */
+    function rescue() {
+      var max = ScrollTrigger.maxScroll(window);
+      var vh = window.innerHeight;
+      var stuck = els.filter(function (el) {
+        if (el._mkShown) return false;
+        var top = el.getBoundingClientRect().top + window.scrollY;
+        return top - (max + vh * 0.88) > 0;          /* لن يبلغ 88% من الشاشة أبدًا */
+      });
+      if (stuck.length) { stuck.forEach(function (el) { el._mkShown = true; }); show(stuck); }
+    }
+    ScrollTrigger.addEventListener("refresh", rescue);
+    requestAnimationFrame(rescue);
   }
 
   /* ══════════ ٤) الانقطاعات — الخيط يُرسم مع السكرول ══════════ */
@@ -113,7 +150,7 @@
       if (reduce) { gsap.set(el, { scaleX: 1 }); return; }
       gsap.fromTo(el, { scaleX: 0 }, {
         scaleX: 1, ease: "none",
-        scrollTrigger: { trigger: el.closest(".brk"), start: "top 92%", end: "bottom 55%", scrub: 0.8 }
+        scrollTrigger: { trigger: el.closest(".brk"), start: "top 96%", end: "bottom 52%", scrub: 1.3 }
       });
     });
   }
@@ -126,7 +163,7 @@
       var setY = gsap.quickSetter(ticks, "y", "px");
       var st = ScrollTrigger.create({
         start: 0, end: "max",
-        onUpdate: function (self) { setY(-((self.scroll() * 0.35) % 40)); }
+        onUpdate: function (self) { setY(-((self.scroll() * 0.22) % 40)); }
       });
       return function () { st.kill(); gsap.set(ticks, { y: 0 }); };
     });
@@ -152,16 +189,23 @@
      بالسطور فقط — التقسيم بالحروف يفكّ اتصال العربية. */
   function splitHeads() {
     if (!window.SplitText || reduce) return;
+    /* التقسيم قبل جهوزية الخطوط يقيس بخط بديل ⇒ أسطر تنكسر في غير مكانها */
+    if (document.fonts && document.fonts.status !== "loaded") {
+      document.fonts.ready.then(splitHeads);
+      return;
+    }
     gsap.utils.toArray("[data-split]").forEach(function (el) {
+      if (el._mkSplit) return;
+      el._mkSplit = true;
       if (el.closest(".pre")) return;
       SplitText.create(el, {
         type: "lines", mask: "lines", autoSplit: true, aria: "auto", linesClass: "sline",
         onSplit: function (self) {
           if (el._done) return gsap.set(self.lines, { yPercent: 0 });
           return gsap.from(self.lines, {
-            yPercent: 112, duration: 1.05, stagger: 0.1, ease: "power4.out",
+            yPercent: 112, duration: 1.6 * SPEED, stagger: 0.2, ease: "power4.out",
             onComplete: function () { el._done = true; },
-            scrollTrigger: { trigger: el, start: "top 86%", once: true }
+            scrollTrigger: { trigger: el, start: "top 90%", once: true }
           });
         }
       });
@@ -178,9 +222,9 @@
       if (reduce) { el.textContent = pre + toAr(target) + post; return; }
       var o = { v: 0 };
       gsap.to(o, {
-        v: target, duration: 1.7, ease: "power2.out", snap: { v: 1 },
+        v: target, duration: 2.6 * SPEED * 0.62, ease: "power2.out", snap: { v: 1 },
         onUpdate: function () { el.textContent = pre + toAr(Math.round(o.v)) + post; },
-        scrollTrigger: { trigger: el, start: "top 88%", once: true }
+        scrollTrigger: { trigger: el, start: "top 92%", once: true }
       });
     });
   }
@@ -199,7 +243,7 @@
   function marquee() {
     document.querySelectorAll(".marq-in").forEach(function (track) {
       if (reduce) return;
-      var tw = gsap.to(track, { xPercent: 50, repeat: -1, duration: 30, ease: "none" });
+      var tw = gsap.to(track, { xPercent: 50, repeat: -1, duration: 48, ease: "none" });
       ScrollTrigger.create({
         onUpdate: function (self) {
           var boost = gsap.utils.clamp(1, 4, 1 + Math.abs(self.getVelocity()) / 1400);
@@ -247,15 +291,24 @@
     progressBar();
     marquee();
     velocitySkew();
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () { ScrollTrigger.refresh(); });
-    }
     window.addEventListener("load", function () { ScrollTrigger.refresh(); });
-    document.dispatchEvent(new CustomEvent("mk:ready", { detail: { reduce: reduce, mm: mm, DESK: DESK } }));
+    document.dispatchEvent(new CustomEvent("mk:ready", { detail: { reduce: reduce, mm: mm, DESK: DESK, SPEED: SPEED } }));
+    ScrollTrigger.refresh();
   }
 
-  window.MK = { reduce: reduce, mm: mm, DESK: DESK };
+  /* الأقسام المثبّتة وتقسيم الأسطر تُقاس بالخط النهائي.
+     البدء قبل جهوزية الخطوط يعني قياسًا بخط بديل ⇒ أسطر مكسورة ومواضع تثبيت خاطئة.
+     ننتظر الخطوط بسقف ٣ ثوانٍ — والبريلودر يغطّي هذا الانتظار أصلًا. */
+  function bootWhenFontsReady() {
+    if (!document.fonts || !document.fonts.ready || document.fonts.status === "loaded") { boot(); return; }
+    var done = false;
+    function go() { if (done) return; done = true; boot(); }
+    document.fonts.ready.then(go);
+    setTimeout(go, 3000);
+  }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
+  window.MK = { reduce: reduce, mm: mm, DESK: DESK, SPEED: SPEED };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootWhenFontsReady);
+  else bootWhenFontsReady();
 })();

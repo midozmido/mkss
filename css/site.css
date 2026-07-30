@@ -289,18 +289,29 @@ button{cursor:pointer}
    القناع (لا clip-path) لأن المطلوب إخفاء اللوح لا إظهاره. */
 .pre{position:fixed;inset:0;z-index:9000;background:var(--void);
   display:grid;place-items:center}
-.pre-in{text-align:center;display:flex;flex-direction:column;align-items:center;gap:26px}
+/* هالة خافتة خلف الاسم — نفس ضوء الهيرو، فيبدو الانتقال امتدادًا لا قطعًا */
+.pre::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(60vmax 46vmax at 50% 42%,
+    rgba(176,38,255,calc(.16*var(--beam-strength))),transparent 62%)}
+.pre-in{position:relative;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:0}
 .pre-name{font-family:var(--f-display);font-weight:700;
   font-size:clamp(30px,5vw,64px);line-height:1.32;overflow:hidden}
 .pre-name span{display:inline-block}
 .pre-name b{color:var(--beam);font-weight:700}
-.pre-bar{width:min(280px,54vw);height:1px;background:var(--rule);position:relative;overflow:hidden}
+/* السطر تحت اللوجو */
+.pre-tag{margin-top:14px;overflow:hidden}
+.pre-tag span{display:inline-block;font-family:var(--f-ui);font-weight:600;
+  font-size:clamp(15px,1.5vw,19px);word-spacing:.42em;color:var(--ash)}
+.pre-bar{margin-top:clamp(34px,5vh,54px);
+  width:min(300px,56vw);height:1px;background:var(--rule);position:relative;overflow:hidden}
 .pre-bar i{position:absolute;inset:0;background:var(--beam);transform:scaleX(0);transform-origin:right;
   box-shadow:0 0 18px rgba(176,38,255,calc(.7*var(--beam-strength)))}
+.pre-meta{margin-top:14px;width:min(300px,56vw);display:flex;justify-content:space-between;
+  align-items:baseline;opacity:0}
 .pre-lbl{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash)}
-/* حلقة الضوء التي تسبق الفتح */
-.pre-ring{position:absolute;width:10px;height:10px;border-radius:50%;
-  border:1px solid var(--beam);opacity:0;pointer-events:none}
+.pre-pct{font-family:var(--f-ui);font-weight:600;font-size:14px;color:var(--silver);
+  font-variant-numeric:tabular-nums}
 html.pre-on{overflow:hidden}
 html.pre-on body{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.pre{display:none!important}}

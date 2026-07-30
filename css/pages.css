@@ -2,15 +2,72 @@
    مكوّنات الصفحات — تُحمَّل بعد site.css
    ============================================================ */
 
-/* ══════════════ الهيرو ══════════════ */
-.hero{position:relative;z-index:2;min-height:100svh;display:flex;flex-direction:column;
-  justify-content:flex-start;padding-block:clamp(120px,22vh,240px) clamp(60px,10vh,120px)}
-.hero-in{padding-inline:var(--margin);width:100%}
+/* ══════════════ الهيرو ══════════════
+   الغلاف يُثبَّت، اللوحة تتمدّد من ٥٠٪ لملء الشاشة، ثم يدخل النص متمركزًا.
+   القسم نفسه بارتفاع واحد فقط؛ مسافة السكرول الإضافية يضيفها التثبيت. */
+.hero{position:relative;z-index:2}
+.hero-pin{position:relative;height:100svh;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center}
 
-/* البوستر: سطران، مرتكز على الهامش الأيمن، حافة مسننة يسارًا.
-   ارتفاع السطر 1.3 لأن الهمزة على الألف ترتفع فوق الحرف — 1.14 يضمن التصادم. */
-.poster{position:relative;max-width:min(1060px,94%)}
-.p-line{position:relative;display:block;white-space:nowrap}
+/* اللوحة: تملأ الغلاف، ويُقصّ منها شبّاك يفتح مع السكرول */
+.hero-stage{position:absolute;inset:0;z-index:0;pointer-events:none;
+  clip-path:inset(25% 25% 25% 25%);will-change:clip-path}
+.hero-media{position:absolute;inset:0;overflow:hidden;
+  background:var(--void) url("../assets/hero/poster.webp") center/cover no-repeat;
+  will-change:transform}
+.hero-media video,.hero-media canvas{position:absolute;inset:0;display:block;
+  width:100%;height:100%;object-fit:cover}
+.hero-fb{opacity:0}                    /* البديل الحي — يُفعَّل فقط إن تعذّر الفيديو */
+.hero-stage.fb .hero-vid{display:none}
+.hero-stage.fb .hero-fb{opacity:1}
+/* حجاب يُعتم اللوحة تدريجيًا كي يبقى النص مقروءًا فوقها */
+.hero-veil{position:absolute;inset:0;opacity:.32;
+  background:
+    linear-gradient(to bottom,rgba(5,3,8,.35),rgba(5,3,8,0) 22%,rgba(5,3,8,.55) 62%,rgba(5,3,8,.9)),
+    radial-gradient(120% 92% at 50% 44%,rgba(5,3,8,.06),rgba(5,3,8,.96) 76%)}
+/* إطار رفيع على حافة الشبّاك — شقيق للوحة لا ابن لها، وإلا قُصّ معها.
+   يبدأ بنفس إزاحة الشبّاك (٢٥٪) ويتلاشى حين يملأ الشبّاك الشاشة. */
+.hero-frame{position:absolute;inset:25%;z-index:1;pointer-events:none;
+  border:1px solid rgba(176,38,255,.40);
+  box-shadow:0 0 70px rgba(176,38,255,calc(.26*var(--beam-strength))),
+             inset 0 0 90px rgba(176,38,255,calc(.10*var(--beam-strength)))}
+
+.hero-in{position:relative;z-index:1;width:100%;
+  padding-inline:var(--margin);text-align:center}
+.hero-hint{position:absolute;bottom:clamp(22px,4vh,40px);left:50%;transform:translateX(-50%);
+  z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;
+  font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash);
+  opacity:0;pointer-events:none}
+.hero-hint i{display:block;width:1px;height:26px;
+  background:linear-gradient(to bottom,transparent,var(--beam))}
+
+/* ── الهيرو دون التثبيت: موبايل · بلا جافاسكربت · تقليل الحركة ──
+   الشبّاك مفتوح، والغلاف يعلو بارتفاع محتواه بدل أن يقصّه عند 100svh. */
+html:not(.js) .hero-stage,
+html:not(.js) .hero-frame{clip-path:none}
+html:not(.js) .hero-stage{clip-path:none}
+html:not(.js) .hero-frame,
+html:not(.js) .hero-cap,
+html:not(.js) .hero-hint{display:none}
+@media (prefers-reduced-motion:reduce){
+  .hero-frame,.hero-cap,.hero-hint{display:none}
+  .hero-stage{clip-path:none}
+}
+@media (max-width:1024px){
+  .hero-pin{height:auto;min-height:100svh;overflow:visible;
+    padding-block:clamp(110px,17vh,170px) clamp(60px,9vh,110px)}
+  .hero-frame,.hero-cap,.hero-hint{display:none}
+  .hero-stage{clip-path:none!important}
+}
+
+/* البوستر: سطران متمركزان.
+   ارتفاع السطر 1.3 لأن الهمزة على الألف ترتفع فوق الحرف — 1.14 يضمن التصادم.
+   `.p-line` صار inline-block كي يحتضن نصّه: لولا ذلك لبقيت نافذة العبور
+   (`.sweep{right:0}`) على حافة الكتلة لا على حافة النص، فينكسر التسجيل. */
+.poster{position:relative;max-width:min(1060px,94%);margin-inline:auto}
+/* في الهيرو المتمركز نخفض المقاس: العنوان بالحجم الكامل يلامس الترويسة */
+.hero .t-poster{font-size:clamp(40px,8.4vw,124px)}
+.p-line{position:relative;display:inline-block;white-space:nowrap}
 
 /* آلية العبور: النافذة تتحرك يسارًا والنسخة تتحرك عكسها ⇒ النص يبقى مسجَّلًا فوق الأصل.
    نستخدم `right` الفيزيائي عمدًا — الخصائص المنطقية تنقلب في RTL وتكسر التسجيل. */
@@ -20,26 +77,75 @@
           mask-image:linear-gradient(to left,transparent,#000 32%,#000 68%,transparent)}
 .sweep .copy{position:absolute;top:0;right:0;white-space:nowrap;color:var(--flare);
   text-shadow:0 0 26px rgba(176,38,255,calc(.55*var(--beam-strength)));will-change:transform}
-/* يمتد من حافة الشاشة اليمنى بعرض الشاشة — `right` فيزيائي كي لا ينقلب في RTL */
-.beam-line{position:absolute;top:0;right:calc(var(--margin)*-1);width:100vw;height:1px;opacity:0;
+/* خيط ضوء بعرض الشاشة يمرّ في منتصف البوستر — موضع خالص بلا transform
+   حتى لا يصطدم مع scaleX الذي تحرّكه GSAP */
+.beam-line{position:absolute;top:0;left:calc(50% - 50vw);width:100vw;height:1px;opacity:0;
   background:linear-gradient(to left,transparent,var(--beam) 50%,transparent);
   box-shadow:0 0 30px rgba(176,38,255,calc(.5*var(--beam-strength)))}
 
-.hero-lead{margin-top:clamp(26px,4vh,46px);max-width:34em}
-.hero-acts{margin-top:clamp(26px,4vh,42px);display:flex;gap:16px;flex-wrap:wrap}
-.hero-foot{margin-top:clamp(40px,6.5vh,76px);display:flex;gap:36px;flex-wrap:wrap;
-  padding-top:22px;border-top:1px solid var(--rule)}
-.hero-foot div{display:flex;flex-direction:column;gap:3px}
+.hero-lead{margin:clamp(26px,4vh,46px) auto 0;max-width:34em}
+.hero-acts{margin-top:clamp(26px,4vh,42px);display:flex;gap:16px;flex-wrap:wrap;
+  justify-content:center}
+.hero-foot{margin:clamp(40px,6.5vh,76px) auto 0;display:flex;gap:clamp(24px,3vw,44px);flex-wrap:wrap;
+  justify-content:center;padding-top:22px;border-top:1px solid var(--rule);
+  max-width:min(920px,100%)}
+.hero-foot div{display:flex;flex-direction:column;align-items:center;gap:3px}
 .hero-foot .k{font-family:var(--f-ui);font-weight:600;font-size:14px;word-spacing:.12em;color:var(--ash)}
 .hero-foot .v{font-family:var(--f-mono);font-weight:500;font-size:15px;letter-spacing:.1em;
   color:var(--silver);unicode-bidi:isolate;direction:ltr}
 .hero-foot .v-ar{font-family:var(--f-ui);font-weight:600;font-size:15px;color:var(--silver);
   word-spacing:.12em;letter-spacing:0;direction:rtl}
 
-/* ══════════════ البيان — الاستثناء الوحيد للتمركز ══════════════ */
-.manifest{text-align:center;padding-inline:var(--margin)}
-.manifest p{max-width:24ch;margin-inline:auto;text-wrap:balance}
-.manifest em{font-style:normal;color:var(--beam)}
+/* ══════════════ البيان — مسرح جُمَل مثبّت ══════════════
+   الجملة تصعد من تحت قناع، تثبت، ثم تنزل تحته — وهكذا أربع مرات،
+   ويُسلَّم القسم التالي بخيط ضوء يتمدّد من المنتصف. */
+.reel{position:relative;z-index:2}
+.reel-pin{position:relative;height:100svh;overflow:hidden;
+  display:grid;place-items:center;padding-inline:var(--margin)}
+/* هالة خافتة تحت الجملة — تمنعها من الطفو في فراغ أسود تام */
+.reel-pin::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(52vmax 30vmax at 50% 50%,
+    rgba(176,38,255,calc(.13*var(--beam-strength))),transparent 66%)}
+.reel-stack{position:relative;width:100%;
+  min-height:clamp(220px,32vh,360px);display:grid;place-items:center}
+/* كل الجُمَل فوق بعضها في نفس الخليّة — الأنيميشن وحده يقرّر أيّها ظاهرة.
+   قيد العرض على `.rst` نفسها لا على الحاوية: وحدة `ch` تُحسب بخط العنصر،
+   ووضعها على الحاوية (16px) ينتج عرضًا يساوي ثُلث المطلوب فينكسر النص. */
+.rst{grid-area:1/1;text-align:center;text-wrap:balance;
+  max-width:22ch;margin:0 auto;
+  font-family:var(--f-body);font-weight:200;
+  font-size:clamp(28px,3.9vw,54px);line-height:1.45;color:var(--silver);
+  letter-spacing:0}
+.rst em{font-style:normal;color:var(--beam)}
+.rst .rl{display:block;overflow:hidden;padding-block:.1em;margin-block:-.1em}
+/* خيط التسليم: يولد في المنتصف ويتمدّد لعرض الشاشة */
+.reel-hand{position:absolute;left:50%;bottom:clamp(60px,11vh,120px);width:100vw;height:1px;
+  transform:translateX(-50%) scaleX(0);opacity:0;
+  background:linear-gradient(to left,transparent,var(--beam) 50%,transparent);
+  box-shadow:0 0 34px rgba(176,38,255,calc(.55*var(--beam-strength)))}
+/* عدّاد الجُمَل على الحافة اليسرى الفيزيائية — بمحاذاة الريل */
+.reel-dots{position:absolute;left:calc(var(--rail) + 18px);top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:10px}
+.reel-dots i{display:block;width:1px;height:26px;background:var(--rule);position:relative}
+.reel-dots i::after{content:"";position:absolute;inset:0;background:var(--beam);
+  transform:scaleY(var(--p,0));transform-origin:top;
+  box-shadow:0 0 12px rgba(176,38,255,calc(.8*var(--beam-strength)))}
+
+/* البديل الرأسي */
+.reel-list{display:none;padding-inline:var(--margin);text-align:center}
+.reel-list p{max-width:24ch;margin:0 auto clamp(52px,9vh,96px)}
+.reel-list p:last-child{margin-bottom:0}
+.reel-list em{font-style:normal;color:var(--beam)}
+@media (max-width:1024px){
+  .reel-pin{display:none}
+  .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
+}
+html:not(.js) .reel-pin{display:none}
+html:not(.js) .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
+@media (prefers-reduced-motion:reduce){
+  .reel-pin{display:none}
+  .reel-list{display:block;padding-block:clamp(80px,14vh,150px)}
+}
 
 /* ══════════════ الخدمات — ستة صفوف بخيوط ══════════════ */
 .services{position:relative}
@@ -382,3 +488,13 @@ html:not(.js) .stage-list{display:block}
   .stage{display:none}
   .stage-list{display:block}
 }
+
+/* سطر التعريف داخل لوحة الهيرو قبل اتساعها */
+.hero-cap{position:absolute;z-index:1;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+  pointer-events:none}
+.hero-cap .n{font-family:var(--f-display);font-weight:700;
+  font-size:clamp(26px,3vw,42px);line-height:1.3;color:var(--silver)}
+.hero-cap .n b{color:var(--beam);font-weight:700}
+.hero-cap .s{font-family:var(--f-ui);font-weight:600;font-size:15px;
+  word-spacing:.42em;color:var(--ash)}
