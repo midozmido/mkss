@@ -425,8 +425,18 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
 .contact{position:relative;z-index:2;display:grid;grid-template-columns:46fr 54fr;
   gap:clamp(30px,5vw,80px);align-items:start;
   padding-block:clamp(140px,20vh,230px) clamp(70px,10vh,120px)}
-.portrait{position:relative;overflow:hidden;height:clamp(420px,78vh,760px);background:var(--stage)}
-.portrait img{width:100%;height:100%;object-fit:cover;object-position:center 34%}
+/* الإطار مبني على تكوين ٤:٥ — رأس مرتفع في الكادر وشريط بنفسجي خلف الشخص.
+   الحافة السفلية تُقنَّع لتذوب خلفية الصورة في سواد الموقع بدل مستطيل حادّ. */
+.portrait{position:relative;overflow:hidden;aspect-ratio:4/5;
+  max-height:clamp(420px,80vh,820px);background:var(--void)}
+.portrait::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(70% 52% at 50% 30%,
+    rgba(176,38,255,calc(.20*var(--beam-strength))),transparent 70%)}
+.portrait img{position:relative;z-index:1;
+  width:100%;height:100%;object-fit:cover;object-position:center 12%;
+  -webkit-mask-image:linear-gradient(to bottom,#000 68%,rgba(0,0,0,.55) 86%,transparent);
+          mask-image:linear-gradient(to bottom,#000 68%,rgba(0,0,0,.55) 86%,transparent)}
+.portrait .sig{z-index:2}
 .portrait .sig{position:absolute;bottom:22px;inset-inline-start:22px;
   font-family:var(--f-mono);font-size:13px;letter-spacing:.1em;color:var(--ash);
   unicode-bidi:isolate;direction:ltr}
@@ -441,7 +451,7 @@ html:not(.js) .ns .acts{display:flex;gap:16px;flex-wrap:wrap}
 .colophon .acts{margin-top:38px;display:flex;gap:16px;flex-wrap:wrap}
 @media (max-width:860px){
   .contact{grid-template-columns:1fr;gap:44px;align-items:start}
-  .portrait{height:clamp(340px,52vh,520px)}
+  .portrait{max-height:clamp(340px,58vh,560px)}
   .colophon dl{grid-template-columns:1fr}
   .colophon dt{padding-bottom:0;border-bottom:0}
   .colophon dd{padding-top:6px}
