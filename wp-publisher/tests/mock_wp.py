@@ -23,6 +23,12 @@
     flaky          أول نداءين 500 وبعد كده طبيعي (اختبار الـ retry)
     rest_disabled  404 على كل حاجة
     no_meta        بيرفض حقول الـ meta (بلجن سيو مش مسجّل حقوله)
+    silent_meta    بيقبل حقول الـ meta ومبيخزّنهاش — سلوك ووردبريس الحقيقي مع
+                   مفاتيح مش مسجّلة في REST (مهم: الرفض بـ 400 مش الحالة الشائعة)
+    flaky_write    الكتابة الأولى بتتخزّن وبعدين بترجّع 503 — إعادة المحاولة
+                   بتعمل مقال مكرر، فده اللي بيكشفها
+    missing_routes الفهرس مفيهوش /wp/v2/media
+    many_terms     250 تصنيف، وبيحترم page/per_page زي ووردبريس
 """
 from __future__ import annotations
 
@@ -31,7 +37,7 @@ import json
 import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 DEFAULT_USER = "test-publisher"
 DEFAULT_PASSWORD = "abcdefghijklmnopqrstuvwx"  # 24 حرف زي باسوردات ووردبريس
@@ -58,11 +64,46 @@ ALL_CAPS = {
 }
 
 
+def _wp_slug(value: str) -> str:
+    """
+    ووردبريس بيخزّن post_name مشفّر بالنسبة المئوية للحروف غير اللاتينية
+    (utf8_uri_encode في sanitize_title_with_dashes). المحاكاة لازم تعمل نفس
+    الحاجة، وإلا الاختبارات العربية بتعدّي والأداة تفشل على موقع حقيقي.
+    """
+    return quote(value, safe="-_~")
+
+
+def _shift_iso(value: str, hours: float) -> str:
+    from datetime import datetime, timedelta
+
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"):
+        try:
+            return (datetime.strptime(value[:19], fmt) + timedelta(hours=hours)).strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            )
+        except ValueError:
+            continue
+    return value
+
+
+def _iso_is_future(value: str) -> bool:
+    from datetime import datetime
+
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"):
+        try:
+            return datetime.strptime(value[:19], fmt) > datetime.utcnow()
+        except ValueError:
+            continue
+    return False
+
+
 class _State:
     def __init__(self, scenario: str, user: str, password: str):
         self.scenario = scenario
         self.user = user
         self.password = password
+        self.gmt_offset = 0.0
+        self.write_count = 0
         self.posts: dict[int, dict] = {}
         self.terms: dict[str, dict[int, dict]] = {"categories": {}, "tags": {}}
         self.media: dict[int, dict] = {}
@@ -195,7 +236,22 @@ class _Handler(BaseHTTPRequestHandler):
 
         # جذر الـ API — مش محتاج مصادقة
         if rest in ("/", ""):
-            self._send(200, {"name": "Mock WP", "url": "http://mock", "routes": {r: {} for r in ROUTES}})
+            self._send(
+                200,
+                {
+                    "name": "Mock WP",
+                    "url": "http://mock",
+                    "gmt_offset": self.state.gmt_offset,
+                    "timezone_string": "",
+                    "routes": {
+                        r: {}
+                        for r in ROUTES
+                        if not (
+                            self.state.scenario == "missing_routes" and r == "/wp/v2/media"
+                        )
+                    },
+                },
+            )
             return
 
         if not self._authorized():
@@ -244,7 +300,8 @@ class _Handler(BaseHTTPRequestHandler):
         if method == "GET":
             items = list(st.posts.values())
             if query.get("slug"):
-                items = [p for p in items if p["slug"] == query["slug"]]
+                wanted = _wp_slug(query["slug"])
+                items = [p for p in items if p["slug"] in (wanted, query["slug"])]
             status = query.get("status", "publish")
             if status != "any":
                 wanted = status.split(",")
@@ -269,6 +326,13 @@ class _Handler(BaseHTTPRequestHandler):
             post_id = st.new_id()
             post = self._make_post(post_id, payload)
             st.posts[post_id] = post
+            st.write_count += 1
+            first_write = st.write_count == 1
+
+        # المقال اتخزّن وبعدين السيرفر وقع — لو العميل أعاد المحاولة بيبقى مقالين
+        if st.scenario == "flaky_write" and first_write:
+            self._error(503, "service_unavailable", "Service temporarily unavailable")
+            return
         self._send(201, post)
 
     def _posts_single(self, method: str, query: dict, post_id: str) -> None:
@@ -321,6 +385,14 @@ class _Handler(BaseHTTPRequestHandler):
         for field in ("title", "content", "excerpt"):
             if payload.get(field) is not None:
                 post[field] = {"raw": payload[field], "rendered": payload[field]}
+        # ووردبريس بيحسب `date` المحلي من `date_gmt`
+        if payload.get("date_gmt"):
+            post["date_gmt"] = payload["date_gmt"]
+            post["date"] = _shift_iso(payload["date_gmt"], self.state.gmt_offset)
+
+        if "slug" in payload:
+            payload = {**payload, "slug": _wp_slug(str(payload["slug"]))}
+
         for field in (
             "slug",
             "status",
@@ -333,10 +405,15 @@ class _Handler(BaseHTTPRequestHandler):
         ):
             if field in payload:
                 post[field] = payload[field]
-        if payload.get("meta"):
+        if payload.get("meta") and self.state.scenario != "silent_meta":
             post["meta"] = {**post.get("meta", {}), **payload["meta"]}
 
-        post.setdefault("slug", f"post-{post_id}")
+        # wp_insert_post بيعيد استنتاج الحالة من التاريخ
+        gmt = post.get("date_gmt")
+        if gmt and post.get("status") in ("publish", "future"):
+            post["status"] = "future" if _iso_is_future(gmt) else "publish"
+
+        post.setdefault("slug", _wp_slug(f"post-{post_id}"))
         post["link"] = f"http://{self.headers.get('Host', 'mock')}/{post['slug']}/"
         return post
 
@@ -350,7 +427,26 @@ class _Handler(BaseHTTPRequestHandler):
             search = (query.get("search") or "").casefold()
             if search:
                 items = [t for t in items if search in t["name"].casefold()]
-            self._send(200, items)
+
+            per_page = max(1, min(100, int(query.get("per_page", 10))))
+            page = max(1, int(query.get("page", 1)))
+            start = (page - 1) * per_page
+            if items and start >= len(items):
+                # ووردبريس بيرجّع 400 لصفحة بعد النهاية، مش قائمة فاضية
+                self._error(
+                    400,
+                    "rest_term_invalid_page_number",
+                    "The page number requested is larger than the number of pages available.",
+                )
+                return
+            self.send_response(200)
+            self.send_header("X-WP-Total", str(len(items)))
+            self.send_header("X-WP-TotalPages", str(max(1, -(-len(items) // per_page))))
+            body = json.dumps(items[start : start + per_page], ensure_ascii=False).encode("utf-8")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
             return
 
         payload = self._json_body()
@@ -443,6 +539,15 @@ class MockWP:
     # --- دورة الحياة
 
     def start(self) -> "MockWP":
+        if self.state.scenario == "many_terms":
+            for index in range(1, 251):
+                tid = self.state.new_id()
+                self.state.terms["tags"][tid] = {
+                    "id": tid,
+                    "name": f"سيو {index}",
+                    "slug": f"seo-{index}",
+                    "taxonomy": "tags",
+                }
         self.thread.start()
         return self
 
@@ -488,7 +593,10 @@ class MockWP:
         return list(self.state.requests)
 
     def post_by_slug(self, slug: str) -> dict | None:
-        return next((p for p in self.posts if p["slug"] == slug), None)
+        """بيقبل الشكل المقروء — الـ slug متخزّن مشفّر زي ووردبريس."""
+        return next(
+            (p for p in self.posts if p["slug"] == slug or unquote(p["slug"]) == slug), None
+        )
 
     def env(self) -> dict[str, str]:
         """متغيرات البيئة اللي الأداة محتاجاها علشان تكلّم السيرفر ده."""

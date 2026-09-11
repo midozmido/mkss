@@ -52,9 +52,19 @@ class PublisherTestCase(unittest.TestCase):
 
     # --- تشغيل الأداة
 
+    # بيئة المطوّر مش بتتنسخ — متغير زي WP_MAX_RETRIES أو proxy عنده
+    # كان بيخلّي نتيجة الاختبار تختلف من جهاز لجهاز
+    INHERIT = ("PATH", "HOME", "LANG", "LC_ALL", "PYTHONPATH", "SYSTEMROOT", "TMPDIR")
+
     def env(self, **extra: str) -> dict[str, str]:
         env = {
-            **os.environ,
+            **{k: v for k, v in os.environ.items() if k in self.INHERIT},
+            "NO_PROXY": "127.0.0.1,localhost",
+            "no_proxy": "127.0.0.1,localhost",
+            "WP_MAX_RETRIES": "2",
+            "WP_TIMEOUT": "15",
+            "WP_ALLOW_LOCAL_FETCH": "0",
+            "WP_SITE_GMT_OFFSET": "0",
             "WP_SITE_URL": self.wp.url,
             "WP_USERNAME": self.wp.user,
             "WP_APP_PASSWORD": self.password or self.wp.password,

@@ -195,12 +195,15 @@ class TestSeoMeta(PublisherTestCase):
 
 class TestArabicContent(PublisherTestCase):
     def test_arabic_title_and_slug_round_trip(self):
+        """ووردبريس بيخزّن الـ slug العربي مشفّر — المقارنة لازم تفك التشفير."""
+        from urllib.parse import unquote
+
         self.article("a.md", "title: عنوان عربي بالكامل", "نص عربي في المقال.")
         result = self.run_cli("publish", "--all")
         self.assertEqual(result.returncode, 0, result.output)
         post = self.wp.posts[0]
         self.assertEqual(post["title"]["raw"], "عنوان عربي بالكامل")
-        self.assertIn("عنوان", post["slug"])
+        self.assertIn("عنوان", unquote(post["slug"]))
 
     def test_arabic_slug_lookup_is_idempotent(self):
         """الـ slug العربي في الاستعلام لازم يتشفّر صح، وإلا كل تشغيل يعمل مقال جديد."""

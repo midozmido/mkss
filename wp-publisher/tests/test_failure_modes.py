@@ -19,7 +19,8 @@ class TestBadCredentials(PublisherTestCase):
         result = self.run_cli("doctor")
         self.assertFailsCleanly(result)
         self.assertIn("401", result.output)
-        self.assertIn("password", result.output.lower() + "password")
+        self.assertIn("password", result.output.lower())
+        self.assertIn("Authorization", result.output)
 
     def test_publish_does_not_partially_write(self):
         self.article("a.md", "title: مقال\nslug: p")

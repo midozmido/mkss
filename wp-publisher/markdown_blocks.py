@@ -357,6 +357,17 @@ class _Align:
         return merged or None
 
 
+def _has_open_tag(text: str) -> bool:
+    """
+    هل النص سايب وسم مفتوح (`<` بدون `>`)؟
+
+    الـ embeds بتتكتب على أكتر من سطر وفيها سطر فاضي جوه الوسم. لو قطعنا
+    عندها، نصف الوسم بيروح لفقرة والباقي بيتبهدل.
+    """
+    last_open = text.rfind("<")
+    return last_open != -1 and ">" not in text[last_open:]
+
+
 def md_to_blocks(markdown: str, direction: str | None = None) -> str:
     """يحوّل نص Markdown كامل إلى Gutenberg blocks."""
     align = _Align(direction)
@@ -479,7 +490,9 @@ def md_to_blocks(markdown: str, direction: str | None = None) -> str:
         # HTML خام — بيتنقّى قبل ما ينزل
         if line.lstrip().startswith("<"):
             buf = []
-            while i < n and lines[i].strip():
+            while i < n:
+                if not lines[i].strip() and not _has_open_tag("\n".join(buf)):
+                    break  # سطر فاضي وإحنا برة أي وسم = نهاية الكتلة
                 buf.append(lines[i])
                 i += 1
             safe_html = sanitize_raw_html("\n".join(buf))

@@ -36,6 +36,7 @@ import sys
 import time
 import unicodedata
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -57,6 +58,8 @@ SEO_META_KEYS = {
     "RankMath": {"title": "rank_math_title", "description": "rank_math_description"},
     "AIOSEO": {"title": "_aioseo_title", "description": "_aioseo_description"},
 }
+
+VALID_STATUSES = frozenset(("draft", "publish", "pending", "private", "future"))
 
 REQUIRED_ROUTES = ["/wp/v2/posts", "/wp/v2/media", "/wp/v2/categories", "/wp/v2/tags"]
 REQUIRED_CAPS = [
@@ -167,29 +170,51 @@ class WPError(RuntimeError):
         message: str,
         *,
         code: str = "",
-        data: dict | None = None,
+        data: Any = None,
         status: int | None = None,
     ):
         super().__init__(message)
         self.code = code
-        self.data = data or {}
+        self.data = data if data is not None else {}
         self.status = status
+
+    @property
+    def term_id(self) -> int | None:
+        """
+        ووردبريس بيرجّع رقم التصنيف الموجود في `data` — كرقم مجرّد في الحقيقي،
+        وكـ {"term_id": N} في بعض الأشكال. بنقبل الاتنين.
+        """
+        raw = self.data.get("term_id") if isinstance(self.data, dict) else self.data
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return None
+        return value or None
+
+
+def _plain_text(body: str, limit: int = 220) -> str:
+    """صفحة خطأ HTML مش رسالة — بنشيل الوسوم قبل ما نعرضها للمستخدم."""
+    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", body, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:limit]
 
 
 def _error_from_response(resp: requests.Response, context: str) -> WPError:
-    code, message, data = "", "", {}
+    code, message = "", ""
+    data: Any = {}
     try:
         payload = resp.json()
         if isinstance(payload, dict):
             code = str(payload.get("code", ""))
             message = str(payload.get("message", ""))
-            data = payload.get("data") or {}
+            data = payload.get("data")
     except ValueError:
-        message = resp.text[:300]
+        message = _plain_text(resp.text)
     return WPError(
-        f"{resp.status_code} على {context} — {message or resp.text[:200]}",
+        f"{resp.status_code} على {context} — {message or _plain_text(resp.text)}",
         code=code,
-        data=data if isinstance(data, dict) else {},
+        data=data,  # ووردبريس بيرجّع term_id كرقم مجرّد هنا أحيانًا
         status=resp.status_code,
     )
 
@@ -215,6 +240,8 @@ class WPClient:
             }
         )
         self._allowed_host = (urlparse(cfg.site).hostname or "").lower()
+        self._route_form = "pretty"  # أو "query" لو الروابط الدائمة Plain
+        self._index: dict | None = None
 
     def request(
         self,
@@ -227,7 +254,7 @@ class WPClient:
         headers: dict | None = None,
         retries: int | None = None,
     ) -> Any:
-        url = path if path.startswith("http") else f"{self.cfg.api}{path}"
+        url = self._url(path)
 
         # الباسورد مينفعش يروح لمضيف تاني — لا بإعادة توجيه ولا بمسار غلط
         host = (urlparse(url).hostname or "").lower()
@@ -288,8 +315,9 @@ class WPClient:
                 return resp.json()
             except ValueError:
                 raise WPError(
-                    f"الرد مش JSON من {url} — يمكن REST API مقفول أو فيه بلجن أمان "
-                    f"بيعترض.\nأول 200 حرف: {resp.text[:200]!r}"
+                    f"الرد مش JSON من {url} — يمكن REST API مقفول، أو الروابط الدائمة "
+                    "Plain، أو فيه بلجن أمان بيعترض.\n"
+                    f"    الرد: {_plain_text(resp.text)}"
                 )
 
         raise WPError(f"فشل الاتصال بـ {url} بعد {attempts + 1} محاولة: {last}")
@@ -299,11 +327,69 @@ class WPClient:
     def me(self) -> dict:
         return self.request("GET", "/users/me", params={"context": "edit"})
 
+    # --- بناء العنوان: /wp-json/ أو ?rest_route= لو الروابط الدائمة "Plain"
+
+    def _rest_url(self, rest_path: str) -> str:
+        if self._route_form == "query":
+            return f"{self.cfg.site}/?rest_route={rest_path}"
+        return f"{self.cfg.site}/wp-json{rest_path}"
+
+    def _url(self, path: str) -> str:
+        """path زي '/posts' → مسار wp/v2 كامل."""
+        if path.startswith("http"):
+            return path
+        return self._rest_url(f"/wp/v2{path}")
+
+    def index(self) -> dict:
+        """
+        جذر الـ REST API. بيجرّب الشكلين: /wp-json/ وكمان ?rest_route=/
+        لأن التركيب الافتراضي لووردبريس (Plain permalinks) مفيهوش الأول خالص
+        وبيرجّع صفحة 404 HTML.
+        """
+        if self._index is not None:
+            return self._index
+
+        errors = []
+        for form in ("pretty", "query"):
+            self._route_form = form
+            try:
+                data = self.request("GET", self._rest_url("/"), retries=1)
+            except WPError as exc:
+                errors.append(f"{form}: {exc}")
+                continue
+            if isinstance(data, dict) and "routes" in data:
+                self._index = data
+                return data
+            errors.append(f"{form}: رد بدون routes")
+
+        self._route_form = "pretty"
+        raise WPError(
+            "مش قادر أوصل لـ REST API بأي شكل من الشكلين.\n"
+            "    جرّب: Settings → Permalinks واختار أي تركيب غير Plain، "
+            "واتأكد إن مفيش بلجن أمان بيحجب /wp-json/.\n"
+            "    " + "\n    ".join(errors)
+        )
+
     def routes(self) -> list[str]:
-        root = self.request("GET", f"{self.cfg.site}/wp-json/")
-        if not isinstance(root, dict):
-            raise WPError("رد غير متوقع من /wp-json/ — REST API يمكن مقفول.")
-        return sorted((root.get("routes") or {}).keys())
+        return sorted((self.index().get("routes") or {}).keys())
+
+    def gmt_offset_hours(self) -> float:
+        """
+        فرق توقيت الموقع بالساعات. ووردبريس بيفهم حقل `date` بتوقيت الموقع،
+        والأداة ممكن تشتغل على سيرفر بتوقيت تاني (CI بيبقى UTC عادة) — فمن غير
+        ده الجدولة بتنشر في وقت غلط أو تنشر فورًا.
+        """
+        override = os.environ.get("WP_SITE_GMT_OFFSET")
+        if override:
+            try:
+                return float(override)
+            except ValueError:
+                pass
+        try:
+            value = self.index().get("gmt_offset")
+            return float(value) if value is not None else 0.0
+        except (WPError, TypeError, ValueError):
+            return 0.0
 
     def find_by_slug(self, slug: str, post_type: str = "posts") -> dict | None:
         """بيدوّر بالـ slug. slug فاضي = مفيش بحث (وإلا كان هيرجّع أحدث مقال أصلًا)."""
@@ -316,9 +402,12 @@ class WPClient:
         )
         if not items:
             return None
-        # مطابقة مضبوطة بس — الرجوع لأول نتيجة كان بيخلّي التحديث يكتب فوق مقال عشوائي
+        # ووردبريس بيخزّن الـ slug غير اللاتيني مشفّر بالنسبة المئوية
+        # (%d8%af...)، فالمطابقة الحرفية مبتلاقي أي slug عربي أبدًا وكل تشغيل
+        # كان بيعمل مقال جديد. بنقارن بعد فك التشفير.
         for post in items:
-            if post.get("slug") == slug:
+            stored = str(post.get("slug") or "")
+            if stored == slug or unquote(stored) == slug:
                 return post
         return None
 
@@ -345,10 +434,16 @@ class WPClient:
 
         # بحث بالاسم مع تصفّح الصفحات (موقع فيه مئات التصنيفات)
         page = 1
-        while page <= 10:
-            found = self.request(
-                "GET", f"/{taxonomy}", params={"search": wanted, "per_page": 100, "page": page}
-            )
+        while page <= 50:
+            try:
+                found = self.request(
+                    "GET", f"/{taxonomy}", params={"search": wanted, "per_page": 100, "page": page}
+                )
+            except WPError as exc:
+                # ووردبريس بيرجّع 400 لصفحة بعد النهاية، مش قائمة فاضية
+                if "invalid_page_number" in exc.code:
+                    break
+                raise
             if not found:
                 break
             for term in found:
@@ -362,10 +457,16 @@ class WPClient:
             created = self.request("POST", f"/{taxonomy}", json_body={"name": wanted})
             return int(created["id"])
         except WPError as exc:
-            # اتعمل في نفس اللحظة من مكان تاني — ووردبريس بيرجّع الـ id في جسم الخطأ
-            term_id = exc.data.get("term_id")
-            if exc.code == "term_exists" and term_id:
-                return int(term_id)
+            if exc.code != "term_exists":
+                raise
+            # اتعمل في نفس اللحظة من مكان تاني. الرقم بييجي في جسم الخطأ،
+            # ولو بشكل مش متوقع بنعيد الاستعلام بدل ما نفشل المقال.
+            if exc.term_id:
+                return exc.term_id
+            for params in ({"slug": target_slug}, {"search": wanted}):
+                for term in self.request("GET", f"/{taxonomy}", params={**params, "per_page": 100}) or []:
+                    if _norm_term(term.get("name", "")) == _norm_term(wanted):
+                        return int(term["id"])
             raise
 
     # --- الوسائط
@@ -615,6 +716,20 @@ class Article:
             )
         meta["slug"] = slug
 
+        status = str(meta.get("status") or "").strip()
+        if status:
+            if status not in VALID_STATUSES:
+                raise WPError(
+                    f"{path.name}: status غير صالح {status!r} — "
+                    f"المسموح: {', '.join(sorted(VALID_STATUSES))}"
+                )
+            if status == "future" and not meta.get("date"):
+                raise WPError(
+                    f"{path.name}: status: future محتاج تاريخ مستقبلي في حقل date، "
+                    "وإلا ووردبريس بينشر المقال فورًا."
+                )
+            meta["status"] = status
+
         if "author" in meta:
             try:
                 meta["author"] = int(meta["author"])
@@ -734,16 +849,37 @@ def _normalize_date(value: str) -> str:
     return text
 
 
-def _is_future(value: str) -> bool:
-    from datetime import datetime
-
-    text = _normalize_date(value)
+def _parse_date(value: str) -> "datetime | None":
+    text = _normalize_date(value)[:19]
     for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"):
         try:
-            return datetime.strptime(text[:19], fmt) > datetime.now()
+            return datetime.strptime(text, fmt)
         except ValueError:
             continue
-    return False
+    return None
+
+
+def _to_gmt(value: str, offset_hours: float) -> str:
+    """
+    يحوّل تاريخ المقال (بتوقيت الموقع) لـ UTC.
+
+    ووردبريس بيفهم حقل `date` بتوقيت الموقع، والأداة ممكن تشتغل على سيرفر
+    بتوقيت مختلف (الـ CI بيبقى UTC عادة). بنبعت `date_gmt` علشان مفيش لبس،
+    وووردبريس هو اللي يحسب التوقيت المحلي.
+    """
+    parsed = _parse_date(value)
+    if parsed is None:
+        raise WPError(
+            f"تاريخ غير مفهوم: {value!r} — استخدم 2026-10-01 أو 2026-10-01T09:00:00"
+        )
+    return (parsed - timedelta(hours=offset_hours)).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _is_future_gmt(gmt_value: str) -> bool:
+    parsed = _parse_date(gmt_value)
+    if parsed is None:
+        return False
+    return parsed > datetime.utcnow()
 
 
 # ---------------------------------------------------------------- بناء الطلب
@@ -776,17 +912,20 @@ def build_payload(
     if excerpt:
         payload["excerpt"] = excerpt
 
+    date_gmt = None
+    if meta.get("date"):
+        offset = client.gmt_offset_hours() if client is not None else 0.0
+        date_gmt = _to_gmt(str(meta["date"]), offset)
+        payload["date_gmt"] = date_gmt
+
     # الحالة: على التحديث مش بنبعتها إلا لو مطلوبة صريح، وإلا كل تشغيل
     # بيرجّع المقالات المنشورة لـ draft
     explicit_status = override_status or meta.get("status")
     if explicit_status or not is_update:
         status = str(explicit_status or "draft")
+        if date_gmt and status == "publish" and _is_future_gmt(date_gmt):
+            status = "future"  # نشر مجدول
         payload["status"] = status
-        if meta.get("date") and status == "publish" and _is_future(str(meta["date"])):
-            payload["status"] = "future"  # نشر مجدول
-
-    if meta.get("date"):
-        payload["date"] = _normalize_date(meta["date"])
     if meta.get("comment_status"):
         payload["comment_status"] = str(meta["comment_status"])
     if meta.get("author"):
@@ -918,8 +1057,14 @@ def resolve_existing(
 
     if recorded_id:
         post = client.get_post(int(recorded_id))
+        if post and post.get("status") in ("trash", "auto-draft"):
+            raise WPError(
+                f"المقال #{post['id']} حالته {post.get('status')} — التحديث كان هيكتب "
+                "جواه ومحدش هيشوفه.\n"
+                "    استعيده من سلة المحذوفات، أو غيّر الـ slug علشان يتعمل مقال جديد."
+            )
         if post:
-            if post.get("slug") != slug:
+            if unquote(str(post.get("slug") or "")) != slug and post.get("slug") != slug:
                 warnings.append(
                     f"الموقع حافظ على slug مختلف للمقال ده: {post.get('slug')!r} "
                     f"(انت طلبت {slug!r}) — بنحدّث نفس المقال #{post['id']}."
@@ -943,6 +1088,14 @@ def resolve_existing(
             warnings.append(
                 f"تنبيه: فيه مقال #{post['id']} بنفس الـ slug ({title[:40]!r}) مختلف عن "
                 "المسجّل لملفك — التحديث هيكتب فوقه. غيّر الـ slug لو مش بتاعك."
+            )
+        elif not recorded_id:
+            # مقال موجود على الموقع والأداة عمرها ما نشرته من الملف ده. ممكن يكون
+            # مقال المستخدم (بيربط الملف بيه) وممكن يكون مقال تاني بنفس الـ slug.
+            warnings.append(
+                f"المقال #{post['id']} ({title[:40]!r}) موجود على الموقع بنفس الـ slug "
+                "والأداة عمرها ما نشرته من الملف ده — التحديث هيكتب فوقه.\n"
+                "      لو ده مش مقال الملف ده، أوقف وغيّر الـ slug."
             )
     return post, warnings
 
@@ -1099,6 +1252,12 @@ def _publish_files(cfg: Config, args: argparse.Namespace, files: list[Path]) -> 
                 action = "إنشاء"
 
             apply_seo(client, int(post["id"]), art, args.verbose)
+            wanted = payload.get("status")
+            if wanted and post.get("status") != wanted:
+                print(
+                    f"    ! طلبنا الحالة {wanted!r} والموقع خلّاها {post.get('status')!r} "
+                    "— راجع التاريخ وتوقيت الموقع وصلاحيات اليوزر."
+                )
             print(f"    ✓ {action} #{post['id']} [{post.get('status')}] → {post.get('link')}")
             state[key] = {
                 "site": cfg.site,
@@ -1260,7 +1419,12 @@ def main(argv: list[str] | None = None) -> int:
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_list = sub.add_parser("list", help="عرض آخر المقالات على الموقع")
-    p_list.add_argument("--limit", type=int, default=10)
+    p_list.add_argument(
+        "--limit",
+        type=lambda v: max(1, min(100, int(v))),
+        default=10,
+        help="عدد المقالات (1-100، حد ووردبريس)",
+    )
     p_list.set_defaults(func=cmd_list)
 
     p_pub = sub.add_parser("publish", help="نشر أو تحديث مقالات من ملفات Markdown")

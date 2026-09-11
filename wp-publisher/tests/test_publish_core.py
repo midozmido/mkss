@@ -278,10 +278,16 @@ class TestListAndDoctor(PublisherTestCase):
 
     def test_doctor_never_echoes_password(self):
         """ممنوع يطبع أي حرف من السر ولا حتى طوله."""
+        import re as _re
+
         result = self.run_cli("doctor")
         self.assertNotIn(self.wp.password, result.output)
         self.assertNotIn(self.wp.password[-4:], result.output)
-        self.assertNotIn(str(len(self.wp.password)), result.stdout)
+        # سطر الباسورد لوحده لازم يبقى مقنّع وبدون أرقام (الطول تلميح كمان).
+        # بنفحص السطر ده بس — المخرجات كلها فيها رقم البورت العشوائي.
+        line = next(l for l in result.stdout.splitlines() if l.startswith("الباسورد"))
+        self.assertIn("مضبوط", line)
+        self.assertIsNone(_re.search(r"\d", line), line)
 
 
 if __name__ == "__main__":
