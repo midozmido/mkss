@@ -29,3 +29,19 @@
 - **laft-brand** → المرجع النهائي لهوية مشاريع "لافت" (ألوان، خطوط، أسلوب).
 - **frontend-design** → البناء الفعلي للواجهات بشكل مميز غير قالبي.
 - **dataviz** → أي Charts أو Dashboards داخل الموقع.
+
+---
+
+## أدوات إضافية
+
+### [`wp-publisher/`](wp-publisher/README.md) — ناشر المقالات الآلي
+
+نشر المقالات على ووردبريس آليًا من ملفات Markdown عبر REST API و Application Password:
+تحويل لـ Gutenberg Blocks، رفع الصور، إنشاء التصنيفات، جدولة النشر، وتحديث بدون تكرار.
+يشتغل بـ GitHub Actions أو cron أو n8n.
+
+```bash
+cd wp-publisher && pip install -r requirements.txt
+cp .env.example .env          # حُط بياناتك
+python3 wp_publish.py doctor  # اختبار الاتصال والصلاحيات
+```

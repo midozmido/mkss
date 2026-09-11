@@ -1,0 +1,16 @@
+# بيانات الدخول — glob شامل بدل قائمة أسماء (قائمة الأسماء بتتخطى
+# بمسافة أو لاحقة جديدة: ".env copy"، ".env 2"، ".env.old")
+.env*
+*.env*
+!.env.example
+*credentials*
+*secrets*
+
+# حالة محلية
+.published.json*
+*.published.json*
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
