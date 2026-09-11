@@ -270,5 +270,120 @@ class TestExcerpt(unittest.TestCase):
         self.assertEqual(plain_excerpt("# عنوان بس"), "")
 
 
+class TestSanitizerBypasses(unittest.TestCase):
+    """
+    محاولات تخطّي مثبتة من جولة فحص تانية. المنقّي بالـ regex اتخطّى بمسافة
+    وشرطة وعلامة تنصيص، فبقى بيحلّل الوسوم ويعيد بناءها من attributes متحقَّق منها.
+    """
+
+    def _executable_attrs(self, html_text: str):
+        """بنستخدم محلّل HTML حقيقي — هو اللي بيحدّد إيه attribute فعلًا."""
+        from html.parser import HTMLParser
+
+        found = []
+
+        class Check(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                for name, value in attrs:
+                    if name.lower().startswith("on"):
+                        found.append((tag, name))
+                    if name.lower() in ("src", "href", "action", "poster") and value:
+                        if re.match(r"\s*(javascript|data|vbscript)\s*:", value, re.I):
+                            found.append((tag, name))
+
+        Check().feed(html_text)
+        return found
+
+    def test_no_event_handler_survives_any_separator(self):
+        for source in (
+            "<img src=x onerror=alert(1)>",
+            '<img src="x"onerror="alert(1)">',
+            "<div\tonclick=alert(1)>x</div>",
+            "<div ONCLICK=alert(1)>x</div>",
+            '<a href="#" oNmOuSeOvEr=alert(1)>x</a>',
+            "<div/onclick=alert(1)>x</div>",
+            "<body onload=alert(1)>",
+            "<input onfocus=alert(1) autofocus>",
+        ):
+            with self.subTest(source=source):
+                self.assertEqual(self._executable_attrs(sanitize_raw_html(source)), [])
+
+    def test_truncated_and_nested_script_tags(self):
+        for source in (
+            '<script src="https://evil.example/a.js">',
+            '<script src="https://evil.example/a.js"',
+            "<scr<script>ipt>alert(1)</script>",
+            "<SCRIPT>alert(1)</SCRIPT>",
+            "<script\n>alert(1)</script>",
+            "<svg><script>alert(1)</script></svg>",
+        ):
+            with self.subTest(source=source):
+                output = sanitize_raw_html(source).lower()
+                self.assertNotIn("script", output)
+                self.assertNotIn("evil.example", output)
+
+    def test_attributes_that_carry_markup_or_targets_are_dropped(self):
+        for source, token in (
+            ('<iframe srcdoc="<script>x</script>"></iframe>', "srcdoc"),
+            ('<svg><a xlink:href="javascript:alert(1)">x</a></svg>', "javascript:"),
+            ('<div style="background:url(javascript:alert(1))">x</div>', "javascript:"),
+            ('<img src="x.png" srcset="javascript:alert(1)">', "srcset"),
+            ('<button formaction="javascript:alert(1)">x</button>', "formaction"),
+        ):
+            with self.subTest(token=token):
+                self.assertNotIn(token, sanitize_raw_html(source).lower())
+
+    def test_legitimate_markup_still_survives(self):
+        for source, must_keep in (
+            ('<iframe src="https://www.youtube.com/embed/x"></iframe>', "youtube.com/embed/x"),
+            ('<div class="box"><strong>نص</strong></div>', "<strong>"),
+            ('<a href="https://ok.example" title="t">x</a>', "https://ok.example"),
+            ('<img src="/uploads/a.png" alt="وصف">', "/uploads/a.png"),
+            ("<table><tr><td>خلية</td></tr></table>", "خلية"),
+        ):
+            with self.subTest(source=source):
+                self.assertIn(must_keep, sanitize_raw_html(source))
+
+
+class TestEncodedUrlSchemes(BlockTestCase):
+    """`&#106;avascript:` بيوصل للمتصفح كـ javascript: بعد فك الـ entity."""
+
+    def test_entity_encoded_schemes_dropped(self):
+        for bad in (
+            "&#106;avascript:alert(1)",
+            "&#x6A;avascript:alert(1)",
+            "java&#09;script:alert(1)",
+            "&NewLine;javascript:alert(1)",
+            "&amp;#106;avascript:alert(1)",
+            "jav\tascript:alert(1)",
+            "JAVASCRIPT:alert(1)",
+        ):
+            with self.subTest(url=bad):
+                output = self.convert(f"[اضغط]({bad})")
+                self.assertNotIn("href=", output)
+                self.assertIn("اضغط", output)
+
+
+class TestNestedInlineTags(BlockTestCase):
+    """نص اللينك بيمر على نفس معالج السطر — كان بيضيّع الوسوم المخزّنة."""
+
+    def test_inline_code_inside_a_link_label(self):
+        output = self.convert("[`كود` جوه لينك](https://x.example)")
+        self.assertIn("<code>كود</code>", output)
+        self.assertIn('href="https://x.example"', output)
+
+    def test_all_formats_inside_a_link_label(self):
+        output = self.convert("[**عريض** و `كود` و *مائل*](https://x.example)")
+        for tag in ("<strong>", "<code>", "<em>"):
+            self.assertIn(tag, output)
+        self.assertIn('target="_blank"', output)
+        self.assertNotIn("<em>blank", output)
+
+    def test_image_inside_a_link(self):
+        output = self.convert("[![وصف](https://x.example/a.png)](https://x.example)")
+        self.assertIn("<img", output)
+        self.assertIn("<a ", output)
+
+
 if __name__ == "__main__":
     unittest.main()

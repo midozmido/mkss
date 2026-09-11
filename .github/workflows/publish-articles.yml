@@ -35,6 +35,15 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # سجل النشر بيربط كل ملف برقم مقاله. بدونه كل تشغيل بيتعرّف بالـ slug بس،
+      # فلو ووردبريس غيّر الـ slug يتعمل مقال مكرر.
+      - name: Restore publish state
+        uses: actions/cache@v4
+        with:
+          path: wp-publisher/.published.json
+          key: wp-publish-state-${{ github.run_id }}
+          restore-keys: wp-publish-state-
+
       # الاختبارات بتشتغل على سيرفر مزيّف محلي — مش بتلمس الموقع الحقيقي
       - name: Run test suite
         run: python -m unittest discover -s tests

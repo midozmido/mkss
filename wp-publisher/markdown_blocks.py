@@ -38,11 +38,23 @@ def _esc_attr(value: str) -> str:
 
 
 def _safe_url(url: str) -> str:
-    """يرجّع الرابط لو آمن، وسلسلة فاضية لو سكيمه خطر."""
+    """
+    يرجّع الرابط لو آمن، وسلسلة فاضية لو سكيمه خطر.
+
+    لازم نفك الـ HTML entities الأول: `&#106;avascript:` بيوصل للمتصفح
+    كـ `javascript:` بعد ما يفكّها، فالفحص على النص الخام بيتخطّى.
+    """
     candidate = url.strip()
-    # نشيل المسافات والمحارف اللي بتُستخدم للتهريب من الفلاتر
-    bare = re.sub(r"[\s\x00-\x1f]", "", candidate)
-    match = re.match(r"^([A-Za-z][A-Za-z0-9+.\-]*):", bare)
+    probe = candidate
+    for _ in range(3):  # &amp;#106; بيحتاج أكتر من دورة
+        decoded = html.unescape(probe)
+        if decoded == probe:
+            break
+        probe = decoded
+    # المحارف اللي بتُستخدم لتقطيع السكيم وتخطّي الفلاتر
+    probe = re.sub(r"[\s\x00-\x1f\x7f]", "", probe)
+
+    match = re.match(r"^([A-Za-z][A-Za-z0-9+.\-]*):", probe)
     if match:
         return candidate if match.group(1).lower() in _ALLOWED_SCHEMES else ""
     return candidate  # نسبي أو #anchor — آمن
@@ -141,12 +153,26 @@ def _emphasis(text: str) -> str:
 
 
 def _inline(text: str) -> str:
-    """
-    تنسيقات داخل السطر. الترتيب مهم:
-    كود ← صور ← لينكات (كل واحد بيتخزّن كوسم كامل) ← تهريب الباقي ← تنسيق ← استرجاع.
-    """
-    text = text.replace("\x00", "")  # منع تصادم الفاصل الداخلي
+    """تنسيقات داخل السطر — الواجهة العامة."""
     spans: list[str] = []
+    body = _inline_body(text.replace("\x00", ""), spans)
+    # الوسوم المتداخلة (كود جوه نص لينك) بتحتاج أكتر من دورة استرجاع
+    for _ in range(8):
+        if not _SENTINEL_RE.search(body):
+            break
+        body = _SENTINEL_RE.sub(lambda m: spans[int(m.group(1))], body)
+    return body.strip()
+
+
+def _inline_body(text: str, spans: list[str]) -> str:
+    """
+    الترتيب مهم: كود ← صور ← لينكات (كل واحد بيتخزّن كوسم كامل) ← تهريب ← تنسيق.
+
+    الوسوم المولّدة بتتخزّن في `spans` بعيد عن مرحلة التنسيق، وإلا الـ emphasis
+    بيعيد كتابة جواها (الشرطة السفلية في target="_blank" كانت بتبقى <em>).
+    النداء المتداخل (نص اللينك) بيشارك نفس `spans` — لو عمل قائمة جديدة،
+    فواصل النداء الخارجي بتضيع ويفضل رقمها بس.
+    """
 
     def stash(fragment: str) -> str:
         spans.append(fragment)
@@ -155,7 +181,7 @@ def _inline(text: str) -> str:
     # 1) كود داخل السطر — محتواه حرفي ومش بياخد أي تنسيق
     text = re.sub(r"`([^`]+)`", lambda m: stash(f"<code>{_esc_text(m.group(1))}</code>"), text)
 
-    # 2) صور ولينكات — بنبني الوسم كامل ونخزّنه بعيد عن مرحلة التنسيق
+    # 2) صور ولينكات — بنبني الوسم كامل ونخزّنه
     out: list[str] = []
     i, n = 0, len(text)
     while i < n:
@@ -186,9 +212,9 @@ def _inline(text: str) -> str:
                             attrs += f' title="{_esc_attr(title)}"'
                         if _is_external(safe):
                             attrs += ' target="_blank" rel="noreferrer noopener"'
-                        tag = f"<a {attrs}>{_inline(label)}</a>"
+                        tag = f"<a {attrs}>{_inline_body(label, spans)}</a>"
                     else:
-                        tag = _inline(label)  # رابط خطر → النص بس
+                        tag = _inline_body(label, spans)  # رابط خطر → النص بس
                     out.append(stash(tag))
                     i = end
                     continue
@@ -197,25 +223,77 @@ def _inline(text: str) -> str:
     text = "".join(out)
 
     # 3) تهريب الباقي، وبعدين التنسيق
-    text = _emphasis(_esc_text(text))
-
-    # 4) استرجاع الوسوم المخزّنة
-    text = _SENTINEL_RE.sub(lambda m: spans[int(m.group(1))], text)
-    return text.strip()
+    return _emphasis(_esc_text(text))
 
 
 # ---------------------------------------------------------------- HTML خام
 
 # وسوم بتتشال بمحتواها — مفيش سبب مشروع تنزل في مقال، وكلها نواقل تنفيذ كود
-_DANGEROUS_TAGS = ("script", "style", "object", "embed", "form", "base", "meta", "link", "applet")
-_DANGEROUS_BLOCK = re.compile(
-    r"<\s*(" + "|".join(_DANGEROUS_TAGS) + r")\b[^>]*>.*?<\s*/\s*\1\s*>", re.I | re.S
+_DANGEROUS_TAGS = frozenset(
+    ("script", "style", "object", "embed", "form", "base", "meta", "link", "applet", "noscript")
 )
-_DANGEROUS_SELF = re.compile(r"<\s*(?:" + "|".join(_DANGEROUS_TAGS) + r")\b[^>]*/?>", re.I)
-_EVENT_ATTR = re.compile(r"""\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)""", re.I)
-_URL_ATTR = re.compile(
-    r"""(\s(?:href|src|action|formaction|poster)\s*=\s*)("[^"]*"|'[^']*'|[^\s>]+)""", re.I
+# attributes بتتشال دايمًا: بتشيل HTML جوه attribute أو بتعيد توجيه الإرسال
+_DROP_ATTRS = frozenset(("srcdoc", "formaction", "ping", "http-equiv", "srcset"))
+# attributes قيمتها رابط — بتتفحص بـ _safe_url
+_URL_ATTRS = frozenset(("href", "src", "action", "poster", "cite", "background", "data"))
+
+_TAG_RE = re.compile(
+    r"""<\s*(/?)\s*([A-Za-z][A-Za-z0-9:\-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>""", re.S
 )
+_ATTR_RE = re.compile(
+    r"""([A-Za-z_:][\-A-Za-z0-9_:.]*)\s*(?:=\s*("[^"]*"|'[^']*'|[^\s"'>]+))?""", re.S
+)
+_BAD_STYLE = re.compile(r"(expression\s*\(|javascript:|vbscript:|url\s*\(\s*['\"]?\s*(?:javascript|data):)", re.I)
+
+
+def _strip_dangerous_elements(text: str) -> str:
+    """
+    يشيل الوسوم الخطرة بمحتواها. الوسم المقطوع (بدون `>` أو بدون وسم إغلاق)
+    بيتشال لآخر النص — أأمن من إننا نسيبه يوصل للصفحة.
+    """
+    out: list[str] = []
+    i, n = 0, len(text)
+    while i < n:
+        if text[i] != "<":
+            out.append(text[i])
+            i += 1
+            continue
+        match = re.match(r"<\s*/?\s*([A-Za-z][A-Za-z0-9:\-]*)", text[i:])
+        if match and match.group(1).lower() in _DANGEROUS_TAGS:
+            name = re.escape(match.group(1))
+            closing = re.search(rf"</\s*{name}\s*>", text[i:], re.I)
+            i += closing.end() if closing else n - i
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
+
+
+def _clean_tag(match: "re.Match[str]") -> str:
+    """يعيد بناء الوسم من attributes متحقَّق منها بس — الباقي بيتشال."""
+    closing, name, raw_attrs = match.group(1), match.group(2), match.group(3) or ""
+    if closing:
+        return f"</{name.lower()}>"
+
+    kept: list[str] = []
+    for attr_match in _ATTR_RE.finditer(raw_attrs):
+        attr = attr_match.group(1).lower()
+        raw_value = attr_match.group(2)
+        value = raw_value.strip("\"'") if raw_value is not None else None
+
+        if attr.startswith("on") or attr in _DROP_ATTRS:
+            continue  # معالجات الأحداث وكل ما يحمل HTML أو وجهة إرسال
+        if attr in _URL_ATTRS or attr.endswith(("href", "src")):
+            safe = _safe_url(value or "")
+            if not safe:
+                continue
+            value = safe
+        if attr == "style" and value and _BAD_STYLE.search(value):
+            continue
+        kept.append(f'{attr}="{_esc_attr(value)}"' if value is not None else attr)
+
+    attrs = (" " + " ".join(kept)) if kept else ""
+    return f"<{name.lower()}{attrs}>"
 
 
 def sanitize_raw_html(fragment: str) -> str:
@@ -223,19 +301,16 @@ def sanitize_raw_html(fragment: str) -> str:
     ينقّي HTML مكتوب يدويًا في المقال قبل ما ينزل على الموقع.
 
     الـ HTML الخام ميزة مقصودة (embeds، تنسيق خاص)، بس المقال ممكن يكون مولّد
-    بالـ AI أو جاي من مصدر تاني، فمينفعش يمرّ سكربت أو معالج حدث كما هو.
+    بالـ AI أو جاي من مصدر تاني، فمينفعش يمرّ سكربت ولا معالج حدث ولا رابط خطر.
+
+    الطريقة: نشيل الوسوم الخطرة بمحتواها، وبعدين نعيد بناء كل وسم باقي من
+    attributes متحقَّق منها — مش بنحاول نلاقي الشكل الخطر بـ regex، لأن ده
+    بيتخطّى بمسافة أو شرطة أو علامة تنصيص.
     """
-    cleaned = _DANGEROUS_BLOCK.sub("", fragment)
-    cleaned = _DANGEROUS_SELF.sub("", cleaned)
-    cleaned = _EVENT_ATTR.sub("", cleaned)
-
-    def _clean_url(match: "re.Match[str]") -> str:
-        prefix, raw = match.group(1), match.group(2)
-        quote = raw[0] if raw[:1] in ("'", '"') else ""
-        safe = _safe_url(raw.strip("'\""))
-        return f"{prefix}{quote}{safe}{quote}" if safe else ""
-
-    return _URL_ATTR.sub(_clean_url, cleaned).strip()
+    cleaned = _strip_dangerous_elements(fragment)
+    rebuilt = _TAG_RE.sub(_clean_tag, cleaned)
+    # أي '<' فاضل مش وسم صالح (زي وسم مقطوع) بيتهرّب بدل ما يوصل خام
+    return re.sub(r"<(?![/A-Za-z])", "&lt;", rebuilt).strip()
 
 
 # ---------------------------------------------------------------- البلوكات

@@ -137,6 +137,11 @@ class Config:
 
         if not site.startswith(("http://", "https://")):
             site = "https://" + site
+        if "@" in urlparse(site).netloc:
+            sys.exit(
+                "WP_SITE_URL فيه بيانات دخول (user:pass@) — شيلها. "
+                "الباسورد مكانه WP_APP_PASSWORD بس، وإلا بيظهر في كل رسالة خطأ."
+            )
         if site.startswith("http://") and os.environ.get("WP_ALLOW_HTTP") != "1":
             sys.exit(
                 f"الموقع {site} على http مش https — الباسورد هيتبعت مكشوف على الشبكة.\n"
@@ -311,8 +316,11 @@ class WPClient:
         )
         if not items:
             return None
-        exact = [p for p in items if p.get("slug") == slug]
-        return (exact or items)[0]
+        # مطابقة مضبوطة بس — الرجوع لأول نتيجة كان بيخلّي التحديث يكتب فوق مقال عشوائي
+        for post in items:
+            if post.get("slug") == slug:
+                return post
+        return None
 
     def get_post(self, post_id: int) -> dict | None:
         try:
@@ -429,16 +437,32 @@ def _detect_image_mime(blob: bytes, filename: str) -> str:
     raise WPError(f"{filename}: الملف ده مش صورة (البايتات مش بتطابق أي صيغة معروفة).")
 
 
-def _ascii_filename(name: str) -> str:
-    """اسم ملف ASCII آمن لترويسة HTTP — العربي بيتحوّل لبصمة قصيرة."""
+_MIME_SUFFIX = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+    "image/tiff": ".tiff",
+}
+
+
+def _ascii_filename(name: str, blob: bytes, mime: str) -> str:
+    """
+    اسم ملف ASCII آمن لترويسة HTTP، وفيه بصمة محتوى.
+
+    الامتداد بييجي من النوع المكتشف مش من إدخال المستخدم. والبصمة ضرورية:
+    الاعتماد على الاسم لوحده كان بيخلّي صورتين مختلفتين اسمهم hero.png
+    يتعاملوا كصورة واحدة، فالمقال التاني بياخد صورة المقال الأول.
+    """
     stem = Path(name).stem
-    suffix = Path(name).suffix.lower() or ".img"
     folded = unicodedata.normalize("NFKD", stem).encode("ascii", "ignore").decode("ascii")
     folded = re.sub(r"[^A-Za-z0-9._-]+", "-", folded).strip("-.")
     folded = re.sub(r"-{2,}", "-", folded)
     if not folded:
-        folded = "image-" + hashlib.sha1(stem.encode("utf-8")).hexdigest()[:10]
-    return f"{folded[:100]}{suffix}"
+        folded = "image"
+    digest = hashlib.sha256(blob).hexdigest()[:10]
+    return f"{folded[:80]}-{digest}{_MIME_SUFFIX.get(mime, '.img')}"
 
 
 def _media_roots(article_dir: Path) -> list[Path]:
@@ -458,7 +482,7 @@ def read_local_image(source: str, article_dir: Path) -> tuple[str, bytes, str]:
     candidate = raw if raw.is_absolute() else (article_dir / source)
     try:
         path = candidate.resolve()
-    except OSError as exc:
+    except (OSError, ValueError) as exc:  # ValueError = NUL في المسار
         raise WPError(f"مسار صورة غير صالح: {source} — {exc}")
 
     roots = _media_roots(article_dir)
@@ -572,16 +596,19 @@ class Article:
         meta = {k: v for k, v in meta.items() if v not in (None, "", [], {})}
 
         if not meta.get("title"):
-            heading = re.search(r"^#\s+(.+)$", body, re.M)
+            heading = _find_title_heading(body)
             if heading:
-                meta["title"] = heading.group(1).strip()
-                body = body.replace(heading.group(0), "", 1)
+                title, start, end = heading
+                meta["title"] = title.strip()
+                body = body[:start] + body[end:]
         if not str(meta.get("title", "")).strip():
             raise WPError(
                 f"{path.name}: مفيش عنوان — حدّد title في الـ front matter أو ابدأ بـ '# العنوان'"
             )
 
-        slug = str(meta.get("slug") or "").strip() or _slugify(meta["title"])
+        # بننضّف الـ slug اللي المستخدم كتبه بنفس قواعد ووردبريس، وإلا اللي بيرجع
+        # مختلف عن اللي بعتناه والمقال يتكرّر كل تشغيل
+        slug = _slugify(meta.get("slug") or "") or _slugify(meta["title"])
         if not slug:
             raise WPError(
                 f"{path.name}: مش قادر أولّد slug من العنوان — حدّد slug بنفسك في الـ front matter."
@@ -594,17 +621,47 @@ class Article:
             except (TypeError, ValueError):
                 raise WPError(f"{path.name}: author لازم يكون رقم (id اليوزر)، مش {meta['author']!r}")
 
-        return cls(path=path, meta=meta, body=body.strip())
+        body = body.strip()
+        if not body:
+            raise WPError(
+                f"{path.name}: المقال فاضي — النشر كان هيمسح محتوى المقال الموجود على الموقع."
+            )
+        return cls(path=path, meta=meta, body=body)
+
+
+def _find_title_heading(body: str) -> tuple[str, int, int] | None:
+    """
+    يلاقي أول '# عنوان' برة أي كتلة كود. يرجّع (العنوان، بداية السطر، نهايته).
+
+    البحث الأعمى بـ regex كان بيسحب سطر تعليق من جوه ``` ويعتبره عنوان المقال.
+    """
+    in_fence = False
+    offset = 0
+    for line in body.split("\n"):
+        length = len(line) + 1  # +1 للسطر الجديد
+        if re.match(r"^\s*(?:```|~~~)", line):
+            in_fence = not in_fence
+        elif not in_fence:
+            match = re.match(r"^#\s+(.+?)\s*$", line)
+            if match:
+                return match.group(1), offset, offset + length
+        offset += length
+    return None
 
 
 def _split_front_matter(raw: str, name: str) -> tuple[dict, str]:
-    stripped = raw.lstrip()
-    if not stripped.startswith("---"):
+    lines = raw.replace("\r\n", "\n").split("\n")
+    first = next((i for i, line in enumerate(lines) if line.strip()), None)
+    if first is None or lines[first].strip() != "---":
         return {}, raw
-    parts = stripped.split("---", 2)
-    if len(parts) < 3:
+    # الفاصل سطر لوحده بس — '---' جوه قيمة كان بيقطع البيانات نصّها
+    closing = next(
+        (i for i in range(first + 1, len(lines)) if lines[i].strip() in ("---", "...")), None
+    )
+    if closing is None:
         return {}, raw
-    head, body = parts[1], parts[2]
+    head = "\n".join(lines[first + 1 : closing])
+    body = "\n".join(lines[closing + 1 :])
 
     try:
         import yaml
@@ -706,9 +763,14 @@ def build_payload(
 
     payload: dict[str, Any] = {
         "title": str(meta["title"]),
-        "slug": str(meta["slug"]),
         "content": md_to_blocks(art.body, direction),
     }
+
+    # على التحديث بنبعت الـ slug بس لو المستخدم غيّره في الملف. غير كده بنسيبه،
+    # علشان تعديل الرابط الدائم من لوحة التحكم ميترجعش كل تشغيل.
+    recorded_slug = (state_entry or {}).get("requested_slug")
+    if not is_update or recorded_slug != str(meta["slug"]):
+        payload["slug"] = str(meta["slug"])
 
     excerpt = str(meta.get("excerpt") or plain_excerpt(art.body))
     if excerpt:
@@ -777,7 +839,7 @@ def resolve_featured_media(
     else:
         name, blob, mime = read_local_image(source, art.path.parent)
 
-    filename = _ascii_filename(name)
+    filename = _ascii_filename(name, blob, mime)
     found = client.find_media(filename)
     if found:
         if alt and found.get("alt_text") != alt:
@@ -838,7 +900,13 @@ def apply_seo(client: WPClient, post_id: int, art: Article, verbose: bool) -> No
 
 
 def resolve_existing(
-    client: WPClient, art: Article, state_entry: dict | None
+    client: WPClient,
+    art: Article,
+    state_entry: dict | None,
+    *,
+    state: dict | None = None,
+    key: str = "",
+    site: str = "",
 ) -> tuple[dict | None, list[str]]:
     """
     بيلاقي المقال الموجود على الموقع، بالـ id المسجّل الأول وبعدين بالـ slug.
@@ -860,12 +928,22 @@ def resolve_existing(
         warnings.append(f"المقال المسجّل #{recorded_id} مش موجود على الموقع — بندوّر بالـ slug.")
 
     post = client.find_by_slug(slug)
-    if post and recorded_id and int(post["id"]) != int(recorded_id):
+    if post:
         title = (post.get("title") or {}).get("raw") or ""
-        warnings.append(
-            f"تنبيه: فيه مقال تاني #{post['id']} بنفس الـ slug ({title[:50]!r}) — "
-            "التحديث هيكتب فوقه. غيّر الـ slug لو المقال ده مش بتاعك."
-        )
+        # مقال مسجّل لملف تاني = تصادم slug. الكتابة فوقه بتمسح مقال منشور،
+        # فبنوقف بدل ما ننبّه ونكمل.
+        owner = _post_owner(state or {}, int(post["id"]), key, site)
+        if owner:
+            raise WPError(
+                f"الـ slug {slug!r} بيوصل لمقال #{post['id']} ({title[:40]!r}) "
+                f"المسجّل للملف {owner!r}.\n"
+                "    غيّر الـ slug في واحد من الملفين — الكتابة فوقه هتمسح المقال."
+            )
+        if recorded_id and int(post["id"]) != int(recorded_id):
+            warnings.append(
+                f"تنبيه: فيه مقال #{post['id']} بنفس الـ slug ({title[:40]!r}) مختلف عن "
+                "المسجّل لملفك — التحديث هيكتب فوقه. غيّر الـ slug لو مش بتاعك."
+            )
     return post, warnings
 
 
@@ -955,6 +1033,13 @@ def cmd_publish(cfg: Config, args: argparse.Namespace) -> int:
             print("حدّد ملفات، أو استخدم --all لنشر كل content/*.md")
         return 1
 
+    if args.dry_run:  # المعاينة قراءة فقط، مش محتاجة قفل
+        return _publish_files(cfg, args, files)
+    with PublishLock(STATE_FILE.parent / f"{STATE_FILE.name}.lock"):
+        return _publish_files(cfg, args, files)
+
+
+def _publish_files(cfg: Config, args: argparse.Namespace, files: list[Path]) -> int:
     client = WPClient(cfg)
     me = client.me()
     print(f"داخل كـ {me.get('name')} على {cfg.site}")
@@ -969,8 +1054,11 @@ def cmd_publish(cfg: Config, args: argparse.Namespace) -> int:
         print(f"→ {path.name}")
         try:
             art = Article.load(path)
-            entry = state.get(path.name)
-            existing, warnings = resolve_existing(client, art, entry)
+            key = _state_key(path)
+            entry = _state_entry(state, key, cfg.site)
+            existing, warnings = resolve_existing(
+                client, art, entry, state=state, key=key, site=cfg.site
+            )
             for warning in warnings:
                 print(f"    ! {warning}")
 
@@ -1012,9 +1100,11 @@ def cmd_publish(cfg: Config, args: argparse.Namespace) -> int:
 
             apply_seo(client, int(post["id"]), art, args.verbose)
             print(f"    ✓ {action} #{post['id']} [{post.get('status')}] → {post.get('link')}")
-            state[path.name] = {
+            state[key] = {
+                "site": cfg.site,
                 "id": post.get("id"),
                 "slug": post.get("slug"),
+                "requested_slug": str(art.meta["slug"]),
                 "status": post.get("status"),
                 "link": post.get("link"),
                 "featured_media": payload.get("featured_media"),
@@ -1044,6 +1134,101 @@ def _collect_files(args: argparse.Namespace) -> list[Path]:
         return sorted(p for p in CONTENT_DIR.glob("*.md") if not p.name.startswith("_"))
     return []
 
+
+def _state_key(path: Path) -> str:
+    """
+    مفتاح السجل = المسار النسبي من مجلد المحتوى.
+
+    الاسم المجرّد مكانش كفاية: ملفين اسمهم index.md في مجلدين مختلفين كانوا
+    بياخدوا نفس السجل، فالتاني بيكتب فوق مقال الأول.
+    """
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(CONTENT_DIR.resolve()).as_posix()
+    except ValueError:
+        return resolved.as_posix()
+
+
+def _state_entry(state: dict, key: str, site: str) -> dict | None:
+    """سجل الملف ده لهذا الموقع، أو None لو مش موجود أو تالف أو لموقع تاني."""
+    entry = state.get(key)
+    if not isinstance(entry, dict):
+        return None  # سجل تالف مينفعش يقفل النشر للأبد
+    if entry.get("site") and entry["site"] != site:
+        return None  # أرقام مقالات موقع تاني
+    # الرقم لازم يبقى رقم — سجل مكتوب بالإيد أو نصّه ناقص مينفعش يرمي استثناء
+    entry = dict(entry)
+    try:
+        entry["id"] = int(entry["id"]) if entry.get("id") is not None else None
+    except (TypeError, ValueError):
+        entry["id"] = None
+    return entry
+
+
+def _post_owner(state: dict, post_id: int, exclude_key: str, site: str) -> str | None:
+    """اسم الملف اللي مسجّل إنه صاحب المقال ده — لو فيه ملف تاني."""
+    for key, entry in state.items():
+        if key == exclude_key or not isinstance(entry, dict):
+            continue
+        if entry.get("site") and entry["site"] != site:
+            continue
+        try:
+            if int(entry.get("id") or 0) == int(post_id):
+                return key
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+class PublishLock:
+    """
+    قفل بسيط بملف — تشغيلين في نفس الوقت كانوا بيعملوا مقالات مكررة
+    (الاتنين بيدوّروا فمبيلاقوش حاجة، والاتنين بينشئوا).
+    """
+
+    STALE_SECONDS = 1800
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.acquired = False
+
+    def __enter__(self) -> "PublishLock":
+        for attempt in (1, 2):
+            try:
+                fd = os.open(str(self.path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            except FileExistsError:
+                age = time.time() - self._mtime()
+                if age > self.STALE_SECONDS and attempt == 1:
+                    self._unlink()  # تشغيل قديم مات وسايب القفل
+                    continue
+                raise WPError(
+                    f"فيه نشر تاني شغال (قفل: {self.path}).\n"
+                    "    استنى لحد ما يخلص، أو امسح الملف ده لو التشغيل القديم وقع."
+                )
+            except OSError as exc:
+                return self  # مش قادرين نعمل قفل (نظام ملفات للقراءة) — نكمل
+            else:
+                with os.fdopen(fd, "w") as handle:
+                    handle.write(f"{os.getpid()} {time.strftime('%Y-%m-%dT%H:%M:%S')}\n")
+                self.acquired = True
+                return self
+        return self
+
+    def __exit__(self, *exc) -> None:
+        if self.acquired:
+            self._unlink()
+
+    def _mtime(self) -> float:
+        try:
+            return self.path.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def _unlink(self) -> None:
+        try:
+            self.path.unlink()
+        except OSError:
+            pass
 
 def _load_state() -> dict:
     try:
