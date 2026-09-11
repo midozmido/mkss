@@ -9,14 +9,21 @@ on:
   workflow_dispatch:
     inputs:
       status:
-        description: حالة النشر
+        description: الحالة (from-file = الحالة المكتوبة في كل ملف)
         type: choice
-        default: draft
-        options: [draft, publish]
+        default: from-file
+        options: [from-file, draft, publish]
+
+concurrency:
+  group: wp-publish
+  cancel-in-progress: false   # نشرتين في نفس الوقت = تعارض على نفس المقالات
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wp-publisher
     steps:
       - uses: actions/checkout@v4
 
@@ -26,10 +33,13 @@ jobs:
           cache: pip
           cache-dependency-path: wp-publisher/requirements.txt
 
-      - run: pip install -r wp-publisher/requirements.txt
+      - run: pip install -r requirements.txt
+
+      # الاختبارات بتشتغل على سيرفر مزيّف محلي — مش بتلمس الموقع الحقيقي
+      - name: Run test suite
+        run: python -m unittest discover -s tests
 
       - name: Verify connection
-        working-directory: wp-publisher
         env:
           WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
@@ -37,9 +47,16 @@ jobs:
         run: python wp_publish.py doctor
 
       - name: Publish
-        working-directory: wp-publisher
         env:
           WP_SITE_URL: ${{ secrets.WP_SITE_URL }}
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
-        run: python wp_publish.py publish --all --status "${{ inputs.status || 'draft' }}" -v
+          STATUS: ${{ inputs.status }}
+        run: |
+          # --status بيتطبّق على المقالات الموجودة كمان، فمبنبعتهوش إلا لو المستخدم طلبه.
+          # بدونه كل مقال بياخد الحالة المكتوبة في ملفه، والمنشور يفضل منشور.
+          if [ -n "$STATUS" ] && [ "$STATUS" != "from-file" ]; then
+            python wp_publish.py publish --all --status "$STATUS" -v
+          else
+            python wp_publish.py publish --all -v
+          fi

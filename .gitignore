@@ -1,0 +1,10 @@
+# أي ملف بيانات — الباسورد ممنوع يوصل للريبو
+.env
+.env.*
+*.env
+!.env.example
+
+.published.json
+__pycache__/
+*.py[cod]
+.DS_Store
