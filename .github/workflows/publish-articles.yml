@@ -1,5 +1,8 @@
 name: Publish articles to WordPress
 
+# الفرع هنا لازم يكون فرعك الأساسي الحقيقي. لو الريبو مفيهوش فرع اسمه main،
+# الـ workflow ده مش هيشتغل — لا عند الـ push ولا بالجدول (جداول GitHub Actions
+# بتشتغل على الفرع الافتراضي بس، ولازم الملف ده يكون موجود عليه).
 on:
   push:
     branches: [main]
