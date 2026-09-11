@@ -223,9 +223,26 @@ class TestDegenerateInput(BlockTestCase):
     def test_heading_with_no_text(self):
         self.assertIn("wp:heading", self.convert("## "))
 
-    def test_long_real_article_is_valid(self):
-        source = (ROOT / "content" / "example-kd-article.md").read_text(encoding="utf-8")
-        self.convert(source.split("---", 2)[2])
+    def test_long_fixture_article_is_valid(self):
+        """مقال طويل فيه كل أنواع البلوكات — ملف ثابت مملوك للاختبارات."""
+        source = (ROOT / "tests" / "fixtures" / "long_article.md").read_text(encoding="utf-8")
+        output = self.convert(source.split("---", 2)[2])
+        for block in ("heading", "list", "quote", "table", "code", "separator", "image", "html"):
+            self.assertIn(f"wp:{block}", output, block)
+
+    def test_user_content_files_convert_cleanly(self):
+        """
+        مقالات المستخدم نفسها (لو موجودة) لازم تعدّي كمان — بس مش شرط تكون
+        موجودة، لأن content/ ملك المستخدم وهو بيغيّرها.
+        """
+        articles = sorted((ROOT / "content").glob("*.md"))
+        if not articles:
+            self.skipTest("مفيش مقالات في content/")
+        for path in articles:
+            with self.subTest(article=path.name):
+                text = path.read_text(encoding="utf-8")
+                body = text.split("---", 2)[2] if text.lstrip().startswith("---") else text
+                self.convert(body)
 
 
 class TestDirection(BlockTestCase):

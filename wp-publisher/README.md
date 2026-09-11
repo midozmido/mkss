@@ -220,7 +220,7 @@ date: 2026-10-01T09:00:00
 فيه سيرفر ووردبريس مزيّف كامل، فالأداة بتتأكد من نفسها بدون ما تلمس موقع حقيقي:
 
 ```bash
-python3 -m unittest discover -s tests        # 190 اختبار، حوالي 120 ثانية
+python3 -m unittest discover -s tests        # 191 اختبار، حوالي 120 ثانية
 python3 -m unittest discover -s tests -v     # بالتفاصيل
 ```
 
@@ -279,7 +279,7 @@ wp-publisher/
 ├── markdown_blocks.py  Markdown → Gutenberg Blocks (بدون مكتبات خارجية)
 ├── content/            المقالات (.md) + القالب
 ├── images/             الصور المحلية
-├── tests/              190 اختبار + سيرفر ووردبريس مزيّف
+├── tests/              191 اختبار + سيرفر ووردبريس مزيّف
 ├── .env.example        قالب البيانات
 └── requirements.txt    requests + PyYAML
 ```
