@@ -471,5 +471,86 @@ class TestDocumentedPathsExist(unittest.TestCase):
         )
 
 
+class TestRealWordPressSlugFormat(unittest.TestCase):
+    """
+    القيم دي مسحوبة من ووردبريس 6.9.7 حقيقي، مش مخترعة.
+
+    الوسم "اختبار تشفير السلاج العربي" اتعمل على موقع حقيقي بدون slug، وووردبريس
+    ولّد التشفير اللي تحت — بحروف **صغيرة**. Python's quote() بيطلّعها كبيرة،
+    فأي مقارنة حرفية أو تشفير من ناحيتنا لازم ياخد ده في الحساب.
+    """
+
+    REAL_NAME = "اختبار تشفير السلاج العربي"
+    REAL_SLUG = (
+        "%d8%a7%d8%ae%d8%aa%d8%a8%d8%a7%d8%b1-%d8%aa%d8%b4%d9%81%d9%8a%d8%b1-"
+        "%d8%a7%d9%84%d8%b3%d9%84%d8%a7%d8%ac-%d8%a7%d9%84%d8%b9%d8%b1%d8%a8%d9%8a"
+    )
+
+    def setUp(self):
+        sys.path.insert(0, str(ROOT))
+        import wp_publish
+
+        self.wp_publish = wp_publish
+
+    def test_our_slug_matches_what_wordpress_stores(self):
+        """الـ slug اللي بنولّده لازم يساوي اللي ووردبريس خزّنه بعد فك التشفير."""
+        from urllib.parse import unquote
+
+        ours = self.wp_publish._slugify(self.REAL_NAME)
+        self.assertEqual(unquote(self.REAL_SLUG), ours)
+        self.assertNotEqual(self.REAL_SLUG, ours, "لو اتساووا يبقى التشفير مش حاصل")
+
+    def test_find_by_slug_matches_the_real_stored_form(self):
+        """المطابقة الحرفية كانت بتفشل دايمًا — كل تشغيل بدون سجل = مقال مكرر."""
+        import os
+
+        sys.path.insert(0, str(ROOT / "tests"))
+        from mock_wp import MockWP
+
+        with MockWP() as wp:
+            saved = {
+                k: os.environ.get(k)
+                for k in ("WP_SITE_URL", "WP_USERNAME", "WP_APP_PASSWORD", "WP_ENV_FILE")
+            }
+            os.environ.update(
+                {
+                    "WP_SITE_URL": wp.url,
+                    "WP_USERNAME": wp.user,
+                    "WP_APP_PASSWORD": wp.password,
+                    "WP_ENV_FILE": "/dev/null",
+                    "WP_ALLOW_HTTP": "1",
+                }
+            )
+            try:
+                client = self.wp_publish.WPClient(self.wp_publish.Config.from_env())
+                wp.state.posts[500] = {
+                    "id": 500,
+                    "slug": self.REAL_SLUG,  # بالشكل الحقيقي بحروف صغيرة
+                    "status": "draft",
+                    "title": {"raw": self.REAL_NAME},
+                    "content": {"raw": "x"},
+                    "date": "2026-01-01T00:00:00",
+                }
+                found = client.find_by_slug(self.wp_publish._slugify(self.REAL_NAME))
+                self.assertIsNotNone(found, "ملقاش المقال بالـ slug الحقيقي")
+                self.assertEqual(found["id"], 500)
+                self.assertIsNone(
+                    client.find_by_slug("slug-تاني-خالص"), "لقى مقال مش بتاعه"
+                )
+            finally:
+                for key, value in saved.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
+
+    def test_mock_encodes_the_way_wordpress_does(self):
+        """المحاكاة لازم تطابق الحقيقة، وإلا الاختبارات تخفي البق."""
+        sys.path.insert(0, str(ROOT / "tests"))
+        from mock_wp import _wp_slug
+
+        self.assertEqual(_wp_slug(self.wp_publish._slugify(self.REAL_NAME)), self.REAL_SLUG)
+
+
 if __name__ == "__main__":
     unittest.main()

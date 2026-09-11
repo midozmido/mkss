@@ -39,7 +39,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 try:
     import requests
@@ -392,23 +392,34 @@ class WPClient:
             return 0.0
 
     def find_by_slug(self, slug: str, post_type: str = "posts") -> dict | None:
-        """بيدوّر بالـ slug. slug فاضي = مفيش بحث (وإلا كان هيرجّع أحدث مقال أصلًا)."""
+        """
+        بيدوّر بالـ slug. slug فاضي = مفيش بحث (وإلا كان هيرجّع أحدث مقال أصلًا).
+
+        ووردبريس بيخزّن الـ slug غير اللاتيني مشفّر بالنسبة المئوية بحروف صغيرة
+        (متحقَّق من 6.9.7: "دليل السيو" → "%d8%af%d9%84..."). فالمطابقة الحرفية
+        مكانت بتلاقي أي slug عربي أبدًا، وكل تشغيل بدون سجل كان بيعمل مقال جديد.
+
+        وبنستعلم بالشكلين — الخام والمشفّر — لأن مش كل تركيبة سيرفر بتنضّف
+        قيمة الاستعلام زي ووردبريس.
+        """
         if not slug or not slug.strip():
             return None
-        items = self.request(
-            "GET",
-            f"/{post_type}",
-            params={"slug": slug, "status": "any", "context": "edit", "per_page": 5},
-        )
-        if not items:
-            return None
-        # ووردبريس بيخزّن الـ slug غير اللاتيني مشفّر بالنسبة المئوية
-        # (%d8%af...)، فالمطابقة الحرفية مبتلاقي أي slug عربي أبدًا وكل تشغيل
-        # كان بيعمل مقال جديد. بنقارن بعد فك التشفير.
-        for post in items:
-            stored = str(post.get("slug") or "")
-            if stored == slug or unquote(stored) == slug:
-                return post
+
+        attempts = [slug]
+        encoded = quote(slug, safe="-_~").lower()
+        if encoded != slug:
+            attempts.append(encoded)
+
+        for candidate in attempts:
+            items = self.request(
+                "GET",
+                f"/{post_type}",
+                params={"slug": candidate, "status": "any", "context": "edit", "per_page": 5},
+            )
+            for post in items or []:
+                stored = str(post.get("slug") or "")
+                if stored == slug or unquote(stored) == slug:
+                    return post
         return None
 
     def get_post(self, post_id: int) -> dict | None:

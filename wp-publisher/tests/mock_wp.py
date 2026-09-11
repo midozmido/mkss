@@ -69,8 +69,12 @@ def _wp_slug(value: str) -> str:
     ووردبريس بيخزّن post_name مشفّر بالنسبة المئوية للحروف غير اللاتينية
     (utf8_uri_encode في sanitize_title_with_dashes). المحاكاة لازم تعمل نفس
     الحاجة، وإلا الاختبارات العربية بتعدّي والأداة تفشل على موقع حقيقي.
+
+    التشفير بحروف **صغيرة** — متحقَّق من ووردبريس 6.9.7 حقيقي:
+    "اختبار تشفير السلاج العربي" → "%d8%a7%d8%ae%d8%aa..."
+    (Python's quote بيطلّعها كبيرة، فلازم .lower())
     """
-    return quote(value, safe="-_~")
+    return quote(value, safe="-_~").lower()
 
 
 def _shift_iso(value: str, hours: float) -> str:
