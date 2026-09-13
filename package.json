@@ -1,0 +1,15 @@
+{
+  "name": "mkss-support",
+  "version": "1.0.0",
+  "private": true,
+  "description": "نظام دعم العملاء ومراقبة المواقع — صفر اعتماديات خارجية",
+  "type": "module",
+  "engines": { "node": ">=22.5.0" },
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "reset": "rm -f data/mkss.db && node seed.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
