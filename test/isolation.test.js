@@ -105,3 +105,49 @@ test('المتأخرات تُحسب لصاحبها فقط', () => {
   assert.equal(repo.outstanding(alice).cents, 0, 'تسريب: فاتورة باسم حُسبت على عالية');
   assert.equal(repo.outstanding(bob).cents, 100000);
 });
+
+test('المتأخرات لا تخصم دفعات فواتير مسدَّدة من فواتير قائمة', () => {
+  const at = nowISO();
+  const carol = Number(
+    run('INSERT INTO users(email, password_hash, name, role, created_at) VALUES(?,?,?,?,?)',
+      `carol-${Date.now()}@test.local`, hashPassword('كلمة-سر-قوية-جدا-123'), 'كارول', 'client', at).lastInsertRowid
+  );
+  const mkInv = (cents, status) => Number(
+    run(`INSERT INTO invoices(user_id, number, amount, amount_cents, currency, issued_at, status, created_at)
+         VALUES(?,?,?,?,'EGP',?,?,?)`,
+      carol, `T-${Date.now()}-${Math.round(cents)}`, cents / 100, cents, at, status, at).lastInsertRowid
+  );
+
+  // فاتورة مسدَّدة بالكامل + فاتورتان قائمتان
+  const paid = mkInv(250000, 'paid');
+  run('INSERT INTO payments(invoice_id, at, amount, amount_cents) VALUES(?,?,?,?)', paid, at, 2500, 250000);
+  mkInv(250000, 'unpaid');
+  mkInv(400000, 'unpaid');
+
+  assert.equal(
+    repo.outstanding(carol).cents, 650000,
+    'دفعة الفاتورة المسدَّدة خُصمت من الفواتير القائمة'
+  );
+  assert.equal(repo.outstanding(carol).invoices, 2);
+});
+
+test('الدفع الجزئي يُحسب على فاتورته وحدها', () => {
+  const at = nowISO();
+  const dana = Number(
+    run('INSERT INTO users(email, password_hash, name, role, created_at) VALUES(?,?,?,?,?)',
+      `dana-${Date.now()}@test.local`, hashPassword('كلمة-سر-قوية-جدا-123'), 'دانا', 'client', at).lastInsertRowid
+  );
+  const inv = Number(
+    run(`INSERT INTO invoices(user_id, number, amount, amount_cents, currency, issued_at, status, created_at)
+         VALUES(?,?,?,?,'EGP',?,'partial',?)`,
+      dana, `P-${Date.now()}`, 1000, 100000, at, at).lastInsertRowid
+  );
+  run('INSERT INTO payments(invoice_id, at, amount, amount_cents) VALUES(?,?,?,?)', inv, at, 300, 30000);
+  assert.equal(repo.outstanding(dana).cents, 70000, 'المتبقي بعد دفعة جزئية غير صحيح');
+});
+
+test('الأرقام تُعرض لاتينية (1234) لا هندية (١٢٣٤)', () => {
+  const s = repo.money.format(650000, 'EGP');
+  assert.ok(/6[,٬]?500/.test(s.replace(/٬/g, ',')), `التنسيق غير متوقع: ${s}`);
+  assert.ok(!/[٠-٩]/.test(s), `ظهرت أرقام هندية: ${s}`);
+});

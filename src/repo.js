@@ -29,7 +29,8 @@ export const money = {
   fromCents: (c) => (Number(c || 0) / 100),
   format(cents, currency = 'EGP') {
     const names = { EGP: 'ج.م', SAR: 'ر.س', AED: 'د.إ', USD: '$' };
-    const v = (Number(cents || 0) / 100).toLocaleString('ar-EG', {
+    // ar-EG-u-nu-latn: صياغة عربية بأرقام لاتينية — المعتاد في السياق المهني المصري
+    const v = (Number(cents || 0) / 100).toLocaleString('ar-EG-u-nu-latn', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -176,15 +177,16 @@ export function getInvoice(userId, invoiceId) {
 /** إجمالي المتأخر على العميل، بالقروش */
 export function outstanding(userId) {
   requireUserId(userId);
+  // لكل فاتورة قائمة: مبلغها ناقص دفعاتها **هي**.
+  // طرح كل دفعات العميل من الفواتير القائمة يخصم دفعات فواتير مسدَّدة بالفعل.
   const row = get(
-    `SELECT COALESCE(SUM(i.amount_cents), 0) -
-            COALESCE((SELECT SUM(p.amount_cents) FROM payments p
-                       JOIN invoices i2 ON i2.id = p.invoice_id
-                      WHERE i2.user_id = ? AND i2.status != 'void'), 0) AS due,
+    `SELECT COALESCE(SUM(
+              i.amount_cents -
+              COALESCE((SELECT SUM(p.amount_cents) FROM payments p WHERE p.invoice_id = i.id), 0)
+            ), 0) AS due,
             COUNT(*) AS count
        FROM invoices i
       WHERE i.user_id = ? AND i.status NOT IN ('paid','void')`,
-    userId,
     userId
   );
   const today = nowISO().slice(0, 10);

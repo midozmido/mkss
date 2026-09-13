@@ -124,3 +124,78 @@ export function findUserByEmail(email) {
 export function listSessions(userId) {
   return all('SELECT * FROM sessions WHERE user_id = ? ORDER BY created_at DESC', userId);
 }
+
+// ——————————————————— الروابط لمرة واحدة ———————————————————
+// تفعيل الحساب وإعادة تعيين كلمة السر — بلا أي خدمة بريد خارجية.
+// نخزّن **تجزئة** التوكن لا التوكن نفسه، فلا تكشف نسخة احتياطية مسربة روابط صالحة.
+
+import { createHash } from 'node:crypto';
+
+const hashToken = (t) => createHash('sha256').update(String(t)).digest('hex');
+
+export function createOneTimeLink(userId, kind = 'activate', ttlHours = 72) {
+  const token = randomBytes(32).toString('base64url');
+  const now = new Date();
+  const expires = new Date(now.getTime() + ttlHours * 3600_000);
+  run(
+    'INSERT INTO one_time_links(user_id, kind, token_hash, created_at, expires_at) VALUES(?,?,?,?,?)',
+    userId,
+    kind,
+    hashToken(token),
+    now.toISOString(),
+    expires.toISOString()
+  );
+  return { token, expires_at: expires.toISOString(), kind };
+}
+
+/** يقرأ الرابط دون استهلاكه — لعرض نموذج كلمة السر */
+export function peekOneTimeLink(token) {
+  if (!token) return null;
+  return (
+    get(
+      `SELECT l.*, u.email, u.name FROM one_time_links l JOIN users u ON u.id = l.user_id
+        WHERE l.token_hash = ? AND l.used_at IS NULL AND l.expires_at > ?`,
+      hashToken(token),
+      nowISO()
+    ) || null
+  );
+}
+
+/** يستهلك الرابط نهائيًا — يعمل مرة واحدة فقط */
+export function consumeOneTimeLink(token) {
+  const link = peekOneTimeLink(token);
+  if (!link) return null;
+  const r = run('UPDATE one_time_links SET used_at = ? WHERE id = ? AND used_at IS NULL', nowISO(), link.id);
+  // لو تعدّل صف واحد فقط فنحن أول من استهلكه — يمنع السباق بين طلبين متزامنين
+  return r.changes === 1 ? link : null;
+}
+
+export function setUserPassword(userId, plain) {
+  run('UPDATE users SET password_hash = ?, active = 1 WHERE id = ?', hashPassword(plain), userId);
+  // تغيير كلمة السر يُبطل كل الجلسات القائمة
+  run('DELETE FROM sessions WHERE user_id = ?', userId);
+}
+
+/**
+ * يتحقق من قوة كلمة السر محليًا، بلا مكتبة.
+ * لا نطلب رموزًا غريبة — جملة طويلة أقوى وأسهل في التذكر.
+ */
+export function passwordProblem(pw) {
+  const s = String(pw || '');
+  if (s.length < 10) return 'كلمة السر قصيرة — 10 أحرف على الأقل';
+  if (/^\d+$/.test(s)) return 'كلمة السر أرقام فقط — أضف حروفًا';
+  const common = ['password', '12345678', 'qwertyui', '11111111', 'مرحبابك', 'aaaaaaaa'];
+  if (common.some((c) => s.toLowerCase().includes(c))) return 'كلمة السر شائعة جدًا — اختر غيرها';
+  if (new Set(s).size < 5) return 'كلمة السر متكررة الحروف — نوّعها';
+  return null;
+}
+
+/**
+ * تجزئة وهمية بنفس تكلفة scrypt الحقيقية.
+ * حرجة: بدونها يرجع الحساب غير الموجود فورًا بينما الموجود يتأخر،
+ * فيستدل المهاجم على الإيميلات المسجلة من فرق التوقيت وحده.
+ */
+const DUMMY_HASH = hashPassword(randomBytes(16).toString('hex'));
+export function burnTime() {
+  verifyPassword('لا-يهم', DUMMY_HASH);
+}
