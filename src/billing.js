@@ -10,6 +10,22 @@ import { all, get, run, nowISO, setting } from './db.js';
 
 const DAY = 86400_000;
 
+/**
+ * إضافة شهور تقويمية صحيحة.
+ * الضرب في 30 يومًا يعطي 180 يومًا لا ستة شهور، ويخالف ما تفعله الهجرة
+ * (+6 months في SQLite) فتختلف نتيجتا نفس الحساب.
+ * والتثبيت على آخر يوم في الشهر ضروري: 31 يناير + شهر = 28/29 فبراير لا 3 مارس.
+ */
+export function addMonths(iso, months) {
+  const d = new Date(iso);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + Number(months));
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d.toISOString();
+}
+
 export function paymentSettings() {
   return {
     instapay: setting('pay_instapay') || '',
@@ -142,10 +158,31 @@ export function noteReminder(userId, kind) {
 
 // ——————————————————— إشعارات التحويل ———————————————————
 
+const CLAIM_LIMIT_PER_DAY = 5;
+
 export function claimPayment(userId, { invoiceId = null, method, amountCents, senderRef, note }) {
   if (!['instapay', 'vodafone', 'other'].includes(method)) throw new Error('طريقة دفع غير معروفة');
   const cents = Number(amountCents);
   if (!Number.isFinite(cents) || cents <= 0) throw new Error('مبلغ غير صالح');
+
+  // سقف يومي: بدونه يستطيع عميل واحد إغراق لوحتك ومحادثتك بمئات الإشعارات
+  // (ثبت في الفحص: 40 محاولة متزامنة مرّت كلها).
+  const since = new Date(Date.now() - 86400_000).toISOString();
+  const recent = get(
+    'SELECT COUNT(*) AS n FROM payment_claims WHERE user_id = ? AND at >= ?',
+    userId, since
+  )?.n || 0;
+  if (recent >= CLAIM_LIMIT_PER_DAY) {
+    throw new Error('أرسلت إشعارات كثيرة اليوم — راسلنا في المحادثة وسنتابع معك');
+  }
+
+  // إشعار مطابق خلال دقيقتين = ضغطة مكرّرة لا إشعار جديد
+  const dup = get(
+    `SELECT id FROM payment_claims
+      WHERE user_id = ? AND method = ? AND amount_cents = ? AND status = 'pending' AND at >= ?`,
+    userId, method, Math.round(cents), new Date(Date.now() - 120_000).toISOString()
+  );
+  if (dup) return dup.id;
   if (invoiceId) {
     const owns = get('SELECT id FROM invoices WHERE id = ? AND user_id = ?', invoiceId, userId);
     if (!owns) throw new Error('فاتورة غير موجودة');
@@ -158,6 +195,57 @@ export function claimPayment(userId, { invoiceId = null, method, amountCents, se
     note ? String(note).slice(0, 500) : null
   );
   return Number(r.lastInsertRowid);
+}
+
+/**
+ * يؤكّد إشعار تحويل **مرة واحدة فقط**.
+ *
+ * الترتيب هنا مقصود: نحجز الإشعار أولًا بتحديث مشروط (status='pending')،
+ * فإن لم يتغيّر صف واحد بالضبط فقد أكّده أحد قبلنا ونخرج بلا تسجيل دفعة.
+ * لولا ذلك، ضغطتان متتاليتان على «أكّد» تسجّلان الدفعة مرتين —
+ * وقد حدث هذا فعلًا في الفحص: فاتورة 2500 صارت مسدَّدة بـ5000.
+ * وكل ذلك داخل معاملة واحدة حتى لا يبقى إشعار مؤكَّدًا بلا دفعة.
+ */
+export function confirmClaim(claimId, adminId, db) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const claim = get('SELECT * FROM payment_claims WHERE id = ?', claimId);
+    if (!claim) throw new Error('الإشعار غير موجود');
+
+    const held = run(
+      `UPDATE payment_claims SET status = 'confirmed', handled_at = ?, handled_by = ?
+        WHERE id = ? AND status = 'pending'`,
+      nowISO(), adminId, claimId
+    );
+    if (held.changes !== 1) {
+      db.exec('ROLLBACK');
+      return { already: true, status: claim.status };
+    }
+
+    let invoiceStatus = null;
+    if (claim.invoice_id) {
+      const inv = get('SELECT * FROM invoices WHERE id = ?', claim.invoice_id);
+      if (!inv) throw new Error('الفاتورة المرتبطة غير موجودة');
+      run(
+        'INSERT INTO payments(invoice_id, at, amount, amount_cents, method, note) VALUES(?,?,?,?,?,?)',
+        claim.invoice_id, nowISO(), claim.amount_cents / 100, claim.amount_cents,
+        { instapay: 'إنستا باي', vodafone: 'فودافون كاش' }[claim.method] || 'تحويل',
+        `إشعار العميل #${claim.id}`
+      );
+      const paid = get(
+        'SELECT COALESCE(SUM(amount_cents),0) AS p FROM payments WHERE invoice_id = ?',
+        claim.invoice_id
+      ).p;
+      invoiceStatus = paid >= inv.amount_cents ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      run('UPDATE invoices SET status = ? WHERE id = ?', invoiceStatus, claim.invoice_id);
+    }
+
+    db.exec('COMMIT');
+    return { already: false, claim, invoiceStatus, linked: Boolean(claim.invoice_id) };
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch {}
+    throw e;
+  }
 }
 
 export const pendingClaims = () =>

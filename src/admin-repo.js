@@ -2,7 +2,7 @@
 // كل دالة هنا تفترض أن المستدعي أدمن — الفحص يتم في السيرفر قبل الاستدعاء.
 import { all, get, run, nowISO } from './db.js';
 import { money } from './repo.js';
-import { referenceCode } from './billing.js';
+import { referenceCode, addMonths } from './billing.js';
 
 export function audit(actorId, action, target, detail, ip) {
   run(
@@ -80,7 +80,7 @@ export const adminClientInvoices = (userId) =>
 export function adminCreateClient({ name, email, company, phone, whatsapp, mvp_url, mvp_label }, passwordHash) {
   const at = nowISO();
   const months = Number(get("SELECT value FROM settings WHERE key = 'trial_months'")?.value || 6);
-  const trialEnds = new Date(Date.parse(at) + months * 30 * 86400_000).toISOString();
+  const trialEnds = addMonths(at, months);
   const r = run(
     `INSERT INTO users(email, password_hash, name, role, phone, whatsapp, company, mvp_url, mvp_label,
                        active, created_at, trial_ends_at)

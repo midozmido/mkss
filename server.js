@@ -520,18 +520,17 @@ router.post('/admin/claim/:id/confirm', async (ctx) => {
   const claim = get('SELECT * FROM payment_claims WHERE id = ?', Number(ctx.params.id));
   if (!claim) return redirect(ctx.res, '/admin/payments');
   try {
-    if (claim.invoice_id) {
-      admin.adminRecordPayment(claim.invoice_id, {
-        amount: claim.amount_cents / 100,
-        method: { instapay: 'إنستا باي', vodafone: 'فودافون كاش' }[claim.method] || 'تحويل',
-        note: `إشعار العميل #${claim.id}`,
-      }, db);
+    const r = billing.confirmClaim(claim.id, ctx.user.id, db);
+    if (r.already) {
+      return redirect(ctx.res, '/admin/payments', {
+        headers: { 'Set-Cookie': flashCookie('info', 'هذا الإشعار مؤكَّد بالفعل — لم تُسجَّل دفعة ثانية.') },
+      });
     }
-    run("UPDATE payment_claims SET status = 'confirmed', handled_at = ?, handled_by = ? WHERE id = ?",
-        nowISO(), ctx.user.id, claim.id);
     chat.sendMessage(claim.user_id, { role: 'system', body: 'تم تأكيد سدادك — شكرًا لك. حسابك يعمل بكامل مزاياه.' });
     admin.audit(ctx.user.id, 'confirm_claim', `claim#${claim.id}`, String(claim.amount_cents), ctx.ip);
-    redirect(ctx.res, '/admin/payments', { headers: { 'Set-Cookie': flashCookie('ok', 'تم تأكيد السداد.') } });
+    redirect(ctx.res, '/admin/payments', {
+      headers: { 'Set-Cookie': flashCookie('ok', r.linked ? 'تم تأكيد السداد.' : 'أُكّد الإشعار — لكنه غير مرتبط بفاتورة، فلم تُسجَّل دفعة.') },
+    });
   } catch (e) {
     redirect(ctx.res, '/admin/payments', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
   }
@@ -541,8 +540,12 @@ router.post('/admin/claim/:id/reject', async (ctx) => {
   const f = await readForm(ctx.req);
   const claim = get('SELECT * FROM payment_claims WHERE id = ?', Number(ctx.params.id));
   if (!claim) return redirect(ctx.res, '/admin/payments');
-  run("UPDATE payment_claims SET status = 'rejected', handled_at = ?, handled_by = ? WHERE id = ?",
-      nowISO(), ctx.user.id, claim.id);
+  // مشروط أيضًا: لا نرفض إشعارًا سبق تأكيده
+  const done = run(
+    "UPDATE payment_claims SET status = 'rejected', handled_at = ?, handled_by = ? WHERE id = ? AND status = 'pending'",
+    nowISO(), ctx.user.id, claim.id
+  );
+  if (done.changes !== 1) return redirect(ctx.res, '/admin/payments');
   chat.sendMessage(claim.user_id, {
     role: 'admin', authorId: ctx.user.id,
     body: f.reason ? `بخصوص إشعار التحويل: ${String(f.reason).slice(0, 400)}` : 'لم نتمكن من مطابقة التحويل — من فضلك راجعنا.',
