@@ -482,7 +482,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const server = createApp();
   server.listen(PORT, HOST, () => {
     console.log(`▶ البوابة تعمل على ${BASE_URL}`);
-    monitor.start();
+    // MONITOR=0 يشغّل الويب وحده — مفيد لفصل العمليتين، أو لتشغيل نسخة ويب
+    // إضافية خلف موازن حمل دون أن تتضاعف الفحوصات على مواقع العملاء.
+    if (process.env.MONITOR === '0') console.log('• المراقب معطّل (MONITOR=0)');
+    else monitor.start();
   });
 
   const shutdown = () => {

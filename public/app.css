@@ -159,6 +159,29 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
 .nav a:hover { background: var(--surface-sunk); color: var(--text); }
 .nav a[aria-current="page"] { background: var(--brand-soft); color: var(--brand-text); }
 
+/* الترويسة على الموبايل: صفّان بدل تكدّس العناصر في صف واحد ضيق */
+@media (max-width: 620px) {
+  .topbar .wrap {
+    flex-wrap: wrap;
+    row-gap: var(--s-2);
+    padding-block: var(--s-2);
+    align-items: center;
+  }
+  .topbar .brand { font-size: var(--t-sm); }
+  .topbar .brand span:last-child { white-space: nowrap; }
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-block-end: 2px;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; }
+  .topbar .grow { flex: none; }
+}
+
 /* ——— البطاقات ——— */
 .card {
   background: var(--surface);
@@ -288,9 +311,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 
 /* ——— المخططات (SVG مولّد من السيرفر) ——— */
 .chart { inline-size: 100%; block-size: auto; display: block; }
-.chart-line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round; }
+.chart { block-size: 140px; }
+/* non-scaling-stroke يبقي سُمك الخط ثابتًا رغم تمديد الـ viewBox أفقيًا */
+.chart-line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round;
+              vector-effect: non-scaling-stroke; }
 .chart-area { fill: var(--brand); opacity: .08; }
-.chart-grid { stroke: var(--border); stroke-width: 1; }
+.chart-grid { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .chart-label { fill: var(--text-faint); font-size: 10px; font-family: var(--font); }
 
 .uptime-bar { display: flex; gap: 2px; align-items: stretch; block-size: 34px; }

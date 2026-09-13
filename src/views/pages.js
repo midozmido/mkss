@@ -1,7 +1,7 @@
 // صفحات العميل — الواجهة تحكي حالة الموقع بجُمل، لا تعرض نسبًا مجردة.
 import {
   esc, safeUrl, icon, layout, fmtDate, ago, plural,
-  statusBadge, gradeBadge, platformBadge, healthRing, uptimeBar, sparkline, gradeOf,
+  statusBadge, gradeBadge, platformBadge, healthRing, uptimeBar, sparkline, gradeOf, bidi,
 } from './layout.js';
 import { money } from '../repo.js';
 
@@ -108,10 +108,15 @@ export function dashboardPage({ user, data, flash }) {
         </div>`
       : '';
 
+  // لو كل المواقع قيد الفحص، عرض أربعة أصفار يبدو خللًا — نعرض الفئة الرابعة
+  // «قيد الفحص» بدل «تحتاج انتباه» حتى لا تختفي المواقع من العدّ.
+  const showPending = counts.unknown > 0;
   const stats = `<div class="stats rise">
     <div class="stat"><div class="stat-value">${sites.length}</div><div class="stat-label">${sites.length === 1 ? 'موقع' : 'مواقع'}</div></div>
     <div class="stat"><div class="stat-value" style="color:var(--ok)">${counts.excellent + counts.good}</div><div class="stat-label">بحالة جيدة</div></div>
-    <div class="stat"><div class="stat-value" style="color:var(--warn)">${counts.attention}</div><div class="stat-label">تحتاج انتباه</div></div>
+    ${showPending
+      ? `<div class="stat"><div class="stat-value" style="color:var(--text-faint)">${counts.unknown}</div><div class="stat-label">قيد الفحص</div></div>`
+      : `<div class="stat"><div class="stat-value" style="color:var(--warn)">${counts.attention}</div><div class="stat-label">تحتاج انتباه</div></div>`}
     <div class="stat"><div class="stat-value" style="color:var(--danger)">${counts.problems + counts.critical}</div><div class="stat-label">فيها مشاكل</div></div>
   </div>`;
 
@@ -187,7 +192,9 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
           <a href="${safeUrl(site.url)}" target="_blank" rel="noopener noreferrer">${esc(site.url)} ${icon('external')}</a>
         </p>
         <div class="row">
-          ${statusBadge({ last_ok: check?.ok })} ${gradeBadge(check?.health_score ?? null)} ${platformBadge(site)}
+          ${statusBadge({ last_ok: check ? check.ok : null })}
+          ${check ? gradeBadge(check.health_score) : ''}
+          ${platformBadge(site)}
         </div>
       </div>
     </div>
@@ -217,8 +224,9 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
 
   <section class="card">
     <h2>سجل التشغيل</h2>
-    <p class="faint">كل عمود فحص. آخر ${checks.length} فحص.</p>
-    ${uptimeBar(checks)}
+    ${checks.length
+      ? `<p class="faint">كل عمود فحص. آخر ${checks.length} فحص.</p>${uptimeBar(checks)}`
+      : `<p class="muted small">لم تُسجَّل فحوصات بعد — يبدأ السجل مع أول فحص.</p>`}
     <div style="margin-block-start:var(--s-5)">
       <h2>زمن الاستجابة</h2>
       <p class="faint">مقيس من سيرفر المراقبة لدينا — قد يختلف عن تجربة زائر في بلد آخر.</p>
@@ -235,8 +243,8 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
             (f) => `<div class="finding">
           <span style="color:${findingColor(f.level)}">${findingIcon(f.level)}</span>
           <div>
-            <div class="finding-problem">${esc(f.problem)}</div>
-            <div class="finding-fix">${esc(f.fix)}</div>
+            <div class="finding-problem">${bidi(f.problem)}</div>
+            <div class="finding-fix">${bidi(f.fix)}</div>
           </div>
         </div>`
           )

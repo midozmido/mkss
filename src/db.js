@@ -11,6 +11,15 @@ export const DB_PATH = process.env.MKSS_DB || join(root, 'data', 'mkss.db');
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
+// حاجز أمان: اختبار يكتب على قاعدة بيانات الإنتاج قد يمسح بيانات عملاء حقيقيين.
+// أحد اختباراتنا ينفّذ DELETE FROM checks — لذلك نمنع الحالة بنيويًا لا بالتذكّر.
+if (process.env.NODE_TEST_CONTEXT && !/test/i.test(DB_PATH)) {
+  throw new Error(
+    `رُفض التشغيل: الاختبارات تحاول الكتابة على ${DB_PATH}.\n` +
+    `شغّلها بـ:  npm test   (يضبط MKSS_DB على قاعدة بيانات اختبار منفصلة)`
+  );
+}
+
 export const db = new DatabaseSync(DB_PATH);
 
 // WAL يخلي القراءة والكتابة ما يتعارضوش وقت ما المراقب شغال مع الويب

@@ -30,6 +30,18 @@ export function icon(name, cls = '') {
     width="16" height="16">${body}</svg>`;
 }
 
+/**
+ * يعزل المقاطع اللاتينية داخل النص العربي بـ <bdi>.
+ * بدونه يتبعثر سطر مثل: أضف: Permissions-Policy: geolocation=()
+ * فيظهر الأقواس والنقطتين في غير مواضعها — خطأ يلاحظه أي قارئ عربي.
+ */
+export function bidi(text) {
+  return String(text ?? '')
+    .split(/([A-Za-z][A-Za-z0-9\-_./:=(),;'"*\s]*[A-Za-z0-9)(\-_.]|[A-Za-z])/g)
+    .map((part, i) => (i % 2 ? `<bdi>${esc(part)}</bdi>` : esc(part)))
+    .join('');
+}
+
 // ——————————————————— أدوات العرض ———————————————————
 
 const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -182,15 +194,20 @@ export function sparkline(checks, { width = 640, height = 120 } = {}) {
   const area = `${line}L${x(pts.length - 1).toFixed(1)},${(pad.top + h).toFixed(1)}L${x(0).toFixed(1)},${(pad.top + h).toFixed(1)}Z`;
   const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 
-  return `<svg class="chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"
-      role="img" aria-label="منحنى زمن الاستجابة — المتوسط ${avg} جزء من الألف من الثانية">
-    <line class="chart-grid" x1="${pad.side}" y1="${(pad.top + h).toFixed(1)}" x2="${width - pad.side}" y2="${(pad.top + h).toFixed(1)}"/>
-    <path class="chart-area" d="${area}"/>
-    <path class="chart-line" d="${line}"/>
-    <text class="chart-label" x="${width - pad.side}" y="${height - 6}" text-anchor="end">الأحدث</text>
-    <text class="chart-label" x="${pad.side}" y="${height - 6}" text-anchor="start">الأقدم</text>
-    <text class="chart-label" x="${width / 2}" y="${height - 6}" text-anchor="middle">المتوسط ${avg}ms</text>
-  </svg>`;
+  // التسميات خارج الـ SVG: نص داخل SVG مُحجَّم يُقص أو يتشوّه على العروض المختلفة
+  return `<figure style="margin:0">
+    <svg class="chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"
+        role="img" aria-label="منحنى زمن الاستجابة — المتوسط ${avg} جزء من الألف من الثانية">
+      <line class="chart-grid" x1="${pad.side}" y1="${(pad.top + h).toFixed(1)}" x2="${width - pad.side}" y2="${(pad.top + h).toFixed(1)}"/>
+      <path class="chart-area" d="${area}"/>
+      <path class="chart-line" d="${line}"/>
+    </svg>
+    <figcaption class="row-between faint" style="margin-block-start:var(--s-2)">
+      <span>الأحدث ←</span>
+      <span>المتوسط <b class="num">${avg}ms</b></span>
+      <span>→ الأقدم</span>
+    </figcaption>
+  </figure>`;
 }
 
 // ——————————————————— القالب العام ———————————————————

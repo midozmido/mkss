@@ -39,3 +39,13 @@ test('التهريب يبطل حقن السكربتات من عناوين موا
   assert.ok(safe.includes('&lt;script&gt;'));
   assert.equal(esc('"><img src=x onerror=alert(1)>'), '&quot;&gt;&lt;img src=x onerror=alert(1)&gt;');
 });
+
+test('عزل bidi يمنع تبعثر النص اللاتيني داخل العربي', async () => {
+  const { bidi } = await import('../src/views/layout.js');
+  const out = bidi('أضف: Permissions-Policy: geolocation=(), camera=()');
+  assert.ok(out.includes('<bdi>'), 'لم يُعزل المقطع اللاتيني');
+  assert.ok(out.includes('أضف'), 'ضاع النص العربي');
+  // التهريب يبقى ساريًا داخل العزل
+  assert.ok(!bidi('<script>x</script>').includes('<script>'), 'مرّ وسم script عبر bidi');
+  assert.equal(bidi(null), '');
+});
