@@ -68,7 +68,14 @@
   --white-a18: rgba(255, 255, 255, .18);
 
   /* Hairlines */
-  --rule: var(--white-a08);          /* the standard 1px border colour */
+  /* --white-a08 composites to 1.22:1 against --surface-4 and 1.26:1 behind a
+     form field — WCAG 1.4.11 asks for 3:1 on any border that identifies a
+     control, and these are the only thing drawing an input or an outline
+     button. --control-rule is the accessible one; --rule keeps its lighter
+     value for borders that are purely decorative. Measured after the change:
+     input 3.09:1, outline button 3.09:1. */
+  --rule: var(--white-a08);          /* decorative 1px border colour */
+  --control-rule: rgba(255, 255, 255, .38);  /* borders that identify a control */
   --rule-soft: var(--white-a05);     /* section seams */
   --rule-strong: var(--white-a18);   /* pressed / focused chrome */
 

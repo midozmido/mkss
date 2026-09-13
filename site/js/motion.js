@@ -1048,9 +1048,16 @@
             yTo(e.clientY);
         }, { passive: true });
 
-        window.addEventListener('pointerleave', function () {
+        /* Both targets. pointerleave does not bubble, and bound on `window` it
+           is not reliably dispatched when the pointer leaves the page — so the
+           custom cursor could sit frozen at the last known position after the
+           mouse had gone. documentElement is the target that actually fires. */
+        function hideCursor() {
+            cursorVisible = false;
             gsap.to(dot, { autoAlpha: 0, duration: MOTION.dur.fast });
-        }, { passive: true });
+        }
+        window.addEventListener('pointerleave', hideCursor, { passive: true });
+        document.documentElement.addEventListener('pointerleave', hideCursor, { passive: true });
 
         /* Grow over anything interactive. */
         each(qsa('a, button, .btn, .filter-btn, [role="button"]'), function (el) {
@@ -1273,7 +1280,11 @@
         function paint() {
             var isPaused = api.paused();
             btn.setAttribute('aria-pressed', isPaused ? 'true' : 'false');
-            btn.setAttribute('aria-label', isPaused ? 'Play the technology marquee' : 'Pause the technology marquee');
+            /* "the scrolling text", matching the markup's own aria-label. The
+               strip has carried promises rather than technology logos since the
+               rebuild, so "technology marquee" named content that is not there —
+               and paint() was overwriting the correct authored label with it. */
+            btn.setAttribute('aria-label', isPaused ? 'Play the scrolling text' : 'Pause the scrolling text');
             btn.innerHTML = isPaused
                 ? '<svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><path d="M0 0l10 6-10 6z"/></svg>'
                 : '<svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>';

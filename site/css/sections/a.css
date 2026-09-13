@@ -62,8 +62,14 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-block-size: var(--hero-min-h-fallback);
-  min-block-size: var(--hero-min-h);
+  /* Literal values, not var(). The two-declaration fallback works by the
+     browser DISCARDING the second declaration at parse time when it cannot
+     parse the value — but `var(--hero-min-h)` always parses, so the second
+     one always wins, and an engine without svh then treats it as invalid at
+     computed-value time and drops min-block-size altogether rather than
+     falling back. The hero loses its full-viewport height entirely. */
+  min-block-size: 100vh;
+  min-block-size: 100svh;
   /* The navbar is fixed, so the hero has to clear it by hand. */
   padding-block-start: calc(var(--nav-h) + var(--sec-pad));
   /* .layer-behind sits at --z-below. Without a stacking context here that

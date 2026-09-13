@@ -42,8 +42,18 @@
       d.classList.toggle('is-active', n <= current);
       d.classList.toggle('is-done', n < current);
     });
-    var first = steps[current] && steps[current].querySelector('input:not([type="radio"]), textarea');
-    if (first && i > 0) first.focus({ preventScroll: true });
+    /* The first control of the step, radios included. The old selector
+       excluded them, so arriving at step 2 skipped the required scope radios
+       and landed on the optional textarea below them — and `i > 0` meant going
+       BACK to step 1 focused nothing at all, dropping focus to <body> and
+       restarting the tab order at the top of the page. */
+    var step = steps[current];
+    var first = step && step.querySelector('input, textarea, select');
+    if (first && first.focus) first.focus({ preventScroll: true });
+    else if (step && step.focus) {
+      if (!step.hasAttribute('tabindex')) step.setAttribute('tabindex', '-1');
+      step.focus({ preventScroll: true });
+    }
   }
 
   function setError(el, msg) {

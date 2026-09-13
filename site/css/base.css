@@ -358,7 +358,10 @@ th {
   position: absolute;
   inset-block-start: var(--space-xs);
   inset-inline-start: var(--space-xs);
-  z-index: var(--z-preloader);
+  /* One above --z-preloader. Both were 1000 and the preloader is later in the
+     DOM, so on that tie the opaque full-screen overlay covered the very first
+     thing a keyboard visitor tabs to. */
+  z-index: calc(var(--z-preloader) + 1);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-sm);
   background-color: var(--violet-600);

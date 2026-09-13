@@ -404,8 +404,10 @@
   .signature {
     display: grid;
     align-content: center;
-    min-block-size: var(--hero-min-h-fallback);
-    min-block-size: var(--hero-min-h);
+    /* Literal, not var() — see the note on .hero in sections/a.css: the
+       two-declaration fallback cannot work through a custom property. */
+    min-block-size: 100vh;
+    min-block-size: 100svh;
     padding-block: var(--sec-pad-tight);
   }
 }

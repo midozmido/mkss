@@ -68,6 +68,32 @@
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   };
 
+  /* ── shared scroll lock ────────────────────────────────────
+     The menu and the project dialog each used to write body.style.overflow
+     themselves. Open both and whichever closed first cleared the lock, leaving
+     the page scrolling behind a panel that was still up. Ownership is tracked
+     instead, and the scrollbar compensation the menu applied is now applied for
+     either owner rather than only one of them. */
+  var lockOwners = [];
+  function lockScroll(owner) {
+    if (lockOwners.indexOf(owner) !== -1) return;
+    if (!lockOwners.length) {
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      if (gap > 0) document.body.style.paddingRight = gap + 'px';
+    }
+    lockOwners.push(owner);
+  }
+  function unlockScroll(owner) {
+    var i = lockOwners.indexOf(owner);
+    if (i === -1) return;
+    lockOwners.splice(i, 1);
+    if (!lockOwners.length) {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    }
+  }
+
   /* ── 1. Fullscreen menu ──────────────────────────────────── */
   function initMenu() {
     var menu = $('#premiumMenu'), toggle = $('#navToggle');
@@ -87,10 +113,7 @@
       toggle.classList.add('is-active');
       toggle.setAttribute('aria-expanded', 'true');
       menu.setAttribute('aria-hidden', 'false');
-      /* Compensate for the scrollbar so the page does not jump on lock. */
-      var gap = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = 'hidden';
-      if (gap > 0) document.body.style.paddingRight = gap + 'px';
+      lockScroll('menu');
       document.body.classList.add('menu-open');
       /* Next frame, so the style change above has been applied. components.css
          now flips visibility at 0s on .is-open, but focusing on the same tick
@@ -105,8 +128,7 @@
       toggle.classList.remove('is-active');
       toggle.setAttribute('aria-expanded', 'false');
       menu.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
+      unlockScroll('menu');
       document.body.classList.remove('menu-open');
       if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
@@ -116,7 +138,11 @@
     toggle.addEventListener('click', function (e) { e.preventDefault(); isOpen() ? close() : open(); });
     if (closeBtn) closeBtn.addEventListener('click', close);
     if (overlay) overlay.addEventListener('click', close);
-    links.forEach(function (l) { l.addEventListener('click', close); });
+    /* No per-link close listener here. It fired at the target before the
+       delegated anchor handler in initAnchors() could read menu.isOpen(), so
+       that handler always saw `false`, always used a 0ms defer, and scrolled
+       the page while the panel was still opaque over it. initAnchors closes
+       the menu itself and then waits for the fade. */
 
     document.addEventListener('keydown', function (e) {
       if (!isOpen()) return;
@@ -390,13 +416,13 @@
       else if (linkEl) linkEl.hidden = true;
       dialog.classList.add('is-open');
       dialog.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
+      lockScroll('dialog');
       if (closeEl) closeEl.focus();
     }
     function close() {
       dialog.classList.remove('is-open');
       dialog.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+      unlockScroll('dialog');
       if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
 

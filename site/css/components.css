@@ -97,7 +97,7 @@
 /* ── Outline: the secondary action ─────────────────────────────────────── */
 .btn--outline {
   background-color: transparent;
-  border-color: var(--rule-strong);
+  border-color: var(--control-rule);
   color: var(--text-1);
 }
 
@@ -644,7 +644,7 @@
   inline-size: 100%;
   min-block-size: var(--size-touch);
   padding: var(--field-pad-block) var(--field-pad-inline);
-  border: var(--border);
+  border: var(--border-w) solid var(--control-rule);
   border-radius: var(--field-radius);
   background-color: var(--surface-2);
   font-size: var(--fs-sm);
@@ -781,9 +781,13 @@
   transition: color var(--dur-fast) var(--ease-out);
 }
 
-/* Reached — the current step and every step behind it. */
+/* Reached — the current step and every step behind it.
+   --violet-400 carries the accent everywhere else on the page, but everywhere
+   else it sits on --ink or --surface-1. Here it sits on a card (--surface-4),
+   where it measures 4.05:1 — and at 14px this is normal-size text needing
+   4.5:1. --violet-100 is the same family and measures 11.77:1 here. */
 .progress-step.is-active {
-  color: var(--violet-400);
+  color: var(--violet-100);
 }
 
 /* Finished — strictly behind the current step. Declared after .is-active so it

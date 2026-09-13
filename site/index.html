@@ -8,7 +8,7 @@
 
   <title>Mohamed Khaled — WordPress Design and Development</title>
   <meta name="description"
-    content="Mohamed Khaled designs WordPress sites in Figma and builds them in Elementor Pro with custom CSS. Online stores, course platforms and business sites. 210+ projects delivered since 2020, each with 180 days of support.">
+    content="WordPress sites designed in Figma and built in Elementor Pro with custom CSS. Stores, course platforms and business sites. 210+ delivered since 2020.">
   <meta name="author" content="Mohamed Khaled">
   <link rel="canonical" href="https://profile.mk-wp.site/">
 
@@ -35,11 +35,16 @@
 
   <link rel="icon" type="image/png" sizes="64x64" href="assets/images/favicon-64.png">
   <link rel="icon" type="image/png" sizes="512x512" href="assets/images/favicon-512.png">
-  <link rel="apple-touch-icon" href="assets/images/favicon-512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/images/apple-touch-icon-180.png">
 
   <!-- ONE font request. Space Grotesk 500/700 display, Inter 400/500/600 body. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Five deferred scripts come from these two origins. Without a preconnect
+       the DNS, TCP and TLS round trips only start when the parser reaches the
+       tags at the end of <body>. -->
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <!-- Loaded non-blocking. A stylesheet in <head> gates first paint, and this
        one is on a third-party host: measured here, the page painted at 176ms
        when this request failed fast and at 8144ms when it merely hung for 8s —
@@ -121,7 +126,7 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "ProfessionalService",
+    "@type": "Organization",
     "name": "Mohamed Khaled — WordPress Design and Development",
     "url": "https://profile.mk-wp.site/",
     "image": "https://profile.mk-wp.site/assets/images/mohamed-khaled-portrait.png",
@@ -1105,6 +1110,8 @@
                  data-brief="Sakhaa Program, run by the Saudi Ministry of Human Resources and Social Development. I am the site's lead admin.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/sakhaa.jpg"
+                 srcset="assets/projects/sakhaa-668.jpg 668w, assets/projects/sakhaa.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The Sakhaa Program home page, showing the Arabic navigation bar above a full-width carousel slide"
                  width="1100" height="688"
                  loading="lazy" decoding="async">
@@ -1128,6 +1135,8 @@
                  data-brief="A classifieds marketplace in the Dubizzle mould, carrying more than 4,000 real listings. A large amount of the functionality is custom-coded rather than assembled from plugins.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/slsmarts.jpg"
+                 srcset="assets/projects/slsmarts-668.jpg 668w, assets/projects/slsmarts.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The SL Smarts home page, showing the listing search bar with fields for what and where, above a row of category shortcuts"
                  width="1100" height="688"
                  loading="lazy" decoding="async">
@@ -1151,6 +1160,8 @@
                  data-brief="Sharik is an integrated marketing services company in Saudi Arabia.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/sharikco.jpg"
+                 srcset="assets/projects/sharikco-668.jpg 668w, assets/projects/sharikco.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The Sharik home page, showing the Arabic welcome headline, the main navigation and a scroll prompt"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1173,6 +1184,8 @@
                  data-brief="A site for Dr Mohamed Osama's dental practice. The interactions on it are hand-coded rather than driven by plugins.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/drmo.jpg"
+                 srcset="assets/projects/drmo-668.jpg 668w, assets/projects/drmo.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The Dr Mohamed Osama home page, showing a treatment-room photograph beside the Arabic headline and two contact buttons"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1197,6 +1210,8 @@
                  data-brief="Laft is a large Saudi B2B brand. The build is finished and waiting on its production domain, so there is no public address to link to yet.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/laft.jpg"
+                 srcset="assets/projects/laft-668.jpg 668w, assets/projects/laft.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The Laft home page, showing the Arabic headline over a dark gradient with two calls to action"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1218,6 +1233,8 @@
                  data-brief="Dremora sells children's stories online.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/dremora.jpg"
+                 srcset="assets/projects/dremora-668.jpg 668w, assets/projects/dremora.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The Dremora home page, showing an illustrated space scene with a headline and an order button"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1240,6 +1257,8 @@
                  data-brief="Rehal runs light-aviation transport services in Saudi Arabia.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/rehal.jpg"
+                 srcset="assets/projects/rehal-668.jpg 668w, assets/projects/rehal.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The Rehal home page, showing the headline about urgent shipments beside a live operations panel"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1262,6 +1281,8 @@
                  data-brief="London Royal Academy works in education.">
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/londonra.jpg"
+                 srcset="assets/projects/londonra-668.jpg 668w, assets/projects/londonra.jpg 1100w"
+                 sizes="(min-width: 900px) 334px, 78vw"
                  alt="The London Royal Academy home page, showing a featured course with its dates and venues above a course search row"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -2085,7 +2106,7 @@
       </nav>
 
       <!-- ── Contact ──────────────────────────────────────────────────────── -->
-      <div class="footer__col">
+      <div class="footer__col" role="group" aria-labelledby="footer-contact-title">
         <p class="footer__title" id="footer-contact-title">Get in touch</p>
 
         <p class="footer__contact-item">
