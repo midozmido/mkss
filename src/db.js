@@ -1,6 +1,6 @@
 // طبقة قاعدة البيانات — node:sqlite المدمج، بدون أي مكتبة خارجية
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,10 +17,6 @@ export const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 db.exec('PRAGMA busy_timeout = 5000');
-
-export function migrate() {
-  db.exec(readFileSync(join(here, 'schema.sql'), 'utf8'));
-}
 
 // ——— اختصارات استعلام ———
 export const all = (sql, ...p) => db.prepare(sql).all(...p);
