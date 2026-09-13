@@ -23,6 +23,8 @@ import * as billing from './src/billing.js';
 import * as chat from './src/chat.js';
 import * as billingViews from './src/views/billing.js';
 import * as chatViews from './src/views/chat.js';
+import * as authViews from './src/views/auth.js';
+import * as guideViews from './src/views/guide.js';
 import * as bot from './src/bot.js';
 import * as kb from './src/kb.js';
 import * as kbViews from './src/views/kb.js';
@@ -91,18 +93,28 @@ const router = createRouter();
 
 // —— الدخول والخروج ——
 
-router.get('/login', (ctx) => {
-  if (ctx.user) return redirect(ctx.res, ctx.user.role === 'admin' ? '/admin' : '/');
-  sendHtml(ctx.res, pages.loginPage({ notice: ctx.query.get('activated') ? 'تم تفعيل حسابك. سجّل الدخول الآن.' : null }));
-});
+/**
+ * بوابتان منفصلتان: `/login` للعملاء و`/admin/login` للإدارة.
+ *
+ * لماذا الفصل: حساب الأدمن أداة تشغيل، وحساب العميل واجهة خدمة. خلطهما في
+ * مدخل واحد يجعل كل تسريب في أحدهما بابًا على الآخر، ويربك المستخدم.
+ * ومن يدخل ببيانات صحيحة من البوابة الخطأ **لا تُفتح له جلسة**: يُحوَّل
+ * إلى بوابته. نكشف دوره لمن يملك كلمة سره فقط — لا لمن يجرّب الإيميلات.
+ */
+const homeFor = (user) => (user.role === 'admin' ? '/admin' : '/');
+const portalFor = (role) => (role === 'admin' ? '/admin/login' : '/login');
 
-router.post('/login', async (ctx) => {
+function loginView(portal, props) {
+  return portal === 'admin' ? authViews.adminLoginPage(props) : authViews.clientLoginPage(props);
+}
+
+async function handleLogin(ctx, portal) {
   const form = await readForm(ctx.req);
   const email = String(form.email || '').trim().toLowerCase();
   const key = `${ctx.ip}|${email}`;
 
   if (!loginLimiter.check(key).allowed || auth.loginBlocked(key)) {
-    return sendHtml(ctx.res, pages.loginPage({ error: 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مجددًا.', email }), { status: 429 });
+    return sendHtml(ctx.res, loginView(portal, { error: 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مجددًا.', email }), { status: 429 });
   }
 
   const user = auth.findUserByEmail(email);
@@ -111,24 +123,56 @@ router.post('/login', async (ctx) => {
 
   if (!user || !okPassword || !user.active) {
     auth.noteLoginFailure(key);
-    return sendHtml(ctx.res, pages.loginPage({ error: 'البريد أو كلمة السر غير صحيحة.', email }), { status: 401 });
+    return sendHtml(ctx.res, loginView(portal, { error: 'البريد أو كلمة السر غير صحيحة.', email }), { status: 401 });
+  }
+
+  // بيانات صحيحة لكن من البوابة الخطأ: لا جلسة، بل توجيه إلى بوابته.
+  const wanted = user.role === 'admin' ? 'admin' : 'client';
+  if (wanted !== portal) {
+    auth.clearLoginFailures(key);
+    loginLimiter.reset(key);
+    return redirect(ctx.res, `${portalFor(user.role)}?portal=1`);
   }
 
   auth.clearLoginFailures(key);
   loginLimiter.reset(key);
   const session = auth.createSession(user.id, { ip: ctx.ip, ua: ctx.req.headers['user-agent'] });
-  admin.audit(user.id, 'login', `user#${user.id}`, null, ctx.ip);
+  admin.audit(user.id, 'login', `user#${user.id}`, portal, ctx.ip);
 
-  redirect(ctx.res, user.role === 'admin' ? '/admin' : '/', {
+  redirect(ctx.res, homeFor(user), {
     headers: {
       'Set-Cookie': cookieHeader(auth.COOKIE_NAME, session.id, { expires: session.expires, secure: SECURE }),
     },
   });
+}
+
+const WRONG_PORTAL = 'هذا الحساب يدخل من بوابة أخرى — وقد نقلناك إليها.';
+
+router.get('/login', (ctx) => {
+  if (ctx.user) return redirect(ctx.res, homeFor(ctx.user));
+  sendHtml(ctx.res, authViews.clientLoginPage({
+    notice: ctx.query.get('activated')
+      ? 'تم تفعيل حسابك. سجّل الدخول الآن.'
+      : ctx.query.get('portal') ? WRONG_PORTAL : null,
+  }));
 });
 
+router.post('/login', (ctx) => handleLogin(ctx, 'client'));
+
+router.get('/admin/login', (ctx) => {
+  if (ctx.user) return redirect(ctx.res, homeFor(ctx.user));
+  sendHtml(ctx.res, authViews.adminLoginPage({
+    notice: ctx.query.get('portal') ? WRONG_PORTAL : null,
+  }));
+});
+
+router.post('/admin/login', (ctx) => handleLogin(ctx, 'admin'));
+
 router.post('/logout', async (ctx) => {
+  // نعرف بوابته قبل أن نهدم الجلسة، فيعود إلى مدخله لا إلى مدخل غيره
+  const back = portalFor(ctx.user?.role);
   auth.destroySession(ctx.sid);
-  redirect(ctx.res, '/login', {
+  redirect(ctx.res, back, {
     headers: { 'Set-Cookie': cookieHeader(auth.COOKIE_NAME, '', { maxAge: 0, secure: SECURE }) },
   });
 });
@@ -150,7 +194,7 @@ router.post('/reset-request', async (ctx) => {
   // الرد واحد دائمًا — لا نؤكد للمهاجم أي إيميل مسجل عندنا
   sendHtml(
     ctx.res,
-    pages.loginPage({ notice: 'إذا كان البريد مسجلًا لدينا، سيتواصل معك فريقنا برابط جديد.' })
+    authViews.clientLoginPage({ notice: 'إذا كان البريد مسجلًا لدينا، سيتواصل معك فريقنا برابط جديد.' })
   );
 });
 
@@ -165,7 +209,7 @@ router.get('/activate/:token', (ctx) => {
       { status: 410 }
     );
   }
-  sendHtml(ctx.res, pages.setPasswordPage({ token: ctx.params.token, kind: link.kind }));
+  sendHtml(ctx.res, authViews.setPasswordPage({ token: ctx.params.token, kind: link.kind }));
 });
 
 router.post('/set-password', async (ctx) => {
@@ -178,7 +222,7 @@ router.post('/set-password', async (ctx) => {
   const pw = String(form.password || '');
   const problem = auth.passwordProblem(pw) || (pw !== form.confirm ? 'كلمتا السر غير متطابقتين' : null);
   if (problem) {
-    return sendHtml(ctx.res, pages.setPasswordPage({ token, kind: link.kind, error: problem }), { status: 400 });
+    return sendHtml(ctx.res, authViews.setPasswordPage({ token, kind: link.kind, error: problem }), { status: 400 });
   }
   const consumed = auth.consumeOneTimeLink(token);
   if (!consumed) {
@@ -424,14 +468,13 @@ router.get('/chat/:id/since', (ctx) => {
 
 // —— قاعدة المعرفة للعميل ——
 
+// البحث أُلغي من واجهة العميل بطلب صريح: المكتبة تُتصفَّح بأبوابها، ومن
+// لا يجد ما يريد يسأل سامي — وهو يبحث في القاعدة نيابةً عنه ويحوّل إن عجز.
 router.get('/help', (ctx) => {
-  const q = (ctx.query.get('q') || '').trim();
   sendHtml(ctx.res, kbViews.helpIndex({
     user: ctx.user,
     categories: kb.categories(),
     articles: kb.listArticles(),
-    q,
-    results: q ? kb.search(q, { limit: 8 }).filter((r) => r.score >= 0.15) : null,
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
@@ -443,7 +486,23 @@ router.get('/help/:slug', (ctx) => {
   sendHtml(ctx.res, kbViews.helpArticle({ user: ctx.user, article: a, flash: ctx.flash }));
 });
 
+// —— دليل الاستخدام ——
+// دليلان منفصلان لأن الدورين منفصلان: العميل يقرأ كيف يقرأ حالة موقعه،
+// والأدمن يقرأ كيف يشغّل النظام. لا يرى أحدهما دليل الآخر.
+
+router.get('/guide', (ctx) => {
+  sendHtml(ctx.res, guideViews.clientGuide({ user: ctx.user, flash: ctx.flash }), {
+    headers: { 'Set-Cookie': clearFlash() },
+  });
+});
+
 // —— لوحة الأدمن ——
+
+router.get('/admin/guide', (ctx) => {
+  sendHtml(ctx.res, guideViews.adminGuide({ user: ctx.user, flash: ctx.flash }), {
+    headers: { 'Set-Cookie': clearFlash() },
+  });
+});
 
 router.get('/admin', (ctx) => {
   sendHtml(ctx.res, adminViews.adminHome({
@@ -718,6 +777,9 @@ router.post('/admin/kb', async (ctx) => {
   }
   try {
     const id = kb.saveArticle({ ...f, id: f.id ? Number(f.id) : null, active: f.active === '1' ? 1 : 0 });
+    // معجم النطاق مبني من المقالات: بلا هذا السطر يظل مقال جديد غائبًا عن
+    // سامي حتى تنتهي مهلة التخزين، فيقول «خارج تخصّصي» عمّا كُتب عنه للتوّ.
+    bot.resetDomainVocabulary();
     admin.audit(ctx.user.id, f.id ? 'update_article' : 'create_article', `kb#${id}`, f.title, ctx.ip);
     redirect(ctx.res, '/admin/kb', { headers: { 'Set-Cookie': flashCookie('ok', 'حُفظ المقال.') } });
   } catch (e) {
@@ -727,6 +789,7 @@ router.post('/admin/kb', async (ctx) => {
 
 router.post('/admin/kb/:id/delete', async (ctx) => {
   kb.deleteArticle(Number(ctx.params.id));
+  bot.resetDomainVocabulary();
   admin.audit(ctx.user.id, 'delete_article', `kb#${ctx.params.id}`, null, ctx.ip);
   redirect(ctx.res, '/admin/kb', { headers: { 'Set-Cookie': flashCookie('ok', 'حُذف المقال.') } });
 });
@@ -816,8 +879,15 @@ router.get('/health', (ctx) => {
 
 // ——————————————————— المعالج ———————————————————
 
-const PUBLIC_PATHS = new Set(['/login', '/reset-request', '/set-password', '/health']);
+const PUBLIC_PATHS = new Set(['/login', '/admin/login', '/reset-request', '/set-password', '/health']);
 const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
+
+/**
+ * مسارات لا تخصّ دورًا بعينه. ما عداها مفصول: الأدمن لا يدخل شاشات العميل،
+ * والعميل لا يعرف أن للوحة الإدارة وجودًا أصلًا.
+ */
+const SHARED_PATHS = new Set(['/logout', '/health', '/set-password']);
+const isShared = (p) => SHARED_PATHS.has(p) || p.startsWith('/activate/');
 
 /**
  * ما يبقى مفتوحًا للعميل المقفول.
@@ -827,7 +897,7 @@ const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
 const OPEN_WHEN_LOCKED = new Set([
   '/billing', '/billing/claim',
   '/chat', '/chat/stream', '/chat/since', '/chat/new', '/chat/color',
-  '/invoices', '/logout', '/health',
+  '/invoices', '/logout', '/health', '/guide',
 ]);
 const openWhenLocked = (p) =>
   OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/') || p.startsWith('/help') || p.startsWith('/chat/');
@@ -875,9 +945,15 @@ export function createApp() {
       if (!isPublic(pathname) && !user) {
         return redirect(res, '/login');
       }
-      if (pathname.startsWith('/admin') && user?.role !== 'admin') {
+      if (pathname.startsWith('/admin') && pathname !== '/admin/login' && user?.role !== 'admin') {
         // 404 لا 403: لا نؤكد لغير المخوَّل وجود لوحة أدمن
         return sendHtml(res, pages.errorPage({ user, status: 404, message: 'الصفحة غير موجودة' }), { status: 404 });
+      }
+
+      // الاتجاه المعاكس: حساب الأدمن أداة عمل لا حساب عميل — لا لوحة مواقع،
+      // ولا سامي، ولا اشتراك. من يملك الاثنين يدخل بحسابين لا بحساب واحد.
+      if (user?.role === 'admin' && !pathname.startsWith('/admin') && !isShared(pathname)) {
+        return redirect(res, '/admin');
       }
 
       // بوابة الاشتراك: تُقفل المزايا بعد انتهاء مهلة السداد
@@ -919,7 +995,7 @@ export function createApp() {
 // ——————————————————— التشغيل ———————————————————
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log('◆ نظام دعم العملاء — MKSS');
+  console.log('◆ Support VIP System — نظام دعم العملاء ومراقبة المواقع');
   migrate();
 
   const adminCount = get("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'")?.n || 0;

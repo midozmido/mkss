@@ -26,6 +26,11 @@
   --brand-soft:    #e3f2ef;
   --brand-text:    #06534b;
 
+  /* الحبر فوق سطح ممتلئ بلون الحالة (الشارة العدّادة مثلًا).
+     ينقلب في الوضع الليلي لأن ألوان الحالة تصير فاتحة هناك،
+     والأبيض فوق ‎#fb7185‎ الليلي غير مقروء. */
+  --on-accent:     #ffffff;
+
   /* الحالات — كل حالة لها لون وأيقونة ونص، فلا يعتمد الفهم على اللون وحده */
   --ok:            #15803d;
   --ok-soft:       #e4f5e9;
@@ -38,15 +43,50 @@
   --neutral:       #64748b;
   --neutral-soft:  #eef1f4;
 
+  /* لوحة الدخول التعريفية — تدرّج مستقلّ عن ‎--brand‎ عمدًا:
+     ‎--brand‎ يصير فيروزيًّا لامعًا في الوضع الليلي، والنص الأبيض فوقه
+     يسقط تحت أي حدّ تباين مقبول. هذا التدرّج يبقى داكنًا في الوضعين. */
+  --portal:        #0e8578;
+  --portal-deep:   #063b36;
+  /* بوابة الإدارة — نطاق نيلي بعيد عن أخضر العميل: لا يصحّ أن يظنّ
+     الداخل أنه أمام بوابة العميل فيسلّم بياناته للوحة الخطأ. */
+  --admin:         #4338ca;
+  --admin-deep:    #1e1b4b;
+  /* حبر اللوحتين — لا ينقلب لأن خلفيته داكنة في الوضعين معًا */
+  --portal-ink:    #ffffff;
+
+  /* شارة VIP — ذهبي. نسختان: واحدة فوق سطح فاتح وأخرى فوق لوحة داكنة،
+     لأن ذهبيًّا واحدًا لا يقرأ فوق الاثنين. */
+  --vip:           #a16207;
+  --vip-bright:    #fcd34d;
+
+  /* الحجاب تحت درج الموبايل */
+  --scrim-bg:      rgb(16 21 28 / .45);
+
+  /* فقاعة التلميح في الشريط المضغوط — معكوسة عن السطح لتُقرأ فوق أي بطاقة */
+  --tip-bg:        #10151c;
+  --tip-text:      #f4f6f8;
+
   /* المسافات — مقياس رباعي */
   --s-1: .25rem;  --s-2: .5rem;   --s-3: .75rem;  --s-4: 1rem;
   --s-5: 1.5rem;  --s-6: 2rem;    --s-7: 3rem;    --s-8: 4rem;
+
+  /* مقاسات الهيكل — مذكورة مرة واحدة لأن الشبكة والدرج والتلميح
+     تقرأ العرض نفسه؛ رقمان متباعدان يعنيان شريطًا بعرضين مختلفين */
+  --nav-w:       264px;
+  --nav-w-mini:   76px;
+  --appbar-h:     56px;
 
   /* الأنصاف والظلال — عمق محسوب لا ثقيل */
   --r-sm: 6px;  --r: 10px;  --r-lg: 14px;  --r-full: 999px;
   --shadow-sm: 0 1px 2px rgb(16 21 28 / .05);
   --shadow:    0 1px 3px rgb(16 21 28 / .07), 0 4px 12px rgb(16 21 28 / .04);
   --shadow-lg: 0 4px 12px rgb(16 21 28 / .08), 0 16px 32px rgb(16 21 28 / .06);
+
+  /* منحنيا الحركة — توكنان لا نظام: منحنى واحد مكرّر في عشرين قاعدة
+     ينحرف عند أول تعديل، فتبدو الواجهة وكأن كل جزء منها من تطبيق آخر */
+  --ease:     cubic-bezier(.2, .8, .2, 1);    /* دخول: بدء سريع ثم استقرار */
+  --ease-out: cubic-bezier(.22, .61, .36, 1); /* خروج ناعم بلا ارتداد */
 
   /* الطباعة */
   --font: "Segoe UI", "Dubai", "SF Arabic", "Noto Sans Arabic", "Helvetica Neue", Tahoma, Arial, sans-serif;
@@ -73,11 +113,18 @@
     --brand-strong:  #5eead4;
     --brand-soft:    #0d2b28;
     --brand-text:    #7fe7db;
+    --on-accent:     #08100f;
     --ok:            #4ade80;   --ok-soft:     #10241a;
     --warn:          #fbbf24;   --warn-soft:   #2a1f0b;
     --danger:        #fb7185;   --danger-soft: #2b1216;
     --info:          #7dabff;   --info-soft:   #101d33;
     --neutral:       #94a3b8;   --neutral-soft:#1a222c;
+    --portal:        #0a5f56;   --portal-deep: #03231f;
+    --admin:         #312e81;   --admin-deep:  #12102e;
+    --portal-ink:    #ffffff;   /* اللوحة داكنة في الوضعين، فحبرها لا ينقلب */
+    --vip:           #fcd34d;   --vip-bright:  #fcd34d;
+    --scrim-bg:      rgb(0 0 0 / .62);
+    --tip-bg:        #2a3442;   --tip-text:    #e6edf3;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / .4);
     --shadow:    0 1px 3px rgb(0 0 0 / .5), 0 4px 12px rgb(0 0 0 / .3);
     --shadow-lg: 0 4px 12px rgb(0 0 0 / .5), 0 16px 32px rgb(0 0 0 / .4);
@@ -89,9 +136,16 @@
   --border:#242d39; --border-strong:#36414f;
   --text:#e6edf3; --text-muted:#9bA8b6; --text-faint:#6b7885;
   --brand:#2dd4bf; --brand-strong:#5eead4; --brand-soft:#0d2b28; --brand-text:#7fe7db;
+  --on-accent:#08100f;
   --ok:#4ade80; --ok-soft:#10241a; --warn:#fbbf24; --warn-soft:#2a1f0b;
   --danger:#fb7185; --danger-soft:#2b1216; --info:#7dabff; --info-soft:#101d33;
   --neutral:#94a3b8; --neutral-soft:#1a222c;
+  --portal:#0a5f56; --portal-deep:#03231f;
+  --admin:#312e81; --admin-deep:#12102e;
+  --portal-ink:#ffffff;
+  --vip:#fcd34d; --vip-bright:#fcd34d;
+  --scrim-bg:rgb(0 0 0 /.62);
+  --tip-bg:#2a3442; --tip-text:#e6edf3;
   --shadow-sm:0 1px 2px rgb(0 0 0 /.4);
   --shadow:0 1px 3px rgb(0 0 0 /.5), 0 4px 12px rgb(0 0 0 /.3);
   --shadow-lg:0 4px 12px rgb(0 0 0 /.5), 0 16px 32px rgb(0 0 0 /.4);
@@ -124,8 +178,15 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
 
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--r-sm); }
 
+/* توهّج التركيز فوق الإطار: الإطار وحده يضيع فوق الحدود الرمادية،
+   والهالة تجعل موضع لوحة المفاتيح ظاهرًا من طرف العين. */
+a:focus-visible, button:focus-visible, summary:focus-visible,
+.btn:focus-visible, .chip:focus-visible, .icon-btn:focus-visible,
+.nav-item:focus-visible, .swatch:focus-visible {
+  box-shadow: var(--ring);
+}
+
 /* ——— التخطيط ——— */
-.wrap { max-width: 1120px; margin-inline: auto; padding-inline: var(--s-4); }
 .stack > * + * { margin-block-start: var(--s-4); }
 .row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; min-inline-size: 0; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
@@ -139,55 +200,281 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
 @media (min-width: 640px)  { .grid-2 { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 960px)  { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
 
-/* ——— الترويسة ——— */
-.topbar {
+/* ============================================================
+   هيكل التطبيق — شريط جانبي ثابت ومحتوى بجانبه
+   ترتيب القواعد «موبايل أولًا»: الأساس هو الدرج المنزلق،
+   ثم تُرقّيه الاستعلامات إلى شريط مضغوط فشريط كامل.
+   ============================================================ */
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);   /* عمود واحد: الشريط خارج التدفّق */
+  min-block-size: 100dvh;
+}
+
+/* ——— الشريط العلوي: للموبايل وحده ——— */
+.appbar {
+  display: flex; align-items: center; gap: var(--s-2);
+  position: sticky; inset-block-start: 0; z-index: 30;
+  min-block-size: var(--appbar-h);
+  padding-inline: var(--s-2);
   background: var(--surface);
   border-block-end: 1px solid var(--border);
-  position: sticky; inset-block-start: 0; z-index: 20;
 }
-.topbar .wrap { display: flex; align-items: center; gap: var(--s-4); min-height: 60px; }
-.brand { display: flex; align-items: center; gap: var(--s-2); font-weight: 700; color: var(--text); text-decoration: none; }
+/* الشفافية والضباب ترفان: بلا دعم يبقى الشريط معتمًا ومقروءًا */
+@supports (backdrop-filter: blur(8px)) {
+  .appbar {
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+  }
+}
+
+/* ——— الشريط الجانبي ——— */
+.sidenav {
+  display: grid;
+  /* الرأس والذيل بحجم محتواهما، والقائمة وحدها تأخذ ما تبقّى وتُمرَّر.
+     ‎minmax(0,1fr)‎ لا ‎1fr‎: بدون الحدّ الأدنى صفرًا يرفض صفّ الشبكة
+     الانكماش تحت حجم محتواه فيخرج الذيل أسفل الشاشة بلا وسيلة للوصول إليه. */
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  position: fixed; inset-block: 0; inset-inline-start: 0; z-index: 50;
+  inline-size: min(300px, 86vw);
+  background: var(--surface);
+  border-inline-end: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  overscroll-behavior: contain;
+  /* RTL: ‎inset-inline-start‎ هو حافة الشاشة اليمنى، فالإخفاء إزاحة موجبة
+     نحو اليمين. ‎translateX(-100%)‎ هنا كان يدفع الدرج إلى منتصف الشاشة
+     ويتركه ظاهرًا فوق المحتوى دائمًا. */
+  transform: translateX(100%);
+  /* ‎visibility‎ لا ‎transform‎ وحده: عنصر مزاح خارج الشاشة يبقى قابلًا
+     لـ Tab، فيتنقّل مستخدم لوحة المفاتيح داخل قائمة لا يراها.
+     الانتقال على ‎visibility‎ متقطّع، فيتأخّر الإخفاء إلى نهاية الانزلاق. */
+  visibility: hidden;
+  transition: transform .24s var(--ease-out), visibility .24s var(--ease-out);
+}
+body.nav-open .sidenav { transform: none; visibility: visible; }
+/* قفل تمرير الخلفية: بدونه يمرّر الإصبع الصفحة خلف الدرج، فيغلق المستخدم
+   الدرج ليجد نفسه في موضع آخر من الصفحة بلا سبب يفهمه. */
+body.nav-open { overflow: hidden; }
+
+.sidenav-head {
+  display: flex; align-items: center; gap: var(--s-2);
+  min-block-size: 64px;
+  padding: var(--s-3);
+  border-block-end: 1px solid var(--border);
+}
+.sidenav-close { margin-inline-start: auto; }
+
+.sidenav-nav {
+  overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: var(--s-3) var(--s-3) var(--s-5);
+  scrollbar-width: thin;
+}
+
+.nav-group + .nav-group { margin-block-start: var(--s-4); }
+.nav-group-label {
+  display: block;
+  padding: var(--s-1) var(--s-3) var(--s-2);
+  font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em;
+  color: var(--text-faint);
+}
+
+.nav-item {
+  position: relative;   /* مرساة شريط التفعيل وفقاعة التلميح */
+  display: flex; align-items: center; gap: var(--s-3);
+  min-block-size: 42px;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--text-muted); text-decoration: none;
+  font-size: var(--t-sm); font-weight: 600;
+  transition: background .16s var(--ease), color .16s var(--ease), transform .16s var(--ease);
+}
+.nav-item + .nav-item { margin-block-start: 2px; }
+.nav-item:hover { background: var(--surface-sunk); color: var(--text); }
+
+.nav-ico { display: grid; place-items: center; inline-size: 20px; block-size: 20px; flex: none; }
+.nav-ico svg { inline-size: 18px; block-size: 18px; }
+.nav-label { flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.nav-item.is-active { background: var(--brand-soft); color: var(--brand-text); font-weight: 700; }
+.nav-item.is-active .nav-ico { color: var(--brand); }
+/* شريط على حافة البداية — في RTL هي الحافة اليمنى للعنصر.
+   الانحناء على الزاويتين الجانبيتين وحدهما حتى لا يبرز الشريط
+   خارج خلفية العنصر المنحنية. */
+.nav-item.is-active::before {
+  content: "";
+  position: absolute; inset-inline-start: 0; inset-block: 0;
+  inline-size: 3px;
+  background: var(--brand);
+  border-start-start-radius: var(--r-sm);
+  border-end-start-radius: var(--r-sm);
+}
+
+.pill {
+  display: inline-grid; place-items: center; flex: none;
+  min-inline-size: 18px; block-size: 18px; padding-inline: 5px;
+  border-radius: var(--r-full);
+  background: var(--danger); color: var(--on-accent);
+  font-size: 11px; font-weight: 800; line-height: 1;
+  unicode-bidi: isolate;
+}
+
+.sidenav-foot { padding: var(--s-3); border-block-start: 1px solid var(--border); }
+.who { display: flex; align-items: center; gap: var(--s-2); min-inline-size: 0; margin-block-end: var(--s-3); }
+.who-ava {
+  inline-size: 34px; block-size: 34px; flex: none;
+  border-radius: var(--r-full); display: grid; place-items: center;
+  background: var(--brand-soft); color: var(--brand-text);
+  font-weight: 800; font-size: var(--t-sm);
+}
+/* ‎justify-items:start‎ يضع الصندوقين عند حافة البداية بحسب اتجاه الحاوية،
+   فيستوي البريد ‎dir="ltr"‎ مع الاسم العربي بدل أن ينفصل إلى الطرف المقابل. */
+.who-text { display: grid; justify-items: start; min-inline-size: 0; line-height: 1.35; }
+.who-text b, .who-text small {
+  max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.who-text b { font-size: var(--t-sm); }
+.who-text small { font-size: var(--t-xs); color: var(--text-faint); }
+
+/* ——— الحجاب ——— */
+.scrim {
+  display: none;
+  position: fixed; inset-block: 0; inset-inline: 0; z-index: 40;
+  background: var(--scrim-bg);
+  /* الرؤية تُدار بـ ‎body.nav-open‎ لا بسمة ‎hidden‎: ‎display:none‎ يقطع
+     الانتقال، فيختفي الحجاب فجأة بينما الدرج ما زال ينزلق. */
+  opacity: 0; pointer-events: none;
+  transition: opacity .24s var(--ease-out);
+}
+/* ‎display‎ لا يتحرّك، فنفصله عن التلاشي: يُعرَض فورًا ثم يتلاشى داخلًا،
+   ويبقى معروضًا طوال الخروج لأن ‎body.nav-open‎ هي من تزيله. */
+body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
+
+/* ——— المحتوى ——— */
+.app-main { min-inline-size: 0; }   /* بدونه يرفض عمود الشبكة الانكماش فيمتدّ الجدول العريض بالصفحة كلها */
+.page {
+  max-inline-size: 1180px;
+  margin-inline: auto;
+  padding-inline: var(--s-4);
+  padding-block: var(--s-5) var(--s-8);
+}
+.page > * + * { margin-block-start: var(--s-4); }
+
+/* ——— العلامة ——— */
+.brand { display: flex; align-items: center; gap: var(--s-2); font-weight: 700; color: var(--text); text-decoration: none; min-inline-size: 0; }
 .brand-mark {
-  inline-size: 28px; block-size: 28px; border-radius: 8px;
+  inline-size: 28px; block-size: 28px; border-radius: 8px; flex: none;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   display: grid; place-items: center; color: #fff; font-size: var(--t-sm); font-weight: 800;
 }
-.nav { display: flex; gap: var(--s-1); flex-wrap: wrap; }
-.nav a {
-  padding: var(--s-2) var(--s-3); border-radius: var(--r-sm);
-  color: var(--text-muted); text-decoration: none; font-size: var(--t-sm); font-weight: 600;
-}
-.nav a:hover { background: var(--surface-sunk); color: var(--text); }
-.nav a[aria-current="page"] { background: var(--brand-soft); color: var(--brand-text); }
+.brand-name { display: grid; line-height: 1.2; min-inline-size: 0; }
+/* «Support VIP» مقطع لاتيني داخل صفحة RTL: العزل يمنع انزلاق الكلمتين
+   إلى ترتيب مقلوب حين يجاورهما رقم أو علامة ترقيم عربية. */
+.brand-name b { font-size: var(--t-base); font-weight: 800; unicode-bidi: isolate; }
+.brand-name small { font-size: var(--t-xs); color: var(--text-faint); letter-spacing: .14em; }
+.vip { color: var(--vip); font-weight: 900; }
+.brand-compact .brand-mark { inline-size: 26px; block-size: 26px; }
+.brand-compact .brand-name b { font-size: var(--t-sm); }
 
-/* الترويسة على الموبايل: صفّان بدل تكدّس العناصر في صف واحد ضيق */
-@media (max-width: 620px) {
-  .topbar .wrap {
-    flex-wrap: wrap;
-    row-gap: var(--s-2);
-    padding-block: var(--s-2);
-    align-items: center;
+/* ——— زر الأيقونة ——— */
+.icon-btn {
+  display: inline-grid; place-items: center; flex: none;
+  inline-size: 40px; block-size: 40px; padding: 0;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer;
+  transition: background .16s var(--ease), color .16s var(--ease), transform .12s var(--ease);
+}
+.icon-btn:hover { background: var(--surface-sunk); color: var(--text); }
+.icon-btn:active { transform: scale(.94); }
+.icon-btn svg { inline-size: 20px; block-size: 20px; }
+
+/* ——— ‎768px‎ فأعلى: الشريط ثابت والشريط العلوي ينصرف ——— */
+@media (min-width: 768px) {
+  .app { grid-template-columns: var(--nav-w-mini) minmax(0, 1fr); }
+  .appbar, .scrim { display: none; }
+
+  .sidenav {
+    position: sticky; inset-block-start: 0; z-index: 20;
+    inline-size: auto;          /* عمود الشبكة يحدّد العرض */
+    block-size: 100dvh;
+    transform: none; visibility: visible;
+    box-shadow: none;
   }
-  .topbar .brand { font-size: var(--t-sm); }
-  .topbar .brand span:last-child { white-space: nowrap; }
-  .nav {
-    order: 3;
-    /* يلتفّ ولا ينزلق. الشريط المنزلق كان يخفي «الفواتير» و«الاشتراك» خارج
-       الشاشة بلا أي إشارة إلى وجودهما — وجهتان كاملتان لا يراهما العميل.
-       سطران من الأزرار أطول بقليل، لكن كل شيء ظاهر، وهذا هو المطلوب. */
-    flex-wrap: wrap;
-    row-gap: var(--s-1);
-    padding-block-end: 2px;
-    /* الاختصار الكامل مقصود: القاعدة العامة .grow تضبط flex:1، وأي قاعدة
-       لاحقة بـ flex:none كانت تصفّر الانكماش فيتمدد الشريط ويمدّ الصفحة كلها. */
-    flex: 1 1 100%;
-    min-inline-size: 0;
+  .sidenav-close { display: none; }   /* لا درج يُغلق حين يكون الشريط ثابتًا */
+  .page { padding-inline: var(--s-5); }
+}
+
+/* ——— ‎768–1023px‎: شريط مضغوط بالأيقونات ——— */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* إخفاء بصري لا حذف: ‎.brand-mark‎ يحمل ‎aria-hidden‎، فحذف الاسم يترك
+     رابط الشعار بلا اسم مقروء، ويحرم القارئ الشاشي من عناوين المجموعات. */
+  .sidenav .brand-name,
+  .sidenav .nav-group-label,
+  .sidenav .who-text {
+    position: absolute; inline-size: 1px; block-size: 1px;
+    padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
-  .nav a {
-    white-space: nowrap;
-    padding-inline: var(--s-2);
-    font-size: var(--t-xs);
+  /* عناوين المجموعات اختفت، فيفصل بينها خطّ بدل أن تلتصق قائمة واحدة طويلة */
+  .nav-group + .nav-group {
+    margin-block-start: var(--s-3);
+    padding-block-start: var(--s-3);
+    border-block-start: 1px solid var(--border);
   }
+
+  .sidenav-head { justify-content: center; padding-inline: var(--s-1); }
+  .sidenav-foot { padding-inline: var(--s-2); }
+  .who { justify-content: center; }
+  .sidenav-nav { padding-inline: var(--s-2); }
+
+  .nav-item { justify-content: center; padding-inline: var(--s-1); }
+  .nav-item .pill {
+    position: absolute; inset-block-start: 2px; inset-inline-end: 8px;
+    min-inline-size: 16px; block-size: 16px; font-size: 10px; padding-inline: 4px;
+  }
+
+  /* فقاعة التلميح: ‎inset-inline-start:100%‎ في RTL يترجَم إلى ‎right:100%‎،
+     أي تُوضَع الفقاعة يسار العنصر — ناحية المحتوى — فتظهر داخل الشاشة.
+     الوجه الآخر (‎inset-inline-end‎) كان يدفعها خارج الحافة اليمنى تمامًا. */
+  .nav-label {
+    position: absolute; inset-inline-start: 100%; inset-block-start: 50%;
+    translate: 0 -50%;
+    margin-inline-start: var(--s-2);
+    z-index: 55;
+    padding: var(--s-1) var(--s-3);
+    border-radius: var(--r-sm);
+    background: var(--tip-bg); color: var(--tip-text);
+    font-size: var(--t-xs); font-weight: 600;
+    white-space: nowrap; overflow: visible; flex: none;
+    box-shadow: var(--shadow-lg);
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .14s var(--ease), visibility .14s var(--ease);
+  }
+  .nav-item:hover .nav-label,
+  .nav-item:focus-visible .nav-label { opacity: 1; visibility: visible; }
+
+  /* الفقاعة تخرج من صندوق الشريط، فلا يجوز أن يقصّها تمرير.
+     تسع القائمة كاملة هنا: تسعة عناصر × ‎44px‎ أقلّ من ارتفاع أي لوح. */
+  .sidenav, .sidenav-nav { overflow: visible; }
+
+  /* زر الخروج يصير أيقونة. ‎font-size:0‎ لا ‎display:none‎ على النص:
+     النص يبقى في الشجرة فيظلّ الزر مسمّى للقارئ الشاشي. */
+  .sidenav-foot .btn { font-size: 0; gap: 0; padding-inline: 0; min-block-size: 38px; }
+  .sidenav-foot .btn svg { inline-size: 18px; block-size: 18px; }
+}
+
+/* شاشة قصيرة فعلًا: عاد التمرير وضاعت الفقاعة.
+   عنصر تنقّل لا يُوصَل إليه عطل، والتلميح ترف. */
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 620px) {
+  .sidenav-nav { overflow-y: auto; overflow-x: hidden; }
+  .nav-label { display: none; }
+}
+
+/* ——— ‎1024px‎ فأعلى: الشريط كامل بأسمائه ——— */
+@media (min-width: 1024px) {
+  .app { grid-template-columns: var(--nav-w) minmax(0, 1fr); }
+  .page { padding-inline: var(--s-6); padding-block: var(--s-6) var(--s-8); }
 }
 
 /* ——— البطاقات ——— */
@@ -247,11 +534,10 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
   unicode-bidi: isolate; direction: ltr;
 }
 .ring-track { stroke: var(--surface-sunk); }
-.ring-fill  { stroke-linecap: round; transition: stroke-dashoffset .6s cubic-bezier(.22,.61,.36,1); }
+.ring-fill  { stroke-linecap: round; }
 
 /* ——— كرت الموقع ——— */
 .site-card { display: flex; gap: var(--s-4); align-items: flex-start; text-decoration: none; color: inherit; }
-.site-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow); }
 .site-card .site-name { font-weight: 700; font-size: var(--t-md); margin-block-end: 2px; }
 .site-card .site-url { font-size: var(--t-sm); color: var(--text-faint); word-break: break-all; }
 
@@ -284,13 +570,17 @@ tbody tr:last-child td { border-block-end: none; }
   background: var(--surface); color: var(--text);
   font: inherit; font-size: var(--t-sm); font-weight: 600;
   cursor: pointer; text-decoration: none;
-  transition: background .15s, border-color .15s, transform .1s;
+  transition: background .16s var(--ease), border-color .16s var(--ease),
+              color .16s var(--ease), transform .12s var(--ease);
 }
 .btn:hover { background: var(--surface-sunk); }
-.btn:active { transform: translateY(1px); }
+/* ضغطة تُحسّ: التصغير يعطي ارتدادًا لمسيًّا لا يعطيه تغيّر اللون وحده */
+.btn:active { transform: scale(.98); }
 .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
 .btn-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
 .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-ghost { background: transparent; border-color: var(--border); color: var(--text-muted); }
+.btn-ghost:hover { background: var(--surface-sunk); color: var(--text); border-color: var(--border-strong); }
 .btn-sm { min-block-size: 30px; padding: var(--s-1) var(--s-3); font-size: var(--t-xs); }
 .btn-block { inline-size: 100%; }
 
@@ -305,6 +595,7 @@ input[type="number"], input[type="date"], select, textarea {
   border: 1px solid var(--border-strong); border-radius: var(--r-sm);
   background: var(--surface); color: var(--text);
   font: inherit; font-size: var(--t-base);
+  transition: border-color .16s var(--ease), box-shadow .16s var(--ease);
 }
 textarea { min-block-size: 110px; resize: vertical; line-height: 1.7; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: var(--ring); }
@@ -318,61 +609,229 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .alert-info   { background: var(--info-soft);   color: var(--info); }
 
 /* ——— المخططات (SVG مولّد من السيرفر) ——— */
-.chart { inline-size: 100%; block-size: auto; display: block; }
-.chart { block-size: 140px; }
+.chart { inline-size: 100%; block-size: 140px; display: block; }
 /* non-scaling-stroke يبقي سُمك الخط ثابتًا رغم تمديد الـ viewBox أفقيًا */
 .chart-line { fill: none; stroke: var(--brand); stroke-width: 2; stroke-linejoin: round;
               vector-effect: non-scaling-stroke; }
 .chart-area { fill: var(--brand); opacity: .08; }
 .chart-grid { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.chart-label { fill: var(--text-faint); font-size: 10px; font-family: var(--font); }
 
 .uptime-bar { display: flex; gap: 2px; align-items: stretch; block-size: 34px; }
 .uptime-bar span { flex: 1; border-radius: 2px; min-inline-size: 3px; }
 .up-ok   { background: var(--ok); }
 .up-bad  { background: var(--danger); }
-.up-gap  { background: repeating-linear-gradient(45deg, var(--border) 0 3px, transparent 3px 6px); }
 .up-none { background: var(--surface-sunk); }
 
 /* ——— الحالة الفارغة ——— */
 .empty { text-align: center; padding: var(--s-7) var(--s-4); color: var(--text-muted); }
 .empty svg { inline-size: 40px; block-size: 40px; opacity: .35; margin-block-end: var(--s-3); }
 
-/* ——— صفحة الدخول ——— */
-.auth-page { min-block-size: 100dvh; display: grid; place-items: center; padding: var(--s-4); }
-.auth-card { inline-size: 100%; max-inline-size: 400px; }
+/* ============================================================
+   بوابتا الدخول
+   ============================================================ */
+.auth-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-block-size: 100dvh;
+}
+
+.auth-main {
+  display: grid; place-items: center;
+  min-inline-size: 0;
+  padding: var(--s-6) var(--s-4);
+}
+.auth-card {
+  inline-size: 100%; max-inline-size: 440px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: var(--s-6) var(--s-5);
+}
 .auth-head { text-align: center; margin-block-end: var(--s-5); }
 .auth-head .brand-mark { inline-size: 44px; block-size: 44px; margin-inline: auto; margin-block-end: var(--s-3); font-size: var(--t-base); }
 
-/* ——— الحركة: هادفة وخفيفة، وتحترم تفضيل المستخدم ——— */
-@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.rise { animation: rise .32s cubic-bezier(.22,.61,.36,1) both; }
-.rise:nth-child(2) { animation-delay: .04s; }
-.rise:nth-child(3) { animation-delay: .08s; }
-.rise:nth-child(4) { animation-delay: .12s; }
+/* اللوحة التعريفية تنصرف تمامًا تحت ‎900px‎: نصف شاشة زينة فوق نموذج
+   مضغوط أسوأ من نموذج وحده يملأ الشاشة. */
+.auth-aside { display: none; }
 
+@media (min-width: 900px) {
+  .auth-shell { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
+  /* النموذج في عمود البداية — يمين الشاشة في RTL — لأنه المقصود من الصفحة،
+     وعين القارئ العربي تبدأ من هناك. اللوحة زينة تأتي بعده. */
+  .auth-main  { grid-area: 1 / 1; }
+  .auth-aside { grid-area: 1 / 2; }
+
+  .auth-aside {
+    display: grid; align-items: center;
+    position: relative; overflow: hidden;   /* يقصّ الكرتين الضوئيتين فلا تمدّان الصفحة أفقيًا */
+    padding: var(--s-8) var(--s-7);
+    background: linear-gradient(155deg, var(--portal) 0%, var(--portal-deep) 100%);
+    color: var(--portal-ink);
+  }
+  body[data-portal="admin"] .auth-aside {
+    background: linear-gradient(155deg, var(--admin) 0%, var(--admin-deep) 100%);
+  }
+}
+
+.auth-aside-in { position: relative; z-index: 0; max-inline-size: 46ch; margin-inline: auto; }
+/* الكرتان تليان النص في الـ DOM، فبلا ترتيب صريح ترسمان فوق الحروف */
+.auth-aside-in > :not(.auth-orb) { position: relative; z-index: 1; }
+
+.auth-aside h2 { font-size: var(--t-2xl); color: var(--portal-ink); margin-block: var(--s-5) var(--s-3); }
+.auth-aside p  { color: color-mix(in srgb, var(--portal-ink) 82%, transparent); font-size: var(--t-md); line-height: 1.9; }
+.auth-aside .brand-name b,
+.auth-aside .brand-mark { color: var(--portal-ink); }
+.auth-aside .brand-mark { background: color-mix(in srgb, var(--portal-ink) 18%, transparent); }
+.auth-aside .brand-name small { color: color-mix(in srgb, var(--portal-ink) 66%, transparent); }
+.auth-aside .vip { color: var(--vip-bright); }
+.auth-brand { display: inline-flex; align-items: center; gap: var(--s-2); }
+
+.auth-points { list-style: none; margin: var(--s-6) 0 0; padding: 0; display: grid; gap: var(--s-3); }
+.auth-points li {
+  display: flex; align-items: flex-start; gap: var(--s-3);
+  font-size: var(--t-sm);
+  color: color-mix(in srgb, var(--portal-ink) 88%, transparent);
+}
+.auth-points svg { flex: none; inline-size: 18px; block-size: 18px; margin-block-start: 3px; color: var(--vip-bright); }
+
+.auth-orb {
+  position: absolute; z-index: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--portal-ink) 34%, transparent) 0%, transparent 70%);
+  filter: blur(14px);
+}
+.auth-orb-1 {
+  inline-size: 340px; block-size: 340px;
+  inset-block-start: -110px; inset-inline-end: -90px;
+  animation: orb-a 17s ease-in-out infinite alternate;
+}
+.auth-orb-2 {
+  inline-size: 260px; block-size: 260px;
+  inset-block-end: -90px; inset-inline-start: -70px;
+  animation: orb-b 23s ease-in-out infinite alternate;
+}
+@keyframes orb-a { to { transform: translate3d(-7%, 9%, 0) scale(1.14); } }
+@keyframes orb-b { to { transform: translate3d(8%, -7%, 0) scale(.88); } }
+
+/* غلاف قديم بقي في صفحتَي «تفعيل الحساب» و«كلمة سر جديدة»:
+   يبقى محايدًا داخل ‎.auth-card‎ الجديدة، وإلا صار ارتفاعه ‎100dvh‎
+   داخل بطاقة بارتفاع محتواها. */
+.auth-page { display: contents; }
+/* وإن بقيت بطاقة داخل بطاقة، لا تتضاعف الحواف والظلال */
+.auth-card .card, .auth-card .auth-card {
+  background: none; border: 0; box-shadow: none; padding: 0; max-inline-size: none;
+}
+
+/* ============================================================
+   طبقة الحركة
+   ============================================================ */
+
+/* ——— انتقال الصفحات ——— */
+@view-transition { navigation: auto; }
+
+/* الشريط والقائمة العلوية لا يتغيّران بين صفحة وأخرى: تسميتهما تُخرجهما
+   من لقطة الجذر، فلا يومضان مع كل تنقّل كما لو أُعيد بناء الواجهة. */
+.sidenav { view-transition-name: sidenav; }
+.appbar { view-transition-name: appbar; }
+.nav-progress { view-transition-name: navprogress; }
+
+::view-transition-old(root) { animation: vt-out .16s var(--ease) both; }
+::view-transition-new(root) { animation: vt-in .28s var(--ease) both; }
+/* لا نكتب الإطار الأخير: تركه ضمنيًّا يجعل القيمة النهائية هي قيمة العنصر
+   من التتالي، فلا يقفل ‎fill: both‎ الخاصية أمام ‎:hover‎ بعد انتهاء الحركة. */
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in  { from { opacity: 0; transform: translateY(8px); } }
+
+/* المتصفحات بلا View Transitions: تلاشٍ عند المغادرة يضيفه app.js بصنف */
+:root.no-vt body { transition: opacity .16s var(--ease); }
+:root.no-vt body.is-leaving { opacity: 0; }
+
+/* ——— شريط تقدّم التنقّل ——— */
+.nav-progress {
+  position: fixed; inset-block-start: 0; inset-inline: 0; z-index: 60;
+  block-size: 3px; pointer-events: none;
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+}
+.nav-progress span {
+  display: block; block-size: 100%;
+  /* app.js يكتب القيمة عرضًا مضمّنًا وكمتغيّر معًا؛ نقرأ المتغيّر هنا
+     حتى لا يبقى الشريط صفريًّا لو تغيّرت طريقة الكتابة يومًا. */
+  inline-size: var(--nav-progress, 0%);
+  background: linear-gradient(to left, var(--brand), var(--brand-strong));
+  border-start-end-radius: 3px; border-end-end-radius: 3px;
+  /* الزحف يأتي من rAF إطارًا إطارًا؛ الانتقال يخصّ القفزة الأخيرة
+     من ‎~90%‎ إلى ‎100%‎ فلا تبدو انقطاعًا. */
+  transition: inline-size .18s var(--ease-out);
+}
+
+/* ——— دخول المحتوى ——— */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+.page > *, .rise { animation: rise .42s var(--ease) both; }
+/* التدرّج يقف عند السادس: تأخير يتجاوز ‎.25s‎ يُقرأ بطئًا لا رشاقة */
+.page > *:nth-child(2), .rise:nth-child(2) { animation-delay: .05s; }
+.page > *:nth-child(3), .rise:nth-child(3) { animation-delay: .10s; }
+.page > *:nth-child(4), .rise:nth-child(4) { animation-delay: .15s; }
+.page > *:nth-child(5), .rise:nth-child(5) { animation-delay: .20s; }
+.page > *:nth-child(n+6), .rise:nth-child(n+6) { animation-delay: .25s; }
+
+/* الكشف عند التمرير — app.js يضيف ‎.in-view‎.
+   الحالة المخفية مشروطة بصنف يضعه app.js على ‎<html>‎ مبكّرًا: لو لم يعمل
+   السكربت أصلًا يبقى المحتوى ظاهرًا بدل أن يختفي إلى الأبد. */
+:root.has-vt [data-reveal],
+:root.no-vt  [data-reveal] {
+  opacity: 0; transform: translateY(12px);
+  transition: opacity .5s var(--ease), transform .5s var(--ease);
+}
+:root.has-vt [data-reveal].in-view,
+:root.no-vt  [data-reveal].in-view { opacity: 1; transform: none; }
+
+/* ——— تفاعلات دقيقة ——— */
+@media (hover: hover) and (pointer: fine) {
+  /* مشروطة بمؤشّر دقيق: على اللمس يعلق ‎:hover‎ بعد النقر فيبقى الكرت
+     مرفوعًا بلا سبب حتى يلمس المستخدم شيئًا آخر. */
+  .card { transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .16s var(--ease); }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--border-strong); }
+  .site-card:hover, .kb-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--brand); }
+  .mvp:hover { box-shadow: var(--shadow-lg); }
+  /* RTL: السالب يزيح نحو اليسار، أي نحو المحتوى — العنصر يميل إلى ما يفتحه */
+  .nav-item:hover { transform: translateX(-2px); }
+  .chip { transition: background .16s var(--ease), border-color .16s var(--ease), transform .12s var(--ease); }
+  .chip:active { transform: scale(.98); }
+}
+
+/* ——— رسم حلقة الصحة ——— */
+/* نحرّك ‎stroke-dasharray‎ لا ‎stroke-dashoffset‎ وحده: طول المحيط يحسبه
+   السيرفر ويكتبه سمةً على العنصر، وCSS لا تعرفه. البدء من شرطة طولها صفر
+   يخفي الحلقة بلا معرفة المحيط، والإطار الأخير الضمني يعيدها إلى قيمتي
+   السمتين بالضبط — فلا تُكسَر الدرجة المحسوبة مهما كان حجم الحلقة. */
+@keyframes ring-draw { from { stroke-dasharray: 0 3000; stroke-dashoffset: 0; } }
+.ring-fill { animation: ring-draw .9s var(--ease) both; }
+
+/* ——— فقاعات الشات ——— */
+@keyframes pop { from { opacity: 0; transform: scale(.96); } }
+.msg-new { animation: pop .2s var(--ease) both; }
+
+/* ——— احترام تفضيل تقليل الحركة ——— */
+/* ‎@view-transition‎ في كتلة مستقلّة: لو رفض متصفّح تعشيشها لم يُسقط معها
+   بقية قواعد تقليل الحركة. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  @view-transition { navigation: none; }
 }
-
-/* ——— الطباعة (للفواتير — بديل مكتبة PDF) ——— */
-@media print {
-  .topbar, .no-print, .btn { display: none !important; }
-  body { background: #fff; color: #000; }
-  .card { border: 1px solid #999; box-shadow: none; break-inside: avoid; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+  /* الحركة هي ما كان يكشف هذه العناصر؛ بلا حركة تحتاج من يكشفها،
+     وإلا اختفى محتوى بدل أن تختفي حركة. شريط التقدّم يبقى ظاهرًا ساكنًا
+     لأن الإخبار بأن شيئًا يجري حقّ لا زينة. */
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+  .nav-progress span { inline-size: var(--nav-progress, 90%); }
 }
-
-/* ——— تجاوز للقراء ——— */
-.sr-only {
-  position: absolute; inline-size: 1px; block-size: 1px;
-  padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-}
-.skip-link {
-  position: absolute; inset-block-start: -100px; inset-inline-start: var(--s-4);
-  background: var(--brand); color: #fff; padding: var(--s-2) var(--s-4);
-  border-radius: var(--r-sm); z-index: 100;
-}
-.skip-link:focus { inset-block-start: var(--s-2); }
 
 /* ============================================================
    الدفع والاشتراك
@@ -408,7 +867,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .pay-amount b { font-size: var(--t-lg); }
 
 .btn-whatsapp { background: #1ea952; border-color: #1ea952; color: #fff; font-weight: 700; }
-.btn-whatsapp:hover { background: #17864181; background: #178641; border-color: #178641; }
+.btn-whatsapp:hover { background: #178641; border-color: #178641; }
 
 /* صفحة القفل */
 .lock-card { text-align: center; }
@@ -482,17 +941,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 /* صورة سامي تظهر مرة واحدة لكل مجموعة — كما يفعل ماسنجر بالضبط */
 .msg-ava { inline-size: 32px; block-size: 32px; flex: none; color: var(--chat-accent); }
 .msg-ava-spacer { inline-size: 32px; flex: none; }
-.msg-bot .msg-body { background: var(--surface-sunk); border-color: var(--border); }
-.msg-bot .msg-body b { color: var(--chat-accent); }
-.bullet { color: var(--chat-accent); font-weight: 800; }
+
+/* فقاعة المساعد — لونها من لون الشات لا من الرمادي المحايد */
+.msg-bot .msg-body { background: var(--brand-soft); border-color: transparent; color: var(--text); }
+.msg-bot .msg-body b { color: var(--brand-text); }
+.bullet { color: var(--brand); font-weight: 800; }
+.msg-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-2); }
+.msg-actions form { display: inline-flex; gap: var(--s-1); }
 
 .msg-system { align-self: center; max-inline-size: 100%; }
 .msg-system .msg-body {
   background: transparent; border: none; color: var(--text-faint);
   font-size: var(--t-sm); text-align: center; padding-block: var(--s-2);
 }
-.msg-new { animation: pop .22s cubic-bezier(.22,.61,.36,1) both; }
-@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 
 /* ——— مؤشر «يكتب…» ——— */
 .typing { display: none; align-items: center; gap: var(--s-2); padding: 0 var(--s-4) var(--s-3); }
@@ -511,7 +972,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .typing-bubble i:nth-child(3) { animation-delay: .36s; }
 @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
 
-/* ——— ملاحظة داخلية ——— */
+/* ——— ملاحظة داخلية — لا بد أن تبدو مختلفة تمامًا حتى لا تُرسَل للعميل سهوًا ——— */
 .msg-internal { max-inline-size: 100%; align-self: stretch; }
 .msg-internal .msg-body {
   background: repeating-linear-gradient(135deg, var(--warn-soft) 0 10px, transparent 10px 20px);
@@ -539,8 +1000,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   border-radius: 50%; border: none; cursor: pointer;
   background: var(--chat-accent); color: var(--chat-accent-text);
   display: grid; place-items: center;
+  transition: filter .16s var(--ease), transform .12s var(--ease);
 }
 .chat-send:hover { filter: brightness(1.08); }
+.chat-send:active { transform: scale(.94); }
 .chat-send:disabled { opacity: .5; cursor: default; }
 .chat-send svg { inline-size: 19px; block-size: 19px; }
 
@@ -554,6 +1017,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   inline-size: 26px; block-size: 26px; border-radius: 50%; padding: 0;
   border: 2px solid transparent; cursor: pointer; flex: none;
   box-shadow: 0 0 0 1px var(--border) inset;
+  transition: transform .16s var(--ease), border-color .16s var(--ease);
 }
 .swatch[aria-pressed="true"] { border-color: var(--text); transform: scale(1.12); }
 
@@ -568,13 +1032,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   background: var(--brand-soft); color: var(--brand-text); }
 .thread-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-inline-size: 60vw; }
 .thread-live { border-inline-start: 3px solid var(--danger); }
-
-.nav a .pill {
-  display: inline-grid; place-items: center; min-inline-size: 18px; block-size: 18px;
-  padding-inline: 5px; border-radius: var(--r-full);
-  background: var(--danger); color: #fff; font-size: 11px; font-weight: 800;
-  margin-inline-start: var(--s-1);
-}
 
 /* ——— سامي ——— */
 .sami { display: inline-block; line-height: 0; color: var(--chat-accent, var(--brand)); }
@@ -595,11 +1052,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .bot-intro { display: flex; gap: var(--s-4); align-items: flex-start; --chat-accent: var(--brand); }
 .bot-intro .sami { flex: none; }
 .bot-intro p { margin: 0; line-height: 1.8; }
-.bot-avatar {
-  inline-size: 44px; block-size: 44px; border-radius: var(--r-full); flex: none;
-  display: grid; place-items: center; font-size: 22px;
-  background: var(--brand-soft);
-}
 
 /* رقائق المواضيع والإجراءات */
 .chip {
@@ -621,31 +1073,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   background: var(--surface-sunk);
 }
 
-/* فقاعة المساعد */
-.msg-bot .msg-body {
-  background: var(--brand-soft); border-color: transparent; color: var(--text);
-}
-.msg-bot .msg-body b { color: var(--brand-text); }
-.bullet { color: var(--brand); font-weight: 800; }
-.msg-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-2); }
-.msg-actions form { display: inline-flex; gap: var(--s-1); }
-
-/* ملاحظة داخلية — لا بد أن تبدو مختلفة تمامًا حتى لا تُرسَل للعميل سهوًا */
-.msg-internal { max-inline-size: 100%; }
-.msg-internal .msg-body {
-  background: repeating-linear-gradient(135deg, var(--warn-soft) 0 10px, transparent 10px 20px);
-  border: 1px dashed var(--warn); color: var(--text); font-size: var(--t-sm);
-}
-.msg-tag {
-  font-size: var(--t-xs); font-weight: 700; color: var(--warn);
-  display: flex; align-items: center; gap: var(--s-1); margin-block-end: var(--s-1);
-}
-.msg-tag svg { inline-size: 13px; block-size: 13px; }
-
-.msg-system .msg-body { text-align: center; }
-
-.thread-live { border-inline-start: 3px solid var(--danger); }
-
 .canned { border-block-start: 1px solid var(--border); padding: var(--s-3) var(--s-4); }
 .canned summary { cursor: pointer; font-size: var(--t-sm); font-weight: 600; }
 .canned-list { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-3); }
@@ -654,8 +1081,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .kb-grid { display: grid; gap: var(--s-3); }
 @media (min-width: 720px) { .kb-grid { grid-template-columns: 1fr 1fr; } }
 .kb-card { display: block; padding: var(--s-4); text-decoration: none; color: inherit;
-  border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); }
-.kb-card:hover { border-color: var(--brand); }
+  border: 1px solid var(--border); border-radius: var(--r); background: var(--surface);
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .16s var(--ease); }
 .kb-card h3 { margin-block-end: var(--s-1); }
 .kb-body { line-height: 1.9; white-space: pre-wrap; }
 
@@ -665,12 +1092,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   .bot-intro { flex-direction: column; }
 }
 
-/* ——— مركز الدعم على طراز هوستنجر ——— */
+/* ——— مركز الدعم ——— */
 .hero-support { display: flex; gap: var(--s-5); align-items: center; --chat-accent: var(--brand); }
 .hero-support .sami { flex: none; }
 .hero-support h1 { margin-block-end: var(--s-1); }
-.search-card { padding: var(--s-4); }
-.search-card input { min-block-size: 46px; border-radius: var(--r); }
 .new-conv { min-block-size: 52px; font-size: var(--t-md); }
 .closed-note {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
@@ -682,4 +1107,221 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 @media (max-width: 620px) {
   .hero-support { flex-direction: column; text-align: center; }
   .closed-note { flex-direction: column; align-items: stretch; text-align: center; }
+}
+
+/* ——— الطباعة (للفواتير — بديل مكتبة PDF) ——— */
+@media print {
+  .appbar, .sidenav, .scrim, .nav-progress, .no-print, .btn { display: none !important; }
+  body { background: #fff; color: #000; }
+  .app { display: block; }
+  .page { max-inline-size: none; padding: 0; }
+  .card { border: 1px solid #999; box-shadow: none; break-inside: avoid; }
+  /* الكشف عند التمرير لا معنى له على الورق: بدون هذا السطر تُطبع الصفحة
+     ببطاقاتها الأولى فقط وبقيتها بيضاء، لأنها لم تدخل نطاق الرؤية قط. */
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+  /* والأقسام المطويّة تُفتح كلها: ورقة فيها عناوين بلا محتواها بلا فائدة */
+  details { display: block !important; }
+  details > :not(summary) { display: revert !important; }
+}
+
+/* ——— تجاوز للقراء ——— */
+.sr-only {
+  position: absolute; inline-size: 1px; block-size: 1px;
+  padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.skip-link {
+  position: absolute; inset-block-start: -100px; inset-inline-start: var(--s-4);
+  background: var(--brand); color: #fff; padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-sm); z-index: 100;
+}
+.skip-link:focus { inset-block-start: var(--s-2); }
+
+/* ============================================================
+   القالب المجرّد — لمن لا جلسة له (صفحات الخطأ)
+   ============================================================ */
+/* ليس قالب دخول: من وصل إلى رابط منتهٍ لا يُعرض عليه نصف شاشة تسويق. */
+.bare-shell {
+  min-block-size: 100dvh;
+  display: grid; align-content: center; justify-items: center;
+  gap: var(--s-6);
+  padding: var(--s-7) var(--s-4);
+}
+.bare-brand { text-decoration: none; }
+.bare-body { inline-size: 100%; max-inline-size: 520px; }
+
+/* ============================================================
+   نموذج الدخول — الحقول وما حولها
+   ============================================================ */
+.auth-form { gap: var(--s-4); }
+
+.auth-tag {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-full);
+  background: var(--brand-soft); color: var(--brand-text);
+  font-size: var(--t-xs); font-weight: 700;
+  margin-block-end: var(--s-3);
+}
+body[data-portal="admin"] .auth-tag {
+  background: color-mix(in srgb, var(--admin) 16%, transparent);
+  color: color-mix(in srgb, var(--admin) 78%, var(--text));
+}
+
+/* زر إظهار كلمة السر داخل الحقل. الحقل ‎dir="ltr"‎ والزر في نهايته
+   البصرية — ‎inset-inline-end‎ داخل حاوية ‎dir‎ افتراضي يضعه في اليسار،
+   وهو اليسار الذي نريده لأن النص اللاتيني يبدأ من اليمين هنا. */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { inline-size: 100%; padding-inline-end: calc(var(--tap) - var(--s-2)); }
+.pw-toggle {
+  position: absolute; inset-block: 4px; inset-inline-end: 4px;
+  inline-size: 38px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--text-faint);
+  cursor: pointer;
+}
+.pw-toggle:hover { color: var(--text); background: var(--surface-sunk); }
+.pw-toggle[aria-pressed="true"] { color: var(--brand); }
+.pw-toggle svg { inline-size: 18px; block-size: 18px; }
+
+.pw-rules {
+  list-style: none; margin: 0; padding: var(--s-3);
+  border-radius: var(--r); background: var(--surface-sunk);
+  display: grid; gap: var(--s-2);
+  font-size: var(--t-xs); color: var(--text-muted);
+}
+.pw-rules li { display: flex; align-items: center; gap: var(--s-2); }
+.pw-rules svg { flex: none; inline-size: 14px; block-size: 14px; color: var(--text-faint); }
+
+.auth-help { margin-block-start: var(--s-5); }
+.auth-help > summary {
+  cursor: pointer; font-size: var(--t-sm); font-weight: 600;
+  color: var(--text-muted); padding-block: var(--s-2);
+}
+.auth-help > summary:hover { color: var(--brand-text); }
+.auth-help[open] > summary { margin-block-end: var(--s-3); }
+
+.auth-note {
+  display: flex; align-items: flex-start; gap: var(--s-2);
+  margin-block-start: var(--s-5);
+}
+.auth-note svg { flex: none; margin-block-start: 2px; }
+
+.auth-switch {
+  margin-block: var(--s-5) 0;
+  padding-block-start: var(--s-4);
+  border-block-start: 1px solid var(--border);
+  text-align: center; font-size: var(--t-sm); color: var(--text-muted);
+}
+.auth-switch a { font-weight: 700; }
+
+.btn-lg { padding: var(--s-3) var(--s-5); font-size: var(--t-md); min-block-size: var(--tap); }
+
+/* ============================================================
+   مواضيع المساعدة في صفحة الدعم — بديل صندوق البحث الملغى
+   ============================================================ */
+.topics-title {
+  display: flex; align-items: center; gap: var(--s-2);
+  font-size: var(--t-md); margin-block: 0 var(--s-3);
+}
+.topics-list { display: grid; gap: var(--s-1); }
+.topic-link {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r);
+  color: var(--text); text-decoration: none;
+  min-block-size: var(--tap);
+  transition: background .16s var(--ease), transform .16s var(--ease);
+}
+.topic-link:hover { background: var(--surface-sunk); }
+/* السهم يشير إلى جهة القراءة، و‎scaleX(-1)‎ يقلبه ليشير لليسار في RTL */
+.topic-link svg { flex: none; opacity: .45; transform: scaleX(-1); }
+.topic-link:hover svg { opacity: 1; color: var(--brand); }
+.topics-all {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  margin-block-start: var(--s-3); font-size: var(--t-sm); font-weight: 600;
+}
+.topics-all svg { transform: scaleX(-1); }
+
+/* ============================================================
+   دليلا الاستخدام
+   ============================================================ */
+.guide-hero { display: flex; align-items: center; gap: var(--s-5); }
+.guide-hero h1 { margin-block: 0 var(--s-2); }
+.guide-hero-ico {
+  flex: none; inline-size: 56px; block-size: 56px;
+  display: grid; place-items: center;
+  border-radius: var(--r-lg);
+  background: var(--brand-soft); color: var(--brand-text);
+}
+.guide-hero-ico svg { inline-size: 26px; block-size: 26px; }
+
+.guide-glance { background: var(--brand-soft); border-color: transparent; }
+.guide-glance h2 {
+  display: flex; align-items: center; gap: var(--s-2);
+  font-size: var(--t-md); color: var(--brand-text); margin-block: 0 var(--s-3);
+}
+.guide-glance ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.guide-glance li { display: flex; align-items: flex-start; gap: var(--s-2); font-size: var(--t-sm); }
+.guide-glance li svg { flex: none; margin-block-start: 4px; color: var(--brand); }
+
+.guide-sec { padding: 0; overflow: hidden; }
+.guide-sec > summary {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  cursor: pointer; font-weight: 700;
+  list-style: none;                 /* المثلّث الافتراضي يظهر في الجهة الخطأ تحت RTL */
+  min-block-size: var(--tap);
+}
+.guide-sec > summary::-webkit-details-marker { display: none; }
+.guide-sec > summary:hover { background: var(--surface-sunk); }
+.guide-num {
+  flex: none; inline-size: 28px; block-size: 28px;
+  display: grid; place-items: center;
+  border-radius: var(--r-full);
+  background: var(--brand-soft); color: var(--brand-text);
+  font-size: var(--t-xs); font-weight: 800;
+}
+.guide-caret { flex: none; color: var(--text-faint); transition: transform .2s var(--ease); }
+.guide-caret svg { transform: rotate(-90deg); }
+.guide-sec[open] .guide-caret { transform: rotate(-180deg); }
+
+.guide-body { padding: 0 var(--s-5) var(--s-5); border-block-start: 1px solid var(--border); padding-block-start: var(--s-4); }
+.guide-why { color: var(--text-muted); margin-block: 0 var(--s-3); }
+.guide-steps { margin: 0; padding-inline-start: var(--s-5); display: grid; gap: var(--s-2); }
+.guide-steps li { padding-inline-start: var(--s-1); }
+.guide-note {
+  display: flex; align-items: flex-start; gap: var(--s-2);
+  margin-block: var(--s-4) 0; padding: var(--s-3);
+  border-radius: var(--r);
+  background: var(--warn-soft); color: var(--text);
+  font-size: var(--t-sm);
+  /* الحدّ على حافة البداية: تحت RTL هي اليمين، حيث تبدأ العين */
+  border-inline-start: 3px solid var(--warn);
+}
+.guide-note svg { flex: none; margin-block-start: 3px; color: var(--warn); }
+
+.guide-cta { text-align: center; }
+.guide-cta h2 { margin-block: 0 var(--s-2); }
+.guide-cta p { margin-block: 0 var(--s-4); }
+
+@media (max-width: 520px) {
+  .guide-hero { flex-direction: column; text-align: center; }
+  .guide-sec > summary { padding-inline: var(--s-4); }
+  .guide-body { padding-inline: var(--s-4); }
+}
+
+/* أيقونتا الإظهار/الإخفاء في مكان واحد: التبديل بالإظهار لا باستبدال
+   الـ HTML، فلا يُعاد بناء الزر ولا يقفز التخطيط عند الضغط. */
+.pw-toggle .pw-hide { display: none; }
+.pw-toggle[aria-pressed="true"] .pw-show { display: none; }
+.pw-toggle[aria-pressed="true"] .pw-hide { display: block; }
+
+/* اللوحة التعريفية تنصرف تحت ‎900px‎، فتتشابه البوابتان على الموبايل ولا يبقى
+   ما يميّز بوابة الإدارة إلا شارة صغيرة. شريط علوي بلون الإدارة يكفي ليعرف
+   الداخل من الهاتف أين هو قبل أن يكتب كلمة سره. */
+body[data-portal="admin"] .auth-main { border-block-start: 4px solid var(--admin); }
+body[data-portal="admin"] .auth-card { border-color: color-mix(in srgb, var(--admin) 35%, var(--border)); }
+@media (min-width: 900px) {
+  body[data-portal="admin"] .auth-main { border-block-start: 0; }
 }

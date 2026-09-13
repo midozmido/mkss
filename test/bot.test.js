@@ -98,12 +98,17 @@ test('سؤال بلا إجابة يعرض احتمالات وينتهي بعرض
   assert.ok(Array.isArray(meta.suggestions) && meta.suggestions.length > 0, 'لم يقدّم أي احتمالات');
 });
 
+// الأسئلة هنا **داخل المجال** عمدًا (فيها «موقع» و«متجر») لكن لا إجابة لها
+// في القاعدة. لا يصحّ اختبار عدّاد الإخفاق بكلام بلا معنى: ذاك خارج النطاق
+// أصلًا، ومساره الصحيح تحويل فوري لا عدّ محاولات.
 test('بعد محاولتين فاشلتين يحوّل تلقائيًا بلا أن يسأل', () => {
   const u = mkClient(); const c = conv(u);
-  const first = bot.handle(c, 'سؤال غريب جدا رقم واحد مالوش علاقة');
+  const first = bot.handle(c, 'عايز اربط موقعي بنظام المخازن بتاع الشركة');
+  assert.ok(!first.outOfScope, 'سؤال في صميم المجال عُدّ خارجه');
   assert.ok(!first.escalate, 'حوّل من أول محاولة');
 
-  const second = bot.handle(c, 'سؤال غريب تاني برضه مالوش علاقة');
+  const second = bot.handle(c, 'عايز اضيف لغة يابانية للمتجر بتاعي');
+  assert.ok(!second.outOfScope, 'سؤال في صميم المجال عُدّ خارجه');
   assert.equal(second.escalate, true, 'لم يحوّل بعد فشلين');
   assert.equal(second.autoEscalated, true);
   assert.match(hist(c).at(-1).body, /أُحوّلك الآن/);
@@ -111,7 +116,7 @@ test('بعد محاولتين فاشلتين يحوّل تلقائيًا بلا 
 
 test('إجابة ناجحة تصفّر عدّاد الفشل', () => {
   const u = mkClient(); const c = conv(u);
-  bot.handle(c, 'سؤال غريب مالوش علاقة خالص');
+  bot.handle(c, 'عايز اربط موقعي بنظام المخازن بتاع الشركة');
   assert.equal(chat.failStreak(c.id), 1);
   bot.handle(c, 'الموقع بطيء');
   assert.equal(chat.failStreak(c.id), 0, 'لم يُصفَّر العدّاد بعد إجابة ناجحة');
@@ -383,4 +388,80 @@ test('يميّز سؤال المعرفة عن سؤال حالة الموقع', (
   bot.handle(c, 'كم المستحق عليّ؟');
   last = hist(c).at(-1).body;
   assert.ok(/مستحقات|المستحق/.test(last), `لم يفهم سؤال المستحقات: ${last.slice(0, 60)}`);
+});
+
+// ——————————————————— حدّ المعرفة ———————————————————
+// القاعدة: إخراج سؤال مشروع من النطاق أسوأ من إدخال سؤال غريب. لذلك
+// الأسئلة المشروعة هنا أكثر وأهم — أي فشل فيها عطل جسيم لا مجرد ضبط عتبة.
+
+const IN_SCOPE = [
+  'الموقع وقع مش بيفتح',
+  'ليه الموقع بطيء من الموبايل؟',
+  'الفلوس الي عليا دي ايه؟',
+  'ازاي ادفع الاشتراك بتاعي؟',
+  'عايز اجدد الدومين',
+  'ايميل الشركة مش شغال',
+  'شهادة الامان خلصت ولا لسه؟',
+  'موقعي متعمل بايه؟',
+  'المتجر مش بيقبل اوردرات',
+  'عايز اعرف اخر صيانة اتعملت',
+  'الاستضافة بتاعتي ضعيفة؟',
+  'ازاي احسن ترتيب موقعي في جوجل؟',
+];
+
+const OUT_OF_SCOPE = [
+  'كام سعر تذكرة الطيران إلى كوالالمبور؟',
+  'ما هو أفضل نوع سمك للشوي؟',
+  'مين كسب ماتش الاهلي امبارح؟',
+  'اكتبلي قصيدة شعر عن الحب',
+  'ايه أعراض البرد وعلاجه؟',
+  'امتى امتحانات الثانوية العامة؟',
+];
+
+test('بوابة النطاق لا تُخرج سؤالًا مشروعًا — ولو مرة واحدة', () => {
+  const rejected = IN_SCOPE.filter((q) => !bot.inScope(q));
+  assert.deepEqual(rejected, [], `أُخرجت أسئلة مشروعة: ${rejected.join(' | ')}`);
+});
+
+test('بوابة النطاق تُخرج ما هو بعيد بوضوح', () => {
+  const kept = OUT_OF_SCOPE.filter((q) => bot.inScope(q));
+  assert.deepEqual(kept, [], `لم تُخرَج أسئلة بعيدة: ${kept.join(' | ')}`);
+});
+
+test('الردود القصيرة ليست خروجًا عن النطاق', () => {
+  for (const q of ['تمام', 'شكرا', 'ايوه', 'اوك يا سامي']) {
+    assert.equal(bot.inScope(q), true, `«${q}» عُدّ خارج النطاق`);
+  }
+});
+
+test('سؤال خارج النطاق: يقول إن الإجابة ليست عنده ويحوّل فورًا', () => {
+  const u = mkClient();
+  const conv = chat.openConversation(u);
+  const r = bot.handle(conv, 'ما هو أفضل نوع سمك للشوي؟');
+
+  assert.equal(r.outOfScope, true, 'لم يُصنَّف خارج النطاق');
+  assert.equal(r.escalate, true, 'لم يُحوَّل إلى الدعم');
+  assert.match(r.messages[0].body, /خارج ما أعرفه/);
+  assert.match(r.messages[0].body, /فريق الدعم/);
+  // لا احتمالات: من يسأل عن أمر آخر تمامًا لا ينفعه عرض أبواب القاعدة
+  assert.equal(r.messages.length, 1, 'عُرضت احتمالات مع سؤال خارج النطاق');
+  // ولا يُحسب إخفاقًا: هذا حدٌّ معروف لا عجز عن الفهم
+  assert.equal(chat.failStreak(conv.id), 0, 'زاد عدّاد الإخفاق بلا داعٍ');
+});
+
+test('سبب التحويل يصل الأدمن ويقول إنه خارج النطاق', () => {
+  const u = mkClient();
+  const conv = chat.openConversation(u);
+  const r = bot.handle(conv, 'امتى امتحانات الثانوية العامة؟');
+  bot.escalate(conv, { reason: r.reason });
+  const internal = chat.history(conv.id, 50, 'admin').filter((m) => m.visibility === 'internal');
+  assert.ok(internal.some((m) => /خارج نطاق/.test(m.body)), 'الملخّص الداخلي لا يذكر سبب التحويل');
+});
+
+test('سؤال داخل النطاق بلا إجابة يبقى على سلوك الاحتمالات', () => {
+  const u = mkClient();
+  const conv = chat.openConversation(u);
+  const r = bot.handle(conv, 'عايز اعرف حاجة عن اعدادات الكاش بتاعة السيرفر');
+  assert.notEqual(r.outOfScope, true, 'سؤال في صميم المجال عُدّ خارجه');
+  assert.equal(r.escalate, undefined, 'حُوِّل فورًا بدل أن يعرض احتمالات');
 });

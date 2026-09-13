@@ -162,25 +162,22 @@ export function supportHome({ user, conversations, botName = 'سامي', color, 
     <div class="grow">
       <h1>كيف نساعدك؟</h1>
       <p class="muted" style="margin:0">
-        ابحث في مكتبة المساعدة، أو ابدأ محادثة مع ${esc(botName)} —
+        اسأل ${esc(botName)} مباشرة عن أي شيء يخصّ موقعك أو متجرك —
         ${hours.open ? 'وفريق الدعم متاح الآن إن احتجته.' : `وفريق الدعم يرد من ${esc(hours.label)}.`}
       </p>
     </div>
   </section>
 
-  <form class="card search-card" method="GET" action="/help">
-    <label class="sr-only" for="kbq">ابحث في المساعدة</label>
-    <div class="row" style="gap:var(--s-2)">
-      <input id="kbq" name="q" class="grow" placeholder="اكتب سؤالك… مثال: الموقع بطيء" autocomplete="off">
-      <button class="btn btn-primary" type="submit">${icon('grid')} بحث</button>
-    </div>
-    ${popular.length
-      ? `<div class="row" style="margin-block-start:var(--s-3);gap:var(--s-2)">
-          <span class="faint">الأكثر بحثًا:</span>
-          ${popular.map((a) => `<a class="chip" href="/help/${esc(a.slug)}">${esc(a.title)}</a>`).join('')}
-        </div>`
-      : ''}
-  </form>
+  ${popular.length
+    ? `<section class="card topics-card" data-reveal>
+        <h2 class="topics-title">${icon('book')} مواضيع يسألها الناس كثيرًا</h2>
+        <div class="topics-list">${popular
+          .map((a) => `<a class="topic-link" href="/help/${esc(a.slug)}">
+            <span class="grow">${esc(a.title)}</span>${icon('arrow')}
+          </a>`).join('')}</div>
+        <a class="topics-all" href="/help">كل مكتبة المساعدة ${icon('arrow')}</a>
+      </section>`
+    : ''}
 
   <form method="POST" action="/chat/new">
     <input type="hidden" name="_csrf" value="${esc(user.csrf)}">

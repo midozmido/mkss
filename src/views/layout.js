@@ -21,6 +21,15 @@ const ICONS = {
   logout: '<path d="M9 21H5a1 1 0 01-1-1V4a1 1 0 011-1h4M16 17l5-5-5-5M21 12H9"/>',
   moon: '<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
   inbox: '<path d="M3 12h5l2 3h4l2-3h5M4 4h16l1 8v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7z"/>',
+  book: '<path d="M4 5a2 2 0 012-2h13v18H6a2 2 0 01-2-2V5zM19 17H6a2 2 0 00-2 2M9 7h7M9 11h7"/>',
+  cog: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1A1.6 1.6 0 008 19.4a1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H2a2 2 0 110-4h.1A1.6 1.6 0 004.6 8a1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V2a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H22a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/>',
+  users: '<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.9"/>',
+  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+  crown: '<path d="M3 18h18M4 7l4 4 4-7 4 7 4-4-1.5 9h-13z"/>',
+  sparkle: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',
+  send: '<path d="M4 20l16-8L4 4v6l10 2-10 2z"/>',
+  eye: '<path d="M1.5 12S5 5.5 12 5.5 22.5 12 22.5 12 19 18.5 12 18.5 1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  'eye-off': '<path d="M10.6 6.2A9.7 9.7 0 0 1 12 6c7 0 10.5 6 10.5 6a18 18 0 0 1-3.3 4M6.4 7.9A18 18 0 0 0 1.5 12S5 18 12 18a9.8 9.8 0 0 0 4-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/>',
 };
 
 /**
@@ -230,68 +239,194 @@ export function sparkline(checks, { width = 640, height = 120 } = {}) {
   </figure>`;
 }
 
+// ——————————————————— هوية النظام ———————————————————
+
+export const APP_NAME = 'Support VIP System';
+
+/** العلامة — الاسم بالإنجليزية كما طُلب، والوصف بالعربية تحته */
+export function wordmark({ compact = false } = {}) {
+  return `<span class="brand-mark" aria-hidden="true">V</span>
+  <span class="brand-name">
+    <b>Support <span class="vip">VIP</span></b>
+    ${compact ? '' : '<small>System</small>'}
+  </span>`;
+}
+
+// ——————————————————— الشريط الجانبي ———————————————————
+
+/**
+ * عناصر التنقل — **مفصولة بالدور فصلًا تامًّا**.
+ * لا عنصر مشترك بين اللوحتين: العميل لا يرى مسارًا إداريًّا، والأدمن لا يرى
+ * سامي ولا لوحة عميل. هذا هو الفصل الذي طُلب، ومكانه هنا لا في القوالب.
+ */
+export function navGroups(user) {
+  if (!user) return [];
+  const n = (href, label, ic, badge = 0) => ({ href, label, ic, badge });
+  if (user.role === 'admin') {
+    return [
+      { label: 'التشغيل', items: [
+        n('/admin', 'اللوحة', 'grid'),
+        n('/admin/clients', 'العملاء', 'users'),
+      ] },
+      { label: 'الدعم المباشر', items: [
+        n('/admin/chat', 'محادثات العملاء', 'chat', user.unreadChat || 0),
+        n('/admin/kb', 'قاعدة المعرفة', 'book'),
+        n('/admin/replies', 'الردود المحفوظة', 'send'),
+      ] },
+      { label: 'التحصيل', items: [
+        n('/admin/payments', 'المدفوعات', 'receipt', user.pendingClaims || 0),
+        n('/admin/requests', 'الطلبات', 'inbox', user.pendingResets || 0),
+      ] },
+      { label: 'النظام', items: [
+        n('/admin/guide', 'دليل الإدارة', 'sparkle'),
+        n('/admin/settings', 'الإعدادات', 'cog'),
+      ] },
+    ];
+  }
+  return [
+    { label: 'المتابعة', items: [
+      n('/', 'مواقعي', 'grid'),
+    ] },
+    { label: 'المساعدة', items: [
+      n('/chat', 'الدعم والمحادثة', 'chat', user.unreadChat || 0),
+      n('/help', 'مكتبة المساعدة', 'book'),
+      n('/guide', 'دليل الاستخدام', 'sparkle'),
+    ] },
+    { label: 'حسابك', items: [
+      n('/invoices', 'الفواتير', 'receipt'),
+      n('/billing', 'الاشتراك', 'shield'),
+    ] },
+  ];
+}
+
+/** المسار الفعّال: تطابق تام، أو بادئة لصفحة داخلية (‏/chat/12 ⇒ /chat) */
+function isActive(active, href) {
+  if (active === href) return true;
+  if (href === '/' || href === '/admin') return false;
+  return typeof active === 'string' && active.startsWith(href + '/');
+}
+
+function sidenav(user, active) {
+  const groups = navGroups(user)
+    .map((g) => `<div class="nav-group">
+      <span class="nav-group-label">${esc(g.label)}</span>
+      ${g.items.map((it) => `<a class="nav-item${isActive(active, it.href) ? ' is-active' : ''}" href="${it.href}">
+        <span class="nav-ico">${icon(it.ic)}</span>
+        <span class="nav-label">${esc(it.label)}</span>
+        ${it.badge > 0 ? `<span class="pill">${it.badge > 99 ? '99+' : it.badge}</span>` : ''}
+      </a>`).join('')}
+    </div>`).join('');
+
+  const initial = esc(String(user.name || user.email || '؟').trim().charAt(0));
+  return `<aside class="sidenav" id="sidenav" aria-label="التنقل الرئيسي">
+  <div class="sidenav-head">
+    <a class="brand" href="${user.role === 'admin' ? '/admin' : '/'}">${wordmark()}</a>
+    <button class="icon-btn sidenav-close" type="button" data-nav-close aria-label="إغلاق القائمة">${icon('x')}</button>
+  </div>
+  <nav class="sidenav-nav">${groups}</nav>
+  <div class="sidenav-foot">
+    <div class="who">
+      <span class="who-ava" aria-hidden="true">${initial}</span>
+      <span class="who-text">
+        <b>${esc(user.name || 'مستخدم')}</b>
+        <small dir="ltr">${esc(user.email || '')}</small>
+      </span>
+    </div>
+    <form method="POST" action="/logout">
+      <input type="hidden" name="_csrf" value="${esc(user.csrf || '')}">
+      <button class="btn btn-ghost btn-block btn-sm" type="submit">${icon('logout')} خروج</button>
+    </form>
+  </div>
+</aside>`;
+}
+
 // ——————————————————— القالب العام ———————————————————
 
-export function layout({ title, user, active = '', body, flash = null, nonce = '' }) {
-  const isAdmin = user?.role === 'admin';
-  const pill = (n) => (n > 0 ? `<span class="pill">${n > 99 ? '99+' : n}</span>` : '');
-  const items = user
-    ? isAdmin
-      ? [
-          ['/admin', 'لوحة الأدمن', 'grid', 0],
-          ['/admin/clients', 'العملاء', 'globe', 0],
-          ['/admin/chat', 'المحادثات', 'chat', user.unreadChat || 0],
-          ['/admin/payments', 'المدفوعات', 'receipt', user.pendingClaims || 0],
-          ['/admin/requests', 'الطلبات', 'inbox', user.pendingResets || 0],
-        ]
-      : [
-          ['/', 'مواقعي', 'grid', 0],
-          ['/chat', 'المحادثة', 'chat', user.unreadChat || 0],
-          ['/help', 'المساعدة', 'inbox', 0],
-          ['/invoices', 'الفواتير', 'receipt', 0],
-          ['/billing', 'الاشتراك', 'shield', 0],
-        ]
-    : [];
-  const nav = items
-    .map(
-      ([href, label, ic, n]) =>
-        `<a href="${href}"${active === href ? ' aria-current="page"' : ''}>${icon(ic)} ${esc(label)}${pill(n)}</a>`
-    )
-    .join('');
-
-  return `<!DOCTYPE html>
+const HEAD = (title) => `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex, nofollow">
-<title>${esc(title)} — نظام دعم العملاء</title>
+<title>${esc(title)} — ${APP_NAME}</title>
 <link rel="stylesheet" href="/app.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230d7a6f'/><text x='16' y='23' font-size='18' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'>م</text></svg>">
-</head>
-<body>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d7a6f'/><text x='16' y='23' font-size='17' font-family='Georgia,serif' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
+</head>`;
+
+/** القالب الكامل: شريط جانبي ثابت، ومحتوى بجانبه. */
+export function layout({ title, user, active = '', body, flash = null, nonce = '' }) {
+  // بلا جلسة لا شريط ولا تنقّل — لكن ليست صفحة دخول أيضًا. صفحات الخطأ تمر
+  // من هنا، وعرضها داخل لوحة تسويق الدخول يربك من وصل إلى رابط منتهٍ.
+  if (!user) return bareLayout({ title, body, nonce });
+  return `${HEAD(title)}
+<body class="has-shell" data-role="${esc(user.role || 'client')}">
 <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
-${user ? `<header class="topbar">
-  <div class="wrap">
-    <a class="brand" href="${isAdmin ? '/admin' : '/'}">
-      <span class="brand-mark" aria-hidden="true">م</span>
-      <span>مركز المواقع</span>
-    </a>
-    <nav class="nav grow" aria-label="التنقل الرئيسي">${nav}</nav>
-    <div class="row">
-      <button class="btn btn-sm" id="theme-toggle" type="button" aria-label="تبديل الوضع الليلي">${icon('moon')}</button>
-      <form method="POST" action="/logout" class="row">
-        <input type="hidden" name="_csrf" value="${esc(user.csrf || '')}">
-        <button class="btn btn-sm" type="submit">${icon('logout')} خروج</button>
-      </form>
+<div class="nav-progress" id="nav-progress" hidden><span></span></div>
+<div class="app">
+  <header class="appbar">
+    <button class="icon-btn" type="button" data-nav-open aria-controls="sidenav" aria-expanded="false" aria-label="فتح القائمة">${icon('menu')}</button>
+    <a class="brand brand-compact" href="${user.role === 'admin' ? '/admin' : '/'}">${wordmark({ compact: true })}</a>
+    <span class="grow"></span>
+    <button class="icon-btn" id="theme-toggle" type="button" aria-label="تبديل الوضع الليلي">${icon('moon')}</button>
+  </header>
+  ${sidenav(user, active)}
+  <div class="scrim" data-nav-close hidden></div>
+  <main id="main" class="app-main">
+    <div class="page">
+      ${flash ? `<div class="alert alert-${esc(flash.kind || 'info')}" role="status">${icon(flash.kind === 'danger' ? 'alert' : 'check')}<div>${esc(flash.text)}</div></div>` : ''}
+      ${body}
     </div>
-  </div>
-</header>` : ''}
-<main id="main" class="wrap" style="padding-block:var(--s-5) var(--s-8)">
-${flash ? `<div class="alert alert-${esc(flash.kind || 'info')}" role="status">${icon(flash.kind === 'danger' ? 'alert' : 'check')}<div>${esc(flash.text)}</div></div>` : ''}
-${body}
-</main>
+  </main>
+</div>
+<script src="/app.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
+</body>
+</html>`;
+}
+
+/** قالب بسيط لمن لا جلسة له: العلامة وحدها فوق محتوى في الوسط */
+export function bareLayout({ title, body, nonce = '' }) {
+  return `${HEAD(title)}
+<body class="is-bare">
+<div class="bare-shell">
+  <a class="brand bare-brand" href="/login">${wordmark()}</a>
+  <div class="bare-body">${body}</div>
+</div>
+<script src="/app.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
+</body>
+</html>`;
+}
+
+/**
+ * قالب الدخول — بلا شريط ولا تنقل.
+ * الدخول أول ما يراه الداخل، فلا يصح أن يحمل عناصر لا يملك الوصول إليها.
+ * @param {'client'|'admin'} variant يغيّر الهوية البصرية حتى لا تختلط البوابتان
+ */
+export function authLayout({ title, body, variant = 'client', nonce = '' }) {
+  return `${HEAD(title)}
+<body class="is-auth" data-portal="${esc(variant)}">
+<div class="auth-shell">
+  <section class="auth-aside" aria-hidden="true">
+    <div class="auth-aside-in">
+      <span class="auth-brand">${wordmark()}</span>
+      <h2>${variant === 'admin' ? 'بوابة الإدارة' : 'مواقعك تحت العين، على مدار الساعة.'}</h2>
+      <p>${variant === 'admin'
+        ? 'إدارة العملاء والمواقع والتحصيل والدعم المباشر من مكان واحد.'
+        : 'حالة كل موقع، وآخر صيانة، ومستحقاتك، ودعم يرد عليك — في شاشة واحدة.'}</p>
+      <ul class="auth-points">
+        ${(variant === 'admin'
+          ? ['محادثات العملاء في طابور واحد', 'تأكيد التحويلات ومتابعة المستحقات', 'فحص المواقع وسجل الصيانة']
+          : ['هل الموقع شغّال الآن؟ تعرف في ثانية', 'آخر صيانة ومَن نفّذها', 'دعم يرد عليك داخل النظام'])
+          .map((x) => `<li>${icon('check')} ${esc(x)}</li>`).join('')}
+      </ul>
+      <span class="auth-orb auth-orb-1"></span>
+      <span class="auth-orb auth-orb-2"></span>
+    </div>
+  </section>
+  <section class="auth-main">
+    <div class="auth-card">${body}</div>
+  </section>
+</div>
 <script src="/app.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
 </body>
 </html>`;

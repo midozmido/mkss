@@ -140,10 +140,12 @@ if (!demo) {
 const link = createOneTimeLink(demo.id, 'activate', 72);
 
 console.log('\n' + '─'.repeat(62));
-console.log('  الدخول كأدمن');
+console.log('  بوابة الإدارة — منفصلة عن بوابة العملاء');
 console.log('─'.repeat(62));
+console.log(`  الرابط    : ${BASE_URL}/admin/login`);
 console.log(`  البريد    : ${adminEmail}`);
 console.log(`  كلمة السر : ${adminPassword || '(كما ضبطتها سابقًا)'}`);
+console.log(`\n  وبوابة العملاء: ${BASE_URL}/login — حساب الأدمن لا يدخل منها.`);
 console.log('\n' + '─'.repeat(62));
 console.log('  رابط تفعيل العميل التجريبي (صالح 72 ساعة، مرة واحدة)');
 console.log('─'.repeat(62));

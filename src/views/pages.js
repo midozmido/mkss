@@ -5,44 +5,6 @@ import {
 } from './layout.js';
 import { money } from '../repo.js';
 
-// ——————————————————— الدخول ———————————————————
-
-export function loginPage({ error = null, notice = null, email = '' } = {}) {
-  return layout({
-    title: 'تسجيل الدخول',
-    user: null,
-    body: `<div class="auth-page"><div class="auth-card stack">
-  <div class="auth-head">
-    <div class="brand-mark" aria-hidden="true">م</div>
-    <h1>مركز المواقع</h1>
-    <p class="muted small">تابع حالة موقعك ومستحقاتك</p>
-  </div>
-  ${error ? `<div class="alert alert-danger" role="alert">${icon('alert')}<div>${esc(error)}</div></div>` : ''}
-  ${notice ? `<div class="alert alert-ok" role="status">${icon('check')}<div>${esc(notice)}</div></div>` : ''}
-  <div class="card">
-    <form method="POST" action="/login" class="stack">
-      <div class="field">
-        <label for="email">البريد الإلكتروني</label>
-        <input id="email" name="email" type="email" required autocomplete="username"
-               inputmode="email" dir="ltr" value="${esc(email)}" autofocus>
-      </div>
-      <div class="field">
-        <label for="password">كلمة السر</label>
-        <input id="password" name="password" type="password" required autocomplete="current-password">
-      </div>
-      <button class="btn btn-primary btn-block" type="submit">دخول</button>
-    </form>
-  </div>
-  <form method="POST" action="/reset-request" class="card center stack">
-    <p class="small muted" style="margin:0">نسيت كلمة السر؟ اطلب من فريقنا إعادة تعيينها.</p>
-    <input type="hidden" name="email" value="">
-    <button class="btn btn-block btn-sm" type="submit" id="reset-btn">طلب إعادة تعيين</button>
-    <p class="faint" style="margin:0">سنرسل لك رابطًا جديدًا بعد التحقق.</p>
-  </form>
-</div></div>`,
-  });
-}
-
 // ——————————————————— السرد ———————————————————
 
 /**
@@ -510,36 +472,5 @@ export function errorPage({ user = null, status = 404, message = 'الصفحة �
       <p>${esc(message)}</p>
       <a class="btn" href="/">${icon('arrow')} العودة للرئيسية</a>
     </div>`,
-  });
-}
-
-export function setPasswordPage({ token, error = null, kind = 'activate' }) {
-  const isActivate = kind === 'activate';
-  return layout({
-    title: isActivate ? 'تفعيل الحساب' : 'كلمة سر جديدة',
-    user: null,
-    body: `<div class="auth-page"><div class="auth-card stack">
-  <div class="auth-head">
-    <div class="brand-mark" aria-hidden="true">م</div>
-    <h1>${isActivate ? 'فعّل حسابك' : 'اختر كلمة سر جديدة'}</h1>
-    <p class="muted small">${isActivate ? 'خطوة واحدة، مرة واحدة فقط.' : 'اختر كلمة سر قوية.'}</p>
-  </div>
-  ${error ? `<div class="alert alert-danger" role="alert">${icon('alert')}<div>${esc(error)}</div></div>` : ''}
-  <div class="card">
-    <form method="POST" action="/set-password" class="stack">
-      <input type="hidden" name="token" value="${esc(token)}">
-      <div class="field">
-        <label for="password">كلمة السر</label>
-        <input id="password" name="password" type="password" required minlength="10" autocomplete="new-password" autofocus>
-        <div class="hint">10 أحرف على الأقل. استخدم جملة تتذكرها.</div>
-      </div>
-      <div class="field">
-        <label for="confirm">تأكيد كلمة السر</label>
-        <input id="confirm" name="confirm" type="password" required minlength="10" autocomplete="new-password">
-      </div>
-      <button class="btn btn-primary btn-block" type="submit">حفظ والدخول</button>
-    </form>
-  </div>
-</div></div>`,
   });
 }

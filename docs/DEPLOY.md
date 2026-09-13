@@ -99,7 +99,7 @@ sudo -u mkss node seed.js          # احفظ بيانات الأدمن المط
 ```bash
 sudo tee /etc/systemd/system/mkss.service > /dev/null <<'UNIT'
 [Unit]
-Description=MKSS — نظام دعم العملاء
+Description=Support VIP System — نظام دعم العملاء
 After=network.target
 
 [Service]

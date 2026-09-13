@@ -6,7 +6,7 @@ const rich = (t) =>
 
 // ——————————————————— للعميل ———————————————————
 
-export function helpIndex({ user, categories, articles, q = '', results = null, flash }) {
+export function helpIndex({ user, categories, articles, flash }) {
   const byCat = {};
   for (const a of articles) (byCat[a.category] ||= []).push(a);
 
@@ -23,31 +23,6 @@ export function helpIndex({ user, categories, articles, q = '', results = null, 
     </div>
     <a class="btn btn-sm btn-primary" href="/chat">${icon('chat')} اسأل المساعد</a>
   </div>
-
-  <form class="card search-card" method="GET" action="/help">
-    <div class="row" style="gap:var(--s-2)">
-      <input name="q" class="grow" value="${esc(q)}" placeholder="ابحث… مثال: الدومين خلص" autocomplete="off">
-      <button class="btn btn-primary" type="submit">${icon('grid')} بحث</button>
-    </div>
-  </form>
-
-  ${results
-    ? results.length
-      ? `<section class="stack">
-          <h2>نتائج البحث عن «${esc(q)}»</h2>
-          <div class="kb-grid">${results
-            .map((a) => `<a class="kb-card" href="/help/${esc(a.slug)}">
-              <h3>${esc(a.title)}</h3>
-              <p class="faint" style="margin:0">${esc(String(a.body).replace(/\n/g, ' ').slice(0, 110))}…</p>
-            </a>`)
-            .join('')}</div>
-        </section>`
-      : `<div class="card empty">${icon('inbox')}
-          <p>لم نجد مقالًا عن «${esc(q)}».</p>
-          <p class="small">اسأل المساعد مباشرة — وإن لم يعرف حوّلك لفريق الدعم فورًا.</p>
-          <a class="btn btn-primary" href="/chat">${icon('chat')} اسأل الآن</a>
-        </div>`
-    : ''}
 
   ${categories
     .map(

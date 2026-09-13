@@ -6,7 +6,7 @@ import https from 'node:https';
 import { URL } from 'node:url';
 import { assertSafeUrl } from './guard.js';
 
-const UA = 'MKSS-Monitor/1.0 (+site health checker)';
+const UA = 'SupportVIP-Monitor/1.0 (+site health checker)';
 const MAX_BODY = 512 * 1024; // 512KB — كفاية للبصمة ولا ترهق الذاكرة
 const MAX_REDIRECTS = 5;
 

@@ -1,8 +1,8 @@
 {
-  "name": "mkss-support",
+  "name": "support-vip-system",
   "version": "1.0.0",
   "private": true,
-  "description": "نظام دعم العملاء ومراقبة المواقع — صفر اعتماديات خارجية",
+  "description": "Support VIP System — نظام دعم العملاء ومراقبة المواقع، بصفر اعتماديات خارجية",
   "type": "module",
   "engines": {
     "node": ">=22.5.0"
