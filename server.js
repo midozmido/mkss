@@ -315,6 +315,8 @@ router.get('/chat', (ctx) => {
     topics: mode === 'bot' ? bot.quickTopics() : [],
     greeting: setting('bot_greeting') || 'أهلًا بك',
     hours: bot.workingHours(),
+    botName: bot.botName(),
+    color: ctx.user.chat_color || setting('chat_color_default') || '#0d7a6f',
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
@@ -333,21 +335,23 @@ router.post('/chat', async (ctx) => {
 
     // في وضع المساعد يرد البوت فورًا؛ وفي الوضع البشري لا يتدخل إطلاقًا،
     // فلا شيء أسوأ من بوت يقاطع محادثة جارية مع موظف.
-    let botReply = null;
-    if (!live) {
-      const r = bot.handle(ctx.user.id, f.body);
-      if (r.escalate) {
-        bot.escalate(ctx.user.id, { reason: 'طلب العميل التحويل' });
-      } else {
-        botReply = r.messages?.[0] || null;
-      }
-    }
-    if (wantsJson) return sendJson(ctx.res, { message: msg, bot: botReply });
+    // سامي يفكّر 3–7 ثوانٍ ثم يرد عبر البث — لا نحجب الطلب في انتظاره
+    let thinking = null;
+    if (!live) thinking = bot.handleDelayed(ctx.user.id, f.body);
+    if (wantsJson) return sendJson(ctx.res, { message: msg, thinking });
     redirect(ctx.res, '/chat');
   } catch (e) {
     if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
     redirect(ctx.res, '/chat', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
   }
+});
+
+router.post('/chat/color', async (ctx) => {
+  const f = await readForm(ctx.req);
+  if (chatViews.isValidColor(f.color)) {
+    run('UPDATE users SET chat_color = ? WHERE id = ?', f.color, ctx.user.id);
+  }
+  redirect(ctx.res, '/chat');
 });
 
 router.post('/chat/escalate', async (ctx) => {
@@ -557,6 +561,7 @@ router.get('/admin/chat/:id', (ctx) => {
     state: billing.accountState(client.id),
     mode: client.support_mode || 'bot',
     replies: [],
+    botName: bot.botName(),
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
@@ -574,6 +579,7 @@ router.post('/admin/chat/:id', async (ctx) => {
   }
   try {
     const msg = chat.sendMessage(client.id, { body: f.body, role: 'admin', authorId: ctx.user.id });
+    bot.markFirstReply(client.id);
     if (wantsJson) return sendJson(ctx.res, { message: msg });
     redirect(ctx.res, `/admin/chat/${client.id}`);
   } catch (e) {
@@ -732,7 +738,7 @@ const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
  */
 const OPEN_WHEN_LOCKED = new Set([
   '/billing', '/billing/claim',
-  '/chat', '/chat/stream', '/chat/since', '/chat/escalate', '/chat/article', '/chat/feedback',
+  '/chat', '/chat/stream', '/chat/since', '/chat/escalate', '/chat/article', '/chat/feedback', '/chat/color',
   '/invoices', '/logout', '/health',
 ]);
 const openWhenLocked = (p) =>

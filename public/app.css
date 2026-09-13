@@ -423,61 +423,150 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 }
 
 /* ============================================================
-   الشات
+   الشات — بأسلوب ماسنجر
    ============================================================ */
-.chat { display: flex; flex-direction: column; background: var(--surface);
-  border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+
+/* لون الشات يختاره العميل ويُحقن كمتغيّر على الحاوية وحدها،
+   فلا يمسّ هوية النظام في باقي الصفحات. */
+.chat {
+  --chat-accent: var(--brand);
+  --chat-accent-text: #fff;
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden;
+}
 
 .chat-log {
-  display: flex; flex-direction: column; gap: var(--s-3);
-  padding: var(--s-4); overflow-y: auto;
-  block-size: min(56vh, 460px); min-block-size: 240px;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--s-4);
+  overflow-y: auto; block-size: min(58vh, 500px); min-block-size: 260px;
   scroll-behavior: smooth; overscroll-behavior: contain;
 }
 
-.msg { max-inline-size: 82%; align-self: flex-start; }
+/* ——— الفقاعات ——— */
+.msg { display: flex; align-items: flex-end; gap: var(--s-2); max-inline-size: 88%; }
 .msg-body {
   background: var(--surface-sunk); border: 1px solid var(--border);
-  padding: var(--s-3) var(--s-4); border-radius: var(--r-lg);
-  border-start-start-radius: var(--r-sm);
-  white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7;
+  padding: 9px var(--s-4); border-radius: 20px;
+  white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.75;
 }
-.msg-meta { font-size: var(--t-xs); color: var(--text-faint); margin-block-start: var(--s-1); padding-inline: var(--s-2); }
-.msg-mine { align-self: flex-end; }
-.msg-mine .msg-body {
-  background: var(--brand); border-color: var(--brand); color: #fff;
-  border-start-start-radius: var(--r-lg); border-start-end-radius: var(--r-sm);
+.msg-wrap { display: flex; flex-direction: column; }
+.msg-meta {
+  font-size: var(--t-xs); color: var(--text-faint);
+  padding-inline: 44px 0; margin-block: 3px var(--s-3);
 }
-.msg-mine .msg-meta { text-align: end; }
-.msg-system .msg-body { background: var(--info-soft); border-color: transparent; color: var(--info); font-size: var(--t-sm); }
-.msg-new { animation: rise .26s cubic-bezier(.22,.61,.36,1) both; }
+.msg-meta.mine { text-align: end; padding-inline: 0; }
 
+/* تجميع الرسائل المتتالية كما في ماسنجر: الزوايا الداخلية تنكمش
+   فتبدو الرسائل كتلة واحدة بدل فقاعات منفصلة. */
+.msg + .msg { margin-block-start: 0; }
+.msg-group-mid .msg-body,
+.msg-group-last .msg-body { border-start-start-radius: 6px; }
+.msg-group-mid .msg-body,
+.msg-group-first .msg-body { border-end-start-radius: 6px; }
+.msg-mine.msg-group-mid .msg-body,
+.msg-mine.msg-group-last .msg-body { border-start-start-radius: 20px; border-start-end-radius: 6px; }
+.msg-mine.msg-group-mid .msg-body,
+.msg-mine.msg-group-first .msg-body { border-end-start-radius: 20px; border-end-end-radius: 6px; }
+
+/* رسائلي — على الجانب المقابل وبلون الشات */
+.msg-mine { margin-inline-start: auto; flex-direction: row-reverse; }
+.msg-mine .msg-body {
+  background: var(--chat-accent); border-color: var(--chat-accent);
+  color: var(--chat-accent-text);
+}
+.msg-mine .msg-meta { text-align: end; padding-inline: 0 var(--s-3); }
+
+/* صورة سامي تظهر مرة واحدة لكل مجموعة — كما يفعل ماسنجر بالضبط */
+.msg-ava { inline-size: 32px; block-size: 32px; flex: none; color: var(--chat-accent); }
+.msg-ava-spacer { inline-size: 32px; flex: none; }
+.msg-bot .msg-body { background: var(--surface-sunk); border-color: var(--border); }
+.msg-bot .msg-body b { color: var(--chat-accent); }
+.bullet { color: var(--chat-accent); font-weight: 800; }
+
+.msg-system { align-self: center; max-inline-size: 100%; }
+.msg-system .msg-body {
+  background: transparent; border: none; color: var(--text-faint);
+  font-size: var(--t-sm); text-align: center; padding-block: var(--s-2);
+}
+.msg-new { animation: pop .22s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ——— مؤشر «يكتب…» ——— */
+.typing { display: none; align-items: center; gap: var(--s-2); padding: 0 var(--s-4) var(--s-3); }
+.typing.on { display: flex; }
+.typing .msg-ava { color: var(--chat-accent); }
+.typing-bubble {
+  background: var(--surface-sunk); border: 1px solid var(--border);
+  border-radius: 20px; padding: 12px var(--s-4); display: flex; gap: 5px;
+}
+.typing-bubble i {
+  inline-size: 7px; block-size: 7px; border-radius: 50%;
+  background: var(--text-faint); display: block;
+  animation: blink 1.3s infinite ease-in-out both;
+}
+.typing-bubble i:nth-child(2) { animation-delay: .18s; }
+.typing-bubble i:nth-child(3) { animation-delay: .36s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
+
+/* ——— ملاحظة داخلية ——— */
+.msg-internal { max-inline-size: 100%; align-self: stretch; }
+.msg-internal .msg-body {
+  background: repeating-linear-gradient(135deg, var(--warn-soft) 0 10px, transparent 10px 20px);
+  border: 1px dashed var(--warn); color: var(--text); font-size: var(--t-sm); border-radius: var(--r);
+}
+.msg-tag {
+  font-size: var(--t-xs); font-weight: 700; color: var(--warn);
+  display: flex; align-items: center; gap: var(--s-1); margin-block-end: var(--s-1);
+}
+.msg-tag svg { inline-size: 13px; block-size: 13px; }
+
+/* ——— حقل الكتابة على طراز ماسنجر ——— */
 .chat-form {
   display: flex; gap: var(--s-2); align-items: flex-end;
   padding: var(--s-3); border-block-start: 1px solid var(--border); background: var(--surface);
 }
 .chat-form textarea {
-  flex: 1; min-block-size: var(--tap); max-block-size: 160px; resize: none;
-  border-radius: var(--r); padding: var(--s-3);
+  flex: 1; min-block-size: 42px; max-block-size: 150px; resize: none;
+  border-radius: 22px; padding: 10px var(--s-4); background: var(--surface-sunk);
+  border-color: transparent;
 }
-.chat-form .btn { min-block-size: var(--tap); flex: none; }
+.chat-form textarea:focus { background: var(--surface); border-color: var(--chat-accent); box-shadow: none; }
+.chat-send {
+  inline-size: 42px; block-size: 42px; flex: none; padding: 0;
+  border-radius: 50%; border: none; cursor: pointer;
+  background: var(--chat-accent); color: var(--chat-accent-text);
+  display: grid; place-items: center;
+}
+.chat-send:hover { filter: brightness(1.08); }
+.chat-send:disabled { opacity: .5; cursor: default; }
+.chat-send svg { inline-size: 19px; block-size: 19px; }
 
-/* قائمة المحادثات */
-.thread {
-  display: flex; align-items: center; gap: var(--s-3);
-  padding: var(--s-4); border-block-end: 1px solid var(--border);
-  text-decoration: none; color: inherit;
+/* ——— اختيار لون الشات ——— */
+.color-bar {
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+  padding: var(--s-3) var(--s-4); border-block-start: 1px solid var(--border);
+  background: var(--surface-sunk);
 }
+.swatch {
+  inline-size: 26px; block-size: 26px; border-radius: 50%; padding: 0;
+  border: 2px solid transparent; cursor: pointer; flex: none;
+  box-shadow: 0 0 0 1px var(--border) inset;
+}
+.swatch[aria-pressed="true"] { border-color: var(--text); transform: scale(1.12); }
+
+/* ——— قائمة المحادثات ——— */
+.thread { display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-4); border-block-end: 1px solid var(--border);
+  text-decoration: none; color: inherit; }
 .thread:last-child { border-block-end: none; }
 .thread:hover { background: var(--surface-sunk); }
-.thread-avatar {
-  inline-size: 40px; block-size: 40px; border-radius: var(--r-full); flex: none;
+.thread-avatar { inline-size: 40px; block-size: 40px; border-radius: var(--r-full); flex: none;
   display: grid; place-items: center; font-weight: 800;
-  background: var(--brand-soft); color: var(--brand-text);
-}
+  background: var(--brand-soft); color: var(--brand-text); }
 .thread-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-inline-size: 60vw; }
+.thread-live { border-inline-start: 3px solid var(--danger); }
 
-/* شارة غير المقروء في شريط التنقل */
 .nav a .pill {
   display: inline-grid; place-items: center; min-inline-size: 18px; block-size: 18px;
   padding-inline: 5px; border-radius: var(--r-full);
@@ -485,20 +574,24 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   margin-inline-start: var(--s-1);
 }
 
+/* ——— سامي ——— */
+.sami { display: inline-block; line-height: 0; color: var(--chat-accent, var(--brand)); }
+.sami svg { inline-size: 100%; block-size: 100%; display: block; }
+.sami-float { animation: float 3.4s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
 @media (max-width: 620px) {
-  .chat-log { block-size: min(52vh, 380px); }
-  /* سطرين يكفيان لنص الحقل على الشاشات الضيقة فلا يُقص */
-  .chat-form textarea { min-block-size: 52px; }
-  .msg { max-inline-size: 90%; }
-  .pay-number { flex-direction: column; align-items: stretch; }
-  .pay-number .btn { inline-size: 100%; }
+  .chat-log { block-size: min(54vh, 400px); }
+  .msg { max-inline-size: 92%; }
+  .msg-meta { padding-inline: 42px; }
   .thread-last { max-inline-size: 48vw; }
 }
 
 /* ============================================================
    المساعد الآلي وقاعدة المعرفة
    ============================================================ */
-.bot-intro { display: flex; gap: var(--s-4); align-items: flex-start; }
+.bot-intro { display: flex; gap: var(--s-4); align-items: flex-start; --chat-accent: var(--brand); }
+.bot-intro .sami { flex: none; }
 .bot-intro p { margin: 0; line-height: 1.8; }
 .bot-avatar {
   inline-size: 44px; block-size: 44px; border-radius: var(--r-full); flex: none;

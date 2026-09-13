@@ -1,6 +1,7 @@
 // مقالات البداية — محتوى حقيقي قابل للاستخدام، تعدّله من لوحة الأدمن.
 import * as kb from './kb.js';
 import { get } from './db.js';
+import { WEB_ARTICLES } from './kb-web.js';
 
 export const STARTER_ARTICLES = [
   {
@@ -139,7 +140,7 @@ export const STARTER_ARTICLES = [
 /** يزرع المقالات مرة واحدة — لا يستبدل ما عدّلته */
 export function seedArticles() {
   let added = 0;
-  for (const a of STARTER_ARTICLES) {
+  for (const a of [...STARTER_ARTICLES, ...WEB_ARTICLES]) {
     if (get('SELECT id FROM kb_articles WHERE slug = ?', a.slug)) continue;
     kb.saveArticle(a);
     added++;

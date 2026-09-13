@@ -23,6 +23,26 @@ const ICONS = {
   inbox: '<path d="M3 12h5l2 3h4l2-3h5M4 4h16l1 8v7a1 1 0 01-1 1H4a1 1 0 01-1-1v-7z"/>',
 };
 
+/**
+ * صورة سامي — شبح ودود على طراز كاسبر، بلون الهوية لا بالأبيض.
+ * مرسوم كـ SVG مضمّن: لا ملف صورة ولا خط أيقونات ولا طلب شبكة.
+ * currentColor يجعله يتبع لون الشات الذي يختاره العميل تلقائيًا.
+ */
+export function sami(size = 40, { floating = true } = {}) {
+  return `<span class="sami ${floating ? 'sami-float' : ''}" style="inline-size:${size}px;block-size:${size}px" aria-hidden="true">
+  <svg viewBox="0 0 64 72" width="${size}" height="${size}">
+    <path fill="currentColor" d="M32 5C18.7 5 8 15.7 8 29v29.6c0 2.6 3 4.1 5.1 2.5l3.7-2.8a3 3 0 0 1 3.6 0l3 2.3a3 3 0 0 0 3.6 0l3-2.3a3 3 0 0 1 3.6 0l3 2.3a3 3 0 0 0 3.6 0l3-2.3a3 3 0 0 1 3.6 0l3.7 2.8c2.1 1.6 5.1.1 5.1-2.5V29C56 15.7 45.3 5 32 5z"/>
+    <ellipse cx="23.5" cy="30" rx="4.2" ry="5.4" fill="#fff"/>
+    <ellipse cx="40.5" cy="30" rx="4.2" ry="5.4" fill="#fff"/>
+    <circle cx="24.6" cy="31.4" r="1.9" fill="#10151c"/>
+    <circle cx="41.6" cy="31.4" r="1.9" fill="#10151c"/>
+    <path d="M26 42.5c1.9 3.2 10.1 3.2 12 0" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <ellipse cx="17.5" cy="39" rx="3" ry="2" fill="#fff" opacity=".35"/>
+    <ellipse cx="46.5" cy="39" rx="3" ry="2" fill="#fff" opacity=".35"/>
+  </svg>
+</span>`;
+}
+
 export function icon(name, cls = '') {
   const body = ICONS[name] || ICONS.globe;
   return `<svg class="${esc(cls)}" viewBox="0 0 24 24" fill="none" stroke="currentColor"

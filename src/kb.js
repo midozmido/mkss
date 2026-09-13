@@ -76,11 +76,11 @@ const PLURALS = {
 };
 
 const SYNONYMS = {
-  بطيء: ['بطي', 'تقيل', 'سرعه', 'لودينج'],
+  بطيء: ['بطي', 'تقيل', 'سرعه', 'لودينج', 'تبطي', 'بتبطي'],
   واقع: ['مقفول', 'مش شغال', 'مش فاتح', 'داون', 'توقف'],
   شهاده: ['ssl', 'اس اس ال', 'تشفير', 'قفل', 'https'],
   فاتوره: ['فلوس', 'مستحق', 'دفع', 'حساب', 'اشتراك'],
-  دفع: ['تحويل', 'انستا', 'فودافون', 'كاش', 'سداد'],
+  دفع: ['تحويل', 'انستا', 'فودافون', 'سداد', 'محفظه'],
   صيانه: ['تحديث', 'باكب', 'نسخه'],
   دومين: ['نطاق', 'اسم الموقع', 'رابط'],
   استضافه: ['هوستنج', 'سيرفر', 'خادم'],
@@ -158,15 +158,26 @@ export function search(query, { limit = 5 } = {}) {
     );
   }
 
-  // ترجيح إضافي: تطابق العنوان أقوى دليل على أن هذا هو المقصود
   const scored = rows.map((r) => {
     const titleWords = new Set(tokens(r.title));
-    const hits = words.filter((w) => titleWords.has(w)).length;
-    const titleBoost = hits / Math.max(1, words.length);
+    const titleBoost = words.filter((w) => titleWords.has(w)).length / Math.max(1, words.length);
+
+    // التغطية: كم كلمة من سؤال العميل وردت فعلًا في المقال.
+    // بدونها يكفي تطابق كلمة واحدة من ثمانٍ ليتجاوز عتبة الثقة، فيجيب سامي
+    // عن سؤال لم يفهمه. ظهرت هذه المشكلة فور اتساع قاعدة المعرفة:
+    // كلما زادت المقالات زاد احتمال التطابق العابر.
+    const artWords = new Set([
+      ...titleWords,
+      ...tokens(r.keywords || ''),
+      ...tokens(String(r.body).slice(0, 1500)),
+    ]);
+    const coverage = words.filter((w) => artWords.has(w)).length / Math.max(1, words.length);
+
     // bm25 سالب والأقرب للصفر أفضل — نحوّله إلى 0..1
     const base = r.rank ? Math.min(1, Math.abs(r.rank) / 12) : 0.35;
-    const score = Math.min(1, base * 0.65 + titleBoost * 0.35);
-    return { ...r, score: Number(score.toFixed(3)) };
+    const raw = base * 0.6 + titleBoost * 0.4;
+    const score = Math.min(1, raw * (0.3 + 0.7 * coverage));
+    return { ...r, score: Number(score.toFixed(3)), coverage: Number(coverage.toFixed(2)) };
   });
 
   scored.sort((a, b) => b.score - a.score);

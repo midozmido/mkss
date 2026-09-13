@@ -65,6 +65,19 @@
     input.dispatchEvent(new Event('input'));
   });
 
+  // اللون يُطبَّق فورًا عند الضغط، ثم يُحفظ على الخادم — بلا وميض انتظار
+  var colorBar = document.getElementById('color-bar');
+  if (colorBar) {
+    colorBar.addEventListener('click', function (e) {
+      var sw = e.target.closest('.swatch');
+      if (!sw) return;
+      var box = document.querySelector('.chat');
+      if (box) box.style.setProperty('--chat-accent', sw.value);
+      colorBar.querySelectorAll('.swatch').forEach(function (s) { s.setAttribute('aria-pressed', 'false'); });
+      sw.setAttribute('aria-pressed', 'true');
+    });
+  }
+
   // ——————————————————— الشات ———————————————————
   var chat = document.querySelector('.chat');
   if (!chat) return;
@@ -73,6 +86,7 @@
   var form = document.getElementById('chat-form');
   var input = document.getElementById('chat-input');
   var status = document.getElementById('chat-status');
+  var typing = document.getElementById('typing');
   var viewer = chat.getAttribute('data-viewer');        // client | admin
   var chatUser = chat.getAttribute('data-chat-user');
   var lastId = lastSeenId();
@@ -151,11 +165,21 @@
         if (viewer === 'client' && m.visibility === 'internal') return;
         // رسائل المساعد تحمل أزرارًا (تقييم/اقتراحات) يبنيها السيرفر،
         // فنعيد التحميل بدل رسم نصف الرسالة بلا أزرارها.
+        if (typing) typing.classList.remove('on');
         if (viewer === 'client' && (m.author_role === 'bot' || m.author_role === 'system')) {
           return window.location.reload();
         }
         render(m);
       } catch (e) {}
+    });
+
+    // مؤشر «يكتب…»: يبثّه الخادم عند بدء تفكير سامي وعند انتهائه
+    es.addEventListener('typing', function (ev) {
+      if (!typing) return;
+      var on = false;
+      try { on = JSON.parse(ev.data).on; } catch (e) {}
+      typing.classList.toggle('on', !!on);
+      if (on && log) log.scrollTop = log.scrollHeight;
     });
 
     es.addEventListener('error', function () {
