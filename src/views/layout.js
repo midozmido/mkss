@@ -227,9 +227,9 @@ export function layout({ title, user, active = '', body, flash = null, nonce = '
       : [
           ['/', 'مواقعي', 'grid', 0],
           ['/chat', 'المحادثة', 'chat', user.unreadChat || 0],
+          ['/help', 'المساعدة', 'inbox', 0],
           ['/invoices', 'الفواتير', 'receipt', 0],
           ['/billing', 'الاشتراك', 'shield', 0],
-          ['/tickets', 'الطلبات', 'inbox', 0],
         ]
     : [];
   const nav = items

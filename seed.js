@@ -54,6 +54,11 @@ function seedCheckHistory(siteId, { days: d, everyMin, baseMs, platform, outageA
 console.log('◆ تجهيز البيانات التجريبية\n');
 migrate();
 
+// مقالات المساعد الآلي — محتوى حقيقي تعدّله من لوحة الأدمن
+const { seedArticles } = await import('./src/kb-seed.js');
+const kbAdded = seedArticles();
+if (kbAdded) console.log(`✓ ${kbAdded} مقالًا في قاعدة المعرفة`);
+
 // ——— الأدمن ———
 const adminEmail = process.env.ADMIN_EMAIL || 'admin@mkss.local';
 let adminUser = get('SELECT * FROM users WHERE lower(email) = lower(?)', adminEmail);

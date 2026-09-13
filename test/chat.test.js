@@ -38,18 +38,25 @@ test('رسالة العميل تظهر للأدمن كغير مقروءة، ور
   assert.equal(chat.unreadForClient(a), clientBefore + 1, 'رد الأدمن لم يظهر كغير مقروء للعميل');
 });
 
-test('وضع علامة مقروء يعمل لكل طرف على حدة', () => {
-  // unreadForAdmin عدّاد عام لكل العملاء (شارة الإجمالي) — ننظّف الاثنين للقياس
+test('وضع علامة مقروء يعمل لكل طرف ولكل محادثة على حدة', () => {
+  // unreadForAdmin عدّاد عام عبر كل العملاء (شارة الإجمالي في الشريط)،
+  // فالقياس الدقيق لمحادثة بعينها يكون بـ unreadForAdminIn.
   chat.markRead(a, 'admin');
   chat.markRead(b, 'admin');
-  assert.equal(chat.unreadForAdmin(), 0, 'بقي غير مقروء بعد تنظيف كل المحادثات');
+  assert.equal(chat.unreadForAdminIn(a), 0);
+  assert.equal(chat.unreadForAdminIn(b), 0);
 
   chat.sendMessage(a, { body: 'تذكير', role: 'client' });
-  assert.equal(chat.unreadForAdmin(), 1, 'رسالة جديدة لم تُحسب للأدمن');
-  // قراءة الأدمن لمحادثة a لا تمس محادثة b
+  assert.equal(chat.unreadForAdminIn(a), 1, 'رسالة جديدة لم تُحسب');
+
+  // قراءة محادثة لا تمس محادثة عميل آخر
   chat.sendMessage(b, { body: 'رسالة نور', role: 'client' });
   chat.markRead(a, 'admin');
-  assert.equal(chat.unreadForAdmin(), 1, 'قراءة محادثة أثّرت على محادثة عميل آخر');
+  assert.equal(chat.unreadForAdminIn(a), 0);
+  assert.equal(chat.unreadForAdminIn(b), 1, 'قراءة محادثة أثّرت على محادثة أخرى');
+
+  // والعدّاد العام يجمع الاثنين
+  assert.ok(chat.unreadForAdmin() >= 1);
 
   chat.markRead(b, 'admin');
   chat.markRead(a, 'client');

@@ -54,6 +54,17 @@
     }
   });
 
+  // إدراج رد محفوظ في حقل الكتابة
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-insert]');
+    if (!el) return;
+    var input = document.getElementById('chat-input');
+    if (!input) return;
+    input.value = el.getAttribute('data-insert');
+    input.focus();
+    input.dispatchEvent(new Event('input'));
+  });
+
   // ——————————————————— الشات ———————————————————
   var chat = document.querySelector('.chat');
   if (!chat) return;
@@ -136,6 +147,13 @@
         var m = JSON.parse(ev.data);
         // لوحة الأدمن تستقبل رسائل كل العملاء — نعرض من نحن فاتحون محادثته فقط
         if (viewer === 'admin' && String(m.user_id) !== String(chatUser)) return;
+        // العميل لا يرى الملاحظات الداخلية — حارس ثانٍ بعد فلترة السيرفر
+        if (viewer === 'client' && m.visibility === 'internal') return;
+        // رسائل المساعد تحمل أزرارًا (تقييم/اقتراحات) يبنيها السيرفر،
+        // فنعيد التحميل بدل رسم نصف الرسالة بلا أزرارها.
+        if (viewer === 'client' && (m.author_role === 'bot' || m.author_role === 'system')) {
+          return window.location.reload();
+        }
         render(m);
       } catch (e) {}
     });

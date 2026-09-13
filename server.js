@@ -23,6 +23,9 @@ import * as billing from './src/billing.js';
 import * as chat from './src/chat.js';
 import * as billingViews from './src/views/billing.js';
 import * as chatViews from './src/views/chat.js';
+import * as bot from './src/bot.js';
+import * as kb from './src/kb.js';
+import * as kbViews from './src/views/kb.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
@@ -303,11 +306,16 @@ router.post('/billing/claim', async (ctx) => {
 // —— الشات: العميل ——
 
 router.get('/chat', (ctx) => {
-  const messages = chat.history(ctx.user.id);
+  const mode = bot.isLive(ctx.user.id) ? 'live' : 'bot';
+  const messages = chat.history(ctx.user.id, 100, 'client');
   chat.markRead(ctx.user.id, 'client');
   const st = billing.accountState(ctx.user.id);
   sendHtml(ctx.res, chatViews.clientChatPage({
-    user: ctx.user, messages, locked: st.locked, flash: ctx.flash,
+    user: ctx.user, messages, mode, locked: st.locked,
+    topics: mode === 'bot' ? bot.quickTopics() : [],
+    greeting: setting('bot_greeting') || 'أهلًا بك',
+    hours: bot.workingHours(),
+    flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
@@ -316,8 +324,25 @@ router.post('/chat', async (ctx) => {
   const wantsJson = String(ctx.req.headers.accept || '').includes('application/json');
   try {
     if (!chatLimiter.check(`chat:${ctx.user.id}`).allowed) throw new Error('رسائل كثيرة — تمهّل قليلًا');
-    const msg = chat.sendMessage(ctx.user.id, { body: f.body, role: 'client', authorId: ctx.user.id });
-    if (wantsJson) return sendJson(ctx.res, { message: msg });
+    // القناة تتبع الوضع الحالي: بدونها لا يظهر سؤال العميل في ملخص التحويل،
+    // فيرى الدعم إجابات المساعد بلا الأسئلة — وهذا يُبطل الغرض من النقلة كلها.
+    const live = bot.isLive(ctx.user.id);
+    const msg = chat.sendMessage(ctx.user.id, {
+      body: f.body, role: 'client', authorId: ctx.user.id, channel: live ? 'live' : 'bot',
+    });
+
+    // في وضع المساعد يرد البوت فورًا؛ وفي الوضع البشري لا يتدخل إطلاقًا،
+    // فلا شيء أسوأ من بوت يقاطع محادثة جارية مع موظف.
+    let botReply = null;
+    if (!live) {
+      const r = bot.handle(ctx.user.id, f.body);
+      if (r.escalate) {
+        bot.escalate(ctx.user.id, { reason: 'طلب العميل التحويل' });
+      } else {
+        botReply = r.messages?.[0] || null;
+      }
+    }
+    if (wantsJson) return sendJson(ctx.res, { message: msg, bot: botReply });
     redirect(ctx.res, '/chat');
   } catch (e) {
     if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
@@ -325,12 +350,56 @@ router.post('/chat', async (ctx) => {
   }
 });
 
+router.post('/chat/escalate', async (ctx) => {
+  const f = await readForm(ctx.req);
+  bot.escalate(ctx.user.id, { reason: String(f.reason || 'طلب العميل').slice(0, 120) });
+  redirect(ctx.res, '/chat');
+});
+
+router.post('/chat/article', async (ctx) => {
+  const f = await readForm(ctx.req);
+  bot.showArticle(ctx.user.id, Number(f.articleId));
+  redirect(ctx.res, '/chat');
+});
+
+router.post('/chat/feedback', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const helpful = f.helpful === '1';
+  kb.recordFeedback(Number(f.articleId), ctx.user.id, helpful, f.question);
+  if (!helpful) {
+    // «لم يفدني» ليس نهاية الطريق — نعرض الدعم البشري فورًا
+    chat.sendMessage(ctx.user.id, {
+      role: 'bot', channel: 'bot',
+      body: 'آسف إن الإجابة ما أفادتكش. تحب أحوّلك لفريق الدعم؟ اضغط «كلم الدعم الفني» وهينقل معاك كل اللي اتكلمنا فيه.',
+      meta: { kind: 'no_answer', question: f.question || '' },
+    });
+  } else {
+    chat.sendMessage(ctx.user.id, { role: 'bot', channel: 'bot', body: 'تمام 👍 لو احتجت أي حاجة تانية أنا هنا.' });
+  }
+  redirect(ctx.res, '/chat');
+});
+
 router.get('/chat/stream', (ctx) => {
   chat.openStream(ctx.res, `u:${ctx.user.id}`);
 });
 
 router.get('/chat/since', (ctx) => {
-  sendJson(ctx.res, { messages: chat.since(ctx.user.id, ctx.query.get('after')) });
+  sendJson(ctx.res, { messages: chat.since(ctx.user.id, ctx.query.get('after'), 'client') });
+});
+
+// —— قاعدة المعرفة للعميل ——
+
+router.get('/help', (ctx) => {
+  sendHtml(ctx.res, kbViews.helpIndex({
+    user: ctx.user, categories: kb.categories(), articles: kb.listArticles(), flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
+});
+
+router.get('/help/:slug', (ctx) => {
+  const a = kb.getArticle(ctx.params.slug);
+  if (!a || !a.active) return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, message: 'المقال غير موجود' }), { status: 404 });
+  kb.countView(a.id);
+  sendHtml(ctx.res, kbViews.helpArticle({ user: ctx.user, article: a, flash: ctx.flash }));
 });
 
 // —— لوحة الأدمن ——
@@ -481,10 +550,14 @@ router.get('/admin/chat/stream', (ctx) => {
 router.get('/admin/chat/:id', (ctx) => {
   const client = admin.adminGetClient(Number(ctx.params.id));
   if (!client) return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, message: 'العميل غير موجود' }), { status: 404 });
-  const messages = chat.history(client.id);
+  const messages = chat.history(client.id, 100, 'admin');
   chat.markRead(client.id, 'admin');
   sendHtml(ctx.res, chatViews.adminChatThread({
-    user: ctx.user, client, messages, state: billing.accountState(client.id), flash: ctx.flash,
+    user: ctx.user, client, messages,
+    state: billing.accountState(client.id),
+    mode: client.support_mode || 'bot',
+    replies: [],
+    flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
@@ -507,6 +580,63 @@ router.post('/admin/chat/:id', async (ctx) => {
     if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
     redirect(ctx.res, `/admin/chat/${client.id}`, { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
   }
+});
+
+router.post('/admin/chat/:id/close', async (ctx) => {
+  const id = Number(ctx.params.id);
+  if (!admin.adminGetClient(id)) return redirect(ctx.res, '/admin/chat');
+  bot.backToBot(id);
+  admin.audit(ctx.user.id, 'close_chat', `user#${id}`, null, ctx.ip);
+  redirect(ctx.res, `/admin/chat/${id}`, { headers: { 'Set-Cookie': flashCookie('ok', 'أُنهيت المحادثة وعاد العميل للمساعد الآلي.') } });
+});
+
+router.post('/admin/chat/:id/note', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const id = Number(ctx.params.id);
+  if (!admin.adminGetClient(id)) return redirect(ctx.res, '/admin/chat');
+  try {
+    chat.sendMessage(id, { body: f.body, role: 'system', authorId: ctx.user.id, visibility: 'internal' });
+  } catch (e) { /* رسالة فارغة */ }
+  redirect(ctx.res, `/admin/chat/${id}`);
+});
+
+// —— قاعدة المعرفة: إدارة ——
+
+router.get('/admin/kb', (ctx) => {
+  sendHtml(ctx.res, kbViews.adminKbList({
+    user: ctx.user, articles: kb.listArticles({ activeOnly: false }),
+    unanswered: kb.unanswered(10), weak: kb.weakArticles(), flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
+});
+
+router.get('/admin/kb/new', (ctx) => {
+  sendHtml(ctx.res, kbViews.adminKbForm({ user: ctx.user, article: null, flash: ctx.flash }));
+});
+
+router.get('/admin/kb/:id', (ctx) => {
+  const a = kb.getArticle(Number(ctx.params.id));
+  if (!a) return redirect(ctx.res, '/admin/kb');
+  sendHtml(ctx.res, kbViews.adminKbForm({ user: ctx.user, article: a, flash: ctx.flash }));
+});
+
+router.post('/admin/kb', async (ctx) => {
+  const f = pick(await readForm(ctx.req), ['id', 'slug', 'title', 'body', 'keywords', 'category', 'sort_order', 'active']);
+  if (!f.title || !f.body) {
+    return redirect(ctx.res, '/admin/kb', { headers: { 'Set-Cookie': flashCookie('danger', 'العنوان والمحتوى مطلوبان.') } });
+  }
+  try {
+    const id = kb.saveArticle({ ...f, id: f.id ? Number(f.id) : null, active: f.active === '1' ? 1 : 0 });
+    admin.audit(ctx.user.id, f.id ? 'update_article' : 'create_article', `kb#${id}`, f.title, ctx.ip);
+    redirect(ctx.res, '/admin/kb', { headers: { 'Set-Cookie': flashCookie('ok', 'حُفظ المقال.') } });
+  } catch (e) {
+    redirect(ctx.res, '/admin/kb', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+router.post('/admin/kb/:id/delete', async (ctx) => {
+  kb.deleteArticle(Number(ctx.params.id));
+  admin.audit(ctx.user.id, 'delete_article', `kb#${ctx.params.id}`, null, ctx.ip);
+  redirect(ctx.res, '/admin/kb', { headers: { 'Set-Cookie': flashCookie('ok', 'حُذف المقال.') } });
 });
 
 router.get('/admin/payments', (ctx) => {
@@ -602,10 +732,11 @@ const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
  */
 const OPEN_WHEN_LOCKED = new Set([
   '/billing', '/billing/claim',
-  '/chat', '/chat/stream', '/chat/since',
+  '/chat', '/chat/stream', '/chat/since', '/chat/escalate', '/chat/article', '/chat/feedback',
   '/invoices', '/logout', '/health',
 ]);
-const openWhenLocked = (p) => OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/');
+const openWhenLocked = (p) =>
+  OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/') || p.startsWith('/help');
 
 export function createApp() {
   return http.createServer(async (req, res) => {
