@@ -1,0 +1,339 @@
+/* ============================================================================
+   MK — TOKENS
+   ----------------------------------------------------------------------------
+   Every design decision on the site lives in this file and nowhere else.
+   This is the ONLY file allowed to contain a literal colour, a literal pixel
+   value, a literal duration or a literal easing curve. base / layout /
+   components / section CSS consume these names and never restate a value.
+
+   Load order (fixed, never change it):
+       tokens.css → base.css → layout.css → components.css → sections.css
+
+   Zero !important in this codebase. If a declaration is not winning, the
+   selector is wrong.
+   ========================================================================== */
+
+:root {
+
+  /* ══════════════════════════════════════════════════════════════════════
+     1. COLOUR — the palette, measured from the live page. Do not add to it.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* Surfaces — a five-step depth ramp. No two adjacent sections share a step. */
+  --ink: #06050B;
+  --surface-1: #0B0912;
+  --surface-2: #121020;
+  --surface-3: #1A1730;
+  --surface-4: #221D3D;          /* raised: only cards sit on this step */
+
+  /* Brand. Violet is the primary. Teal is the ONLY second accent — it is in
+     the logo. There is no gold, no coral, no rose, no cyan, no blue. */
+  --violet-600: #7A22DB;         /* primary fill: buttons, plates */
+  --violet-400: #A855F7;         /* accent text, eyebrows, active state */
+  --violet-100: #E9D5FF;         /* rare highlight, hover text on violet */
+  --teal-400: #2DD4BF;           /* focus, hover ignition, confirmations */
+
+  /* Comma triplets, for rgba(). Written as `rgba(var(--violet-600-rgb), .28)`.
+     Prefer the pre-mixed alpha tokens further down before reaching for these. */
+  --ink-rgb: 6, 5, 11;
+  --surface-1-rgb: 11, 9, 18;
+  --surface-2-rgb: 18, 16, 32;
+  --surface-3-rgb: 26, 23, 48;
+  --surface-4-rgb: 34, 29, 61;
+  --violet-600-rgb: 122, 34, 219;
+  --violet-400-rgb: 168, 85, 247;
+  --violet-100-rgb: 233, 213, 255;
+  --teal-400-rgb: 45, 212, 191;
+  --white-rgb: 255, 255, 255;
+
+  /* Text — three ranks, nothing between them.
+     --text-3 is for meta and labels only; it is not a body-copy colour. */
+  --text-1: rgba(255, 255, 255, .97);
+  --text-2: rgba(255, 255, 255, .72);
+  --text-3: rgba(255, 255, 255, .50);
+  --text-on-violet: #FFFFFF;     /* 6.87:1 on --violet-600 */
+
+  /* Pre-mixed alphas — reach for these instead of writing rgba() by hand. */
+  --violet-a08: rgba(122, 34, 219, .08);
+  --violet-a12: rgba(122, 34, 219, .12);
+  --violet-a20: rgba(122, 34, 219, .20);
+  --violet-a28: rgba(122, 34, 219, .28);
+  --violet-a45: rgba(122, 34, 219, .45);
+  --teal-a10: rgba(45, 212, 191, .10);
+  --teal-a18: rgba(45, 212, 191, .18);
+  --teal-a50: rgba(45, 212, 191, .50);
+  --white-a05: rgba(255, 255, 255, .05);
+  --white-a08: rgba(255, 255, 255, .08);
+  --white-a12: rgba(255, 255, 255, .12);
+  --white-a18: rgba(255, 255, 255, .18);
+
+  /* Hairlines */
+  --rule: var(--white-a08);          /* the standard 1px border colour */
+  --rule-soft: var(--white-a05);     /* section seams */
+  --rule-strong: var(--white-a18);   /* pressed / focused chrome */
+
+  /* Gradients — exactly two exist on this page. Violet → teal, one angle. */
+  --grad-brand: linear-gradient(100deg, var(--violet-600) 0%, var(--teal-400) 100%);
+  --grad-brand-light: linear-gradient(100deg, var(--violet-400) 0%, var(--teal-400) 100%);
+  --grad-hero-wash: linear-gradient(180deg, var(--violet-a20) 0%, transparent 55%);
+  --grad-fade-x: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     2. SECTION DEPTH RAMP — named per section, in document order.
+        Adjacent sections never share a step. The classes that apply these
+        live in layout.css (.section--ink / --s1 / --s2 / --s3).
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --depth-hero: var(--ink);
+  --depth-marquee: var(--surface-2);
+  --depth-about: var(--surface-1);
+  --depth-stats: var(--surface-3);
+  --depth-story: var(--surface-1);
+  --depth-expertise: var(--surface-2);
+  --depth-services: var(--surface-1);
+  --depth-comparison: var(--surface-3);
+  --depth-process: var(--surface-1);
+  --depth-work: var(--surface-2);
+  --depth-testimonials: var(--surface-1);
+  --depth-timeline: var(--surface-3);
+  --depth-contact: var(--surface-1);
+  --depth-faq: var(--surface-2);
+  --depth-guarantee: var(--surface-1);
+  --depth-footer: var(--ink);
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     3. THE MK CUT — the logo's slant. The site's signature.
+        Every heading reveal, every image mask and every icon tile use it.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --mk-angle: 21deg;
+  --mk-angle-neg: -21deg;
+  --mk-tan: 0.38386;             /* tan(21deg) — for computed corner runs */
+  --mk-cut-run: 1.75rem;         /* 28px horizontal run of a corner cut */
+  --mk-cut-rise: 4.5rem;         /* 72px vertical rise: 28/72 = tan(21deg) */
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     4. TYPE
+        Families: ONE Google Fonts request, declared in <head>.
+        Ramps: continuous clamp() from 375px to 1440px. There is no
+        breakpoint jump on any rank — the old 16px cliff at 1366px is gone.
+        Each clamp lands on its measured target at 1440px viewport width.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /*                                      375px  →  1440px  */
+  --fs-h1: clamp(2.75rem, 1.43rem + 5.634vw, 6.5rem);          /*  44 → 104 */
+  --fs-h2: clamp(2rem, 1.606rem + 1.681vw, 3.12rem);           /*  32 → 49.9 */
+  --fs-h3: clamp(1.375rem, 1.298rem + 0.329vw, 1.594rem);      /*  22 → 25.5 */
+  --fs-h4: clamp(1.25rem, 1.217rem + 0.141vw, 1.344rem);       /*  20 → 21.5 */
+  --fs-h5: clamp(1.0625rem, 1.029rem + 0.141vw, 1.156rem);     /*  17 → 18.5 */
+  --fs-h6: clamp(0.9375rem, 0.916rem + 0.094vw, 1rem);         /*  15 → 16 */
+
+  --fs-lede: clamp(1.0625rem, 0.93rem + 0.563vw, 1.4375rem);   /*  17 → 23 */
+  --fs-body: clamp(1rem, 0.912rem + 0.376vw, 1.25rem);         /*  16 → 20 */
+  --fs-sm: clamp(0.9375rem, 0.894rem + 0.188vw, 1.0625rem);    /*  15 → 17 */
+  --fs-xs: clamp(0.8125rem, 0.791rem + 0.094vw, 0.875rem);     /*  13 → 14 */
+  --fs-eyebrow: clamp(0.75rem, 0.728rem + 0.094vw, 0.8125rem); /*  12 → 13 */
+  --fs-stat: clamp(2.5rem, 1.62rem + 3.756vw, 5rem);           /*  40 → 80 */
+
+  --lh-tight: 1.02;              /* h1 only */
+  --lh-heading: 1.1;             /* h2 / h3 */
+  --lh-snug: 1.35;               /* h4-h6, card titles, lede */
+  --lh-body: 1.65;               /* body copy */
+  --lh-loose: 1.8;               /* long-form list items */
+
+  --ls-tight: -0.03em;           /* h1 */
+  --ls-heading: -0.02em;         /* h2 */
+  --ls-snug: -0.01em;            /* h3 / h4 */
+  --ls-normal: 0;
+  --ls-wide: 0.12em;             /* eyebrow / small caps */
+
+  --measure: 62ch;               /* max line length for body copy */
+  --measure-narrow: 46ch;        /* lede, quotes */
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     5. SPACE — one scale. No component invents a value.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --space-2xs: 0.25rem;   /*  4 */
+  --space-xs: 0.5rem;     /*  8 */
+  --space-sm: 0.75rem;    /* 12 */
+  --space-md: 1rem;       /* 16 */
+  --space-lg: 1.5rem;     /* 24 */
+  --space-xl: 2rem;       /* 32 */
+  --space-2xl: 3rem;      /* 48 */
+  --space-3xl: 4rem;      /* 64 */
+  --space-4xl: 6rem;      /* 96 */
+
+  /* Section rhythm — the whole page uses these two values and nothing else. */
+  --sec-pad: clamp(4.5rem, 8vw, 8rem);          /* standard section */
+  --sec-pad-tight: clamp(3rem, 5vw, 5rem);      /* marquee + stats strips */
+
+  /* Grid gaps */
+  --gap-grid: clamp(1rem, 1.8vw, 1.75rem);
+  --gap-grid-lg: clamp(1.5rem, 3vw, 3rem);
+
+  /* Card padding — 35px / 30px at desktop, tightened on a phone. */
+  --card-pad-block: clamp(1.5rem, 1.258rem + 1.033vw, 2.1875rem);   /* 24 → 35 */
+  --card-pad-inline: clamp(1.25rem, 1.03rem + 0.939vw, 1.875rem);   /* 20 → 30 */
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     6. CONTAINER & CHROME
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --container-max: 1400px;
+  --container-narrow: 62.5rem;   /* 1000px — prose, forms, FAQ */
+  --container-wide: 1600px;      /* full-bleed rails only */
+  --container-pad: clamp(1.25rem, 3.33vw, 3rem);   /* 20 → 48 */
+
+  --nav-h: clamp(4rem, 3.5rem + 1.5vw, 4.5rem);    /* 64 → 72 */
+  --scroll-progress-h: 2px;
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     7. RADII & BORDERS
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --radius-xs: 4px;              /* icon tiles, media frames — the sharp look */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;             /* the card radius */
+  --radius-pill: 999px;
+
+  --border-w: 1px;              /* also the site's "one pixel" wherever one is needed */
+  --border-w-thick: 2px;
+  --border: var(--border-w) solid var(--rule);
+  --border-strong: var(--border-w) solid var(--rule-strong);
+  --border-brand: var(--border-w) solid var(--violet-a28);
+  --border-live: var(--border-w) solid var(--teal-a50);   /* hover / active */
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     8. ELEVATION
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --shadow-card: 0 12px 32px -16px rgba(0, 0, 0, .8);
+  --shadow-card-hover: 0 16px 40px -18px rgba(0, 0, 0, .85);
+  --ring-inner: inset 0 0 0 1px var(--teal-a18);     /* the hover ignition ring */
+  --shadow-pop: 0 24px 60px rgba(0, 0, 0, .55);      /* menus, modals, portrait */
+  --shadow-btn: 0 8px 24px -8px var(--violet-a45);
+  --shadow-inset-seam: inset 0 1px 0 var(--rule-soft);
+
+  /* Blur radii. --blur-glow is the hero's soft light; the other two are the
+     backdrop blurs behind the navbar and the menu overlay. */
+  --blur-sm: 8px;
+  --blur-md: 12px;
+  --blur-glow: 80px;
+
+  /* A mask only reads the alpha channel, so this is the "fully opaque" stop.
+     It is not a palette colour and must never be used as one. */
+  --mask-solid: #000;
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     9. MOTION — client-approved. bounce / elastic / back are banned.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --dur-instant: .18s;
+  --dur-fast: .36s;              /* every hover, every state change */
+  --dur-base: .72s;
+  --dur-slow: 1.05s;
+  --dur-hero: 1.4s;
+
+  --ease-out: cubic-bezier(.19, 1, .22, 1);        /* expo.out */
+  --ease-in-out: cubic-bezier(.87, 0, .13, 1);     /* expo.inOut */
+  --ease-in: cubic-bezier(.55, .085, .68, .53);    /* power2.in */
+
+  --lift: -2px;                  /* the one card-hover rise */
+  --stagger: .055s;
+  --marquee-dur: 40s;
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     10. Z-INDEX LADDER — every layer on the page, in order. Nothing else
+         is allowed to declare a z-index literal.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --z-below: -1;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 100;
+  --z-nav: 300;
+  --z-widget: 350;
+  --z-menu-overlay: 400;
+  --z-menu: 500;
+  --z-progress: 700;
+  --z-cursor: 900;
+  --z-preloader: 1000;
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     11. FOCUS
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --focus-color: var(--teal-400);
+  --focus-w: 2px;
+  --focus-offset: 3px;
+  --focus-ring: var(--focus-w) solid var(--focus-color);
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     12. COMPONENT SIZING
+         Fixed dimensions components need. A component file must not invent a
+         px value; if a size is missing here, add it here.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  --size-touch: 2.75rem;         /* 44px — minimum tap target */
+  --size-touch-lg: 3.25rem;      /* 52px — the floating WhatsApp circle on phones */
+  --size-icon: 1.25rem;          /* 20px — inline icon */
+  --size-icon-lg: 1.5rem;        /* 24px */
+  --size-tile: 3rem;             /* 48px — the card icon tile */
+  --size-tile-lg: 3.5rem;        /* 56px */
+  --size-avatar: 3.5rem;         /* 56px — testimonial portrait */
+  --size-dot: 0.5rem;            /* 8px — status dot */
+  --icon-stroke: 1.5;            /* svg stroke-width, unitless */
+
+  --btn-pad-block: 0.875rem;
+  --btn-pad-inline: 1.5rem;
+  --btn-pad-block-lg: 1.125rem;
+  --btn-pad-inline-lg: 2rem;
+
+  --field-pad-block: 0.875rem;
+  --field-pad-inline: 1rem;
+  --field-radius: var(--radius-md);
+
+  --chip-mark-h: 0.875rem;       /* 14px — tallest of the three strokes */
+  --chip-stroke-w: 2px;
+  --chip-stroke-gap: 3px;
+
+  --rail-card-w: 21rem;          /* 336px — one project card on the rail */
+  --marquee-gap: 4rem;
+
+  --logo-h: 2rem;
+  --menu-w: min(30rem, 88vw);
+
+  /* 12b signature — how wide the mark prints on the pinned stage. Only one
+     dimension is ever declared: the file is 512 × 135 and carries its own
+     width/height attributes, so the height follows the aspect ratio. */
+  --signature-logo-w: clamp(13rem, 24vw, 24rem);   /* 208 → 384 */
+
+  /* The hero is the one full-viewport block on the page. svh (small viewport
+     height) is the stable value on a phone — 100vh jumps by the height of the
+     browser chrome the moment the visitor scrolls. */
+  --hero-min-h: 100svh;
+  --hero-min-h-fallback: 100vh;
+}

@@ -1,0 +1,1633 @@
+/* ============================================================================
+   MK — COMPONENTS
+   ----------------------------------------------------------------------------
+   The shared component library. Every section is assembled from these.
+   Read COMPONENTS.md for the markup that goes with each block.
+
+   Rules held throughout this file:
+     · zero !important
+     · every value comes from tokens.css
+     · maximum two levels of selector nesting
+     · classes only — no element selectors doing layout work
+     · mobile-first, breakpoints at 640 / 900 / 1200 only
+
+   Where a class name looks unusual it is a JS behaviour hook that must survive
+   verbatim (js/motion.js, js/ui.js, js/form.js). Those are marked HOOK.
+   State classes are `.is-*` and the scripts own them: `.is-open`, `.is-active`,
+   `.is-done`, `.has-error`, plus `.scrolled` on the navbar. Two features hide
+   things with the `hidden` PROPERTY instead of a class — the project filter and
+   the form steps — which is why base.css carries `[hidden][hidden]`.
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. ICON HELPERS
+   base.css sets svg to stroke:currentColor / fill:none. Filled marks opt in.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.icon {
+  inline-size: var(--size-icon);
+  block-size: var(--size-icon);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+}
+
+.icon--lg {
+  inline-size: var(--size-icon-lg);
+  block-size: var(--size-icon-lg);
+}
+
+.icon--filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. BUTTON
+   One shape, three skins. Always a real <button> or <a>; never a styled div.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-block-size: var(--size-touch);
+  padding: var(--btn-pad-block) var(--btn-pad-inline);
+  border: var(--border-w) solid transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1.2;
+  letter-spacing: var(--ls-normal);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Primary: the one filled violet action ─────────────────────────────── */
+.btn--primary {
+  background-color: var(--violet-600);
+  border-color: var(--violet-600);
+  color: var(--text-on-violet);
+  box-shadow: var(--shadow-btn);
+}
+
+.btn--primary:hover {
+  background-color: var(--violet-400);
+  border-color: var(--violet-400);
+  color: var(--ink);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ── Outline: the secondary action ─────────────────────────────────────── */
+.btn--outline {
+  background-color: transparent;
+  border-color: var(--rule-strong);
+  color: var(--text-1);
+}
+
+.btn--outline:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-400);
+}
+
+/* ── Quiet: a text action with an arrow. No box. ───────────────────────── */
+.btn--quiet {
+  min-block-size: 0;
+  padding-inline: 0;
+  padding-block: var(--space-2xs);
+  border-radius: var(--radius-xs);
+  color: var(--violet-400);
+}
+
+.btn--quiet:hover {
+  color: var(--teal-400);
+}
+
+/* ── Size and width modifiers ──────────────────────────────────────────── */
+.btn--lg {
+  padding: var(--btn-pad-block-lg) var(--btn-pad-inline-lg);
+  font-size: var(--fs-h5);
+}
+
+.btn--block {
+  display: flex;
+  inline-size: 100%;
+}
+
+/* Icon-only control. The accessible name lives on aria-label. */
+.btn--icon {
+  inline-size: var(--size-touch);
+  min-inline-size: var(--size-touch);
+  padding: 0;
+  border-color: var(--rule);
+  color: var(--text-2);
+}
+
+.btn--icon:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-400);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. CHIP — the eyebrow label above every section title.
+   ----------------------------------------------------------------------------
+   It used to be a violet pill, nine times over. It is now the mark itself:
+   three ascending strokes leaning at --mk-angle, then the label. The strokes
+   are decorative and carry no meaning the text does not already carry.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-body);
+  font-size: var(--fs-eyebrow);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--violet-400);
+}
+
+.chip--teal {
+  color: var(--teal-400);
+}
+
+.chip--muted {
+  color: var(--text-3);
+}
+
+.chip__mark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--chip-stroke-gap);
+  block-size: var(--chip-mark-h);
+  transform: skewX(var(--mk-angle-neg));
+}
+
+.chip__stroke {
+  inline-size: var(--chip-stroke-w);
+  block-size: var(--chip-mark-h);
+  border-radius: var(--chip-stroke-w);
+  background-color: currentColor;
+}
+
+.chip__stroke:nth-child(1) {
+  block-size: calc(var(--chip-mark-h) * 0.45);
+  opacity: 0.5;
+}
+
+.chip__stroke:nth-child(2) {
+  block-size: calc(var(--chip-mark-h) * 0.72);
+  opacity: 0.75;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. SECTION HEAD — chip + h2 + lede. Every section opens with one.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: var(--measure);
+  margin-block-end: var(--space-2xl);
+}
+
+.section-head--center {
+  align-items: center;
+  text-align: center;
+  margin-inline: auto;
+}
+
+.section-head__title {
+  margin: 0;
+}
+
+.section-head__lede {
+  font-size: var(--fs-lede);
+  line-height: var(--lh-snug);
+  color: var(--text-2);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. CARD — the one raised surface, and the ONE hover gesture on the site.
+   ----------------------------------------------------------------------------
+   Hover and keyboard focus do exactly the same thing, everywhere:
+       border ignites to teal · 1px inner ring · rises 2px · 0.36s
+   Nothing rotates. Nothing scales. Nothing changes background.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.card {
+  position: relative;
+  display: block;
+  padding: var(--card-pad-block) var(--card-pad-inline);
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--surface-4);
+  box-shadow: var(--shadow-card);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.card:hover,
+.card:focus-within {
+  border-color: var(--teal-a50);
+  box-shadow: var(--ring-inner), var(--shadow-card-hover);
+  transform: translateY(var(--lift));
+}
+
+/* A card that is only a container, never interactive: opts out of the gesture
+   so a static panel does not pretend to be clickable. */
+.card--static:hover,
+.card--static:focus-within {
+  border-color: var(--rule);
+  box-shadow: var(--shadow-card);
+  transform: none;
+}
+
+/* Media sits edge to edge; the padding moves onto .card__body. */
+.card--flush {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Sits on --surface-3 sections where surface-4 is too close a step. */
+.card--sunken {
+  background-color: var(--surface-2);
+}
+
+.card--highlight {
+  border-color: var(--violet-a28);
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--card-pad-block) var(--card-pad-inline);
+}
+
+.card__title {
+  font-size: var(--fs-h3);
+}
+
+.card__text {
+  color: var(--text-2);
+}
+
+.card__meta {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* The whole card is a link target, but only the title is the real anchor —
+   so the link text a screen reader announces is the title, not the paragraph. */
+.card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. ICON TILE — the card's glyph holder.
+   Leans at --mk-angle. The glyph counter-skews so it stays upright. It does
+   not rotate on hover: a rotating rounded square is the single most
+   recognisable template signature there is.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.icon-tile {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-tile);
+  block-size: var(--size-tile);
+  border: var(--border);
+  border-radius: var(--radius-xs);
+  background-color: var(--violet-a12);
+  color: var(--violet-400);
+  transform: skewX(var(--mk-angle-neg));
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.icon-tile__glyph {
+  inline-size: var(--size-icon-lg);
+  block-size: var(--size-icon-lg);
+  stroke-width: var(--icon-stroke);
+  transform: skewX(var(--mk-angle));
+}
+
+.card:hover .icon-tile {
+  background-color: var(--violet-a28);
+  border-color: var(--teal-a50);
+  color: var(--violet-100);
+}
+
+/* A number instead of a glyph — process steps, timeline markers. */
+.icon-tile--numeral {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-bold);
+}
+
+.icon-tile--lg {
+  inline-size: var(--size-tile-lg);
+  block-size: var(--size-tile-lg);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. MEDIA FRAME — the MK cut applied to an image.
+   A 1px rule at 4px radius with a hard violet plate offset behind it, its
+   lower-left corner cut at --mk-angle. No blur, no neon, no animation.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.media-frame {
+  position: relative;
+  border: var(--border);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-pop);
+}
+
+.media-frame__plate {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-below);
+  border-radius: var(--radius-xs);
+  background-color: var(--violet-600);
+  transform: translate(var(--space-xs), var(--space-xs));
+  clip-path: polygon(0 0,
+      100% 0,
+      100% 100%,
+      var(--mk-cut-run) 100%,
+      0 calc(100% - var(--mk-cut-rise)));
+}
+
+.media-frame__img {
+  inline-size: 100%;
+  border-radius: var(--radius-xs);
+}
+
+/* A rectangular media well with the top-right corner cut at --mk-angle —
+   for project thumbnails and story imagery. */
+.media-cut {
+  overflow: hidden;
+  clip-path: polygon(0 0,
+      calc(100% - var(--mk-cut-run)) 0,
+      100% var(--mk-cut-rise),
+      100% 100%,
+      0 100%);
+}
+
+@media (min-width: 900px) {
+
+  .media-frame__plate {
+    transform: translate(var(--space-md), var(--space-md));
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. BADGE — a small status marker. The dot is decoration; the word carries
+   the meaning, so nothing here depends on colour alone.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-2xs) var(--space-sm);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  background-color: var(--white-a05);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: 1.4;
+  color: var(--text-2);
+}
+
+.badge--live {
+  border-color: var(--teal-a50);
+  color: var(--teal-400);
+}
+
+.badge--brand {
+  border-color: var(--violet-a28);
+  background-color: var(--violet-a08);
+  color: var(--violet-400);
+}
+
+.badge__dot {
+  inline-size: var(--size-dot);
+  block-size: var(--size-dot);
+  border-radius: var(--radius-pill);
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. STAT — the number strip.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.stat--center {
+  align-items: center;
+  text-align: center;
+}
+
+/* HOOK: .stat-number — no script writes this; print the real number in the markup. */
+.stat-number {
+  font-family: var(--font-display);
+  font-size: var(--fs-stat);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: var(--ls-tight);
+  background-image: var(--grad-brand-light);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.stat__label {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10. PILL FILTER — the work-section category filter.
+   HOOK: .filter-btn + data-filter, and js/ui.js toggles `.is-active` and writes aria-pressed.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.pill-filter,
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--size-touch);
+  padding: var(--space-xs) var(--space-md);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  background-color: transparent;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.pill-filter:hover,
+.filter-btn:hover {
+  border-color: var(--teal-a50);
+  color: var(--text-1);
+}
+
+/* The selected filter is marked by aria-pressed as well as by colour —
+   js/ui.js writes both the class and the attribute. */
+.pill-filter.is-active,
+.filter-btn.is-active {
+  border-color: var(--violet-600);
+  background-color: var(--violet-600);
+  color: var(--text-on-violet);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11. ACCORDION — the FAQ.
+   HOOKS: .faq-item / .faq-question / .faq-answer / .faq-answer-content.
+   js/ui.js toggles `.is-open` on .faq-item, writes aria-expanded on the
+   question and gives .faq-answer an id it points aria-controls at.
+   The panel opens with a grid-row transition, so there is no height maths and
+   nothing to recalculate when the text reflows.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.faq-item {
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-3);
+  overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.faq-item.is-open {
+  border-color: var(--violet-a28);
+}
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  inline-size: 100%;
+  padding: var(--space-lg) var(--space-md);
+  font-family: var(--font-display);
+  font-size: var(--fs-h5);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  text-align: start;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.faq-question:hover {
+  color: var(--violet-400);
+}
+
+.faq-question__icon {
+  inline-size: var(--size-icon);
+  block-size: var(--size-icon);
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.faq-item.is-open .faq-question__icon {
+  transform: rotate(45deg);
+}
+
+.faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-fast) var(--ease-out);
+}
+
+.faq-item.is-open .faq-answer {
+  grid-template-rows: 1fr;
+}
+
+.faq-answer-content {
+  overflow: hidden;
+  color: var(--text-2);
+}
+
+.faq-answer-content > .faq-answer__text {
+  padding: 0 var(--space-md) var(--space-lg);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12. FIELD — label + control + error. Every input has a real <label>.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field__label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.field__required {
+  color: var(--violet-400);
+}
+
+.field__input {
+  inline-size: 100%;
+  min-block-size: var(--size-touch);
+  padding: var(--field-pad-block) var(--field-pad-inline);
+  border: var(--border);
+  border-radius: var(--field-radius);
+  background-color: var(--surface-2);
+  font-size: var(--fs-sm);
+  color: var(--text-1);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.field__input:hover {
+  border-color: var(--rule-strong);
+}
+
+.field__input:focus-visible {
+  border-color: var(--teal-400);
+  background-color: var(--surface-3);
+}
+
+.field__textarea {
+  min-block-size: 8rem;
+  line-height: var(--lh-body);
+}
+
+.field__hint {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+/* HOOK: js/form.js puts `.has-error` on the .field wrapper, writes the message
+   into .field__error and sets aria-invalid on the control. The border change is
+   always doubled by that message, so nothing is signalled by colour alone.
+   The .field__error element must exist in the markup, empty, with
+   aria-live="polite" — the script fills it, it does not create it. */
+.field__error {
+  display: block;
+  min-block-size: 1em;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--violet-100);
+}
+
+.field.has-error .field__input {
+  border-color: var(--violet-400);
+  background-color: var(--violet-a08);
+}
+
+.field.has-error .field__label {
+  color: var(--violet-100);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   13. OPTION — a radio rendered as a selectable card (projectType, budget).
+   The native input stays in the DOM and keeps the keyboard behaviour; it is
+   visually hidden, and :checked drives the card.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.option {
+  position: relative;
+  display: block;
+}
+
+/* Visually gone, still a real radio: focusable, keyboard-navigable as a group,
+   and announced by its <label>. Do not swap it for a div. */
+.option__input {
+  position: absolute;
+  inline-size: var(--border-w);
+  block-size: var(--border-w);
+  opacity: 0;
+}
+
+.option__card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  block-size: 100%;
+  padding: var(--space-md);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-2);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.option__card:hover {
+  border-color: var(--rule-strong);
+  color: var(--text-1);
+}
+
+.option__input:checked + .option__card {
+  border-color: var(--violet-600);
+  background-color: var(--violet-a12);
+  color: var(--text-1);
+}
+
+.option__input:focus-visible + .option__card {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   14. MULTI-STEP FORM
+   HOOKS: #contactForm, .form-step[data-step], .next-step, .prev-step,
+   .progress-step[data-step], .form-progress, #formSuccess.
+   js/form.js drives it:
+     · the current .form-step gets `.is-active`, the others get hidden=true
+     · every .progress-step up to and including the current one gets
+       `.is-active`; every one before it also gets `.is-done`
+     · #formSuccess gets hidden=false, `.is-active`, and focus
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.form-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-block-end: var(--space-xl);
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-3);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+/* Reached — the current step and every step behind it. */
+.progress-step.is-active {
+  color: var(--violet-400);
+}
+
+/* Finished — strictly behind the current step. Declared after .is-active so it
+   wins on a marker that carries both. */
+.progress-step.is-done {
+  color: var(--teal-400);
+}
+
+.progress-step__num {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-icon-lg);
+  block-size: var(--size-icon-lg);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.progress-step.is-active .progress-step__num {
+  border-color: var(--violet-600);
+  background-color: var(--violet-600);
+  color: var(--text-on-violet);
+}
+
+.progress-step.is-done .progress-step__num {
+  border-color: var(--teal-a50);
+  background-color: transparent;
+  color: var(--teal-400);
+}
+
+/* The step does NOT hide itself. js/form.js sets hidden=true on every step but
+   the current one, and base.css's [hidden][hidden] wins over this display.
+   Mark steps 2 and 3 `hidden` in the markup so there is no flash before the
+   script's first show(0). Without scripting all three steps stay readable. */
+.form-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-block-start: var(--space-xs);
+}
+
+/* HOOK: #formSuccess — js/form.js clears `hidden`, adds `.is-active` and moves
+   focus here, so the panel needs tabindex="-1" and a real heading. Ship it
+   `hidden` in the markup. */
+.form-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding-block: var(--space-2xl);
+  text-align: center;
+}
+
+.form-success__icon {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-tile-lg);
+  block-size: var(--size-tile-lg);
+  border-radius: var(--radius-pill);
+  background-image: var(--grad-brand);
+  color: var(--text-on-violet);
+}
+
+@media (min-width: 640px) {
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   15. RAIL — the horizontal project row.
+   HOOKS: .mk-rail + data-rail, .mk-rail-track + data-rail-track.
+   Below 900px it is an honest swipeable scroller with snap points. From 900px
+   js/motion.js pins the rail and scrubs the track sideways, so the rail
+   must not also be a scroll container at that width.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.rail,
+.mk-rail {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.rail__track,
+.mk-rail-track {
+  display: flex;
+  gap: var(--gap-grid);
+  padding-block-end: var(--space-md);
+  inline-size: max-content;
+}
+
+.rail__item {
+  inline-size: var(--rail-card-w);
+  max-inline-size: 80vw;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 900px) {
+
+  .rail,
+  .mk-rail {
+    overflow: hidden;
+    scroll-snap-type: none;
+  }
+
+  .rail__item {
+    max-inline-size: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   16. PROJECT CARD — one item on the rail.
+   HOOKS: .project-card[data-category][data-brief], .project-title,
+   .project-link, .project-details-btn.
+   js/ui.js filters by setting the `hidden` property on the card, which is why
+   base.css carries [hidden][hidden] — a plain [hidden] would tie with the
+   .card display below and lose on source order.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.project-card {
+  display: block;
+  block-size: 100%;
+}
+
+.project-card__media {
+  aspect-ratio: 16 / 10;
+  background-color: var(--surface-2);
+}
+
+.project-card__img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.project-title {
+  font-size: var(--fs-h3);
+}
+
+.project-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin-block-start: var(--space-xs);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   17. PROJECT DIALOG — the brief panel behind .project-details-btn.
+   HOOKS: #projectDialog (js/ui.js adds `.is-open` and writes aria-hidden),
+   [data-dialog-title], [data-dialog-body], [data-dialog-link],
+   [data-dialog-close]. The script reads the card's .project-title,
+   .project-link and its own data-brief attribute — it invents no copy.
+   The dialog exists once in the page, not once per card.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-menu);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  background-color: rgba(var(--ink-rgb), .82);
+}
+
+.dialog.is-open {
+  display: flex;
+}
+
+.dialog__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  inline-size: 100%;
+  max-inline-size: var(--container-narrow);
+  max-block-size: 86vh;
+  overflow-y: auto;
+  padding: var(--card-pad-block) var(--card-pad-inline);
+  border: var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--surface-3);
+  box-shadow: var(--shadow-pop);
+}
+
+.dialog__close {
+  position: absolute;
+  inset-block-start: var(--space-md);
+  inset-inline-end: var(--space-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--size-touch);
+  block-size: var(--size-touch);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.dialog__close:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-400);
+}
+
+.dialog__body {
+  color: var(--text-2);
+}
+
+.dialog__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   18. MARQUEE — the technology strip.
+   HOOKS: .marquee-container, .marquee-content (TWO identical copies for a
+   seamless loop), and a pause control the visitor can reach.
+   The animation is CSS so js/motion.js can pause it by play-state; if the
+   script is absent the strip still runs and the button still exists.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.marquee-container {
+  position: relative;
+  display: flex;
+  gap: var(--marquee-gap);
+  overflow: hidden;
+  user-select: none;
+  mask-image: var(--grad-fade-x);
+  -webkit-mask-image: var(--grad-fade-x);
+}
+
+/* Two identical copies of this list sit inside the container. Each is at least
+   as wide as the viewport, and the shift is its own width PLUS the container
+   gap — that is what makes the seam invisible. */
+.marquee-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: var(--marquee-gap);
+  min-inline-size: 100%;
+  flex-shrink: 0;
+  padding-inline-start: 0;
+  list-style: none;
+  animation: mk-marquee var(--marquee-dur) linear infinite;
+}
+
+@keyframes mk-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-100% - var(--marquee-gap)));
+  }
+}
+
+.marquee-container:hover .marquee-content {
+  animation-play-state: paused;
+}
+
+/* The strip carries sentences now, not logo labels. Uppercase with wide
+   tracking suits a six-letter product name and fights a nine-word promise:
+   it doubles the width and drops reading speed. Sentence case, normal
+   tracking, and a size that sits below the section headings. */
+.marquee__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-snug);
+  white-space: nowrap;
+  color: var(--text-2);
+}
+
+/* Separator between promises, cut at the logo's own angle so the divider is
+   brand geometry rather than a generic bullet. */
+.marquee__sep {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-inline-start: var(--space-md);
+  background: linear-gradient(180deg, var(--violet-400), var(--teal-400));
+  transform: skewX(calc(var(--mk-angle) * -1));
+  border-radius: 1px;
+  opacity: .55;
+}
+
+/* HOOK: .mk-marquee-pause + data-marquee-toggle.
+   js/motion.js adopts this button, writes its aria-label / aria-pressed and
+   draws the play or pause glyph inside it. WCAG 2.2.2: anything that moves for
+   more than five seconds needs a control. */
+.mk-marquee-pause {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: var(--space-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--size-touch);
+  block-size: var(--size-touch);
+  border: var(--border-strong);
+  border-radius: var(--radius-pill);
+  background-color: rgba(var(--surface-2-rgb), .72);
+  color: var(--text-2);
+  transform: translateY(-50%);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.mk-marquee-pause:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-400);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .marquee-content {
+    animation-play-state: paused;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   19. NAVBAR
+   HOOKS: .navbar (js adds `.scrolled`), #navToggle, #scroll-progress.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.navbar {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: var(--z-nav);
+  block-size: var(--nav-h);
+  border-block-end: var(--border-w) solid transparent;
+  background-color: transparent;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.navbar.scrolled {
+  border-block-end-color: var(--rule);
+  background-color: rgba(var(--ink-rgb), .88);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  block-size: 100%;
+}
+
+.navbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-family: var(--font-display);
+  font-size: var(--fs-h5);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-snug);
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.navbar__logo {
+  block-size: var(--logo-h);
+  inline-size: auto;
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* HOOK: #navToggle — js/ui.js adds `.is-active` while the menu is open, and writes aria-expanded. */
+.menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-block-size: var(--size-touch);
+  padding-inline: var(--space-md);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--text-1);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.menu-trigger:hover {
+  border-color: var(--teal-400);
+}
+
+.menu-trigger__bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--chip-stroke-gap);
+  inline-size: var(--size-icon);
+}
+
+.menu-trigger__bar {
+  block-size: var(--chip-stroke-w);
+  border-radius: var(--chip-stroke-w);
+  background-color: currentColor;
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.menu-trigger.is-active .menu-trigger__bar {
+  opacity: 0.4;
+}
+
+/* HOOK: the element must carry id="scroll-progress" — js/ui.js writes its
+   width inline as a percentage. Styled by class so nothing has to out-specify
+   an id later. */
+.scroll-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-progress);
+  inline-size: 0;
+  block-size: var(--scroll-progress-h);
+  background-image: var(--grad-brand);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   20. PREMIUM MENU — the full-screen navigation panel.
+   HOOKS: #premiumMenu / .premium-menu (js/ui.js adds `.is-open` and writes aria-hidden),
+   .premium-menu-overlay, .premium-menu-content, .premium-menu-link,
+   .premium-menu-close / #menuClose. body gets `.menu-open`.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.premium-menu {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-menu);
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    visibility var(--dur-fast) var(--ease-out);
+}
+
+.premium-menu.is-open {
+  visibility: visible;
+  opacity: 1;
+}
+
+.premium-menu-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-menu-overlay);
+  background-color: rgba(var(--ink-rgb), .82);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+}
+
+.premium-menu-content {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  inline-size: var(--menu-w);
+  padding: var(--space-2xl) var(--space-xl);
+  overflow-y: auto;
+  border-inline-start: var(--border);
+  background-color: var(--surface-2);
+  box-shadow: var(--shadow-pop);
+  transform: translateX(var(--space-2xl));
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.premium-menu.is-open .premium-menu-content {
+  transform: translateX(0);
+}
+
+.premium-menu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.premium-menu-link {
+  display: block;
+  padding-block: var(--space-xs);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+
+.premium-menu-link:hover {
+  color: var(--text-1);
+  transform: translateX(var(--space-xs));
+}
+
+/* HOOK: js/ui.js scroll-spy adds `.is-active` to the current link. */
+.premium-menu-link.is-active {
+  color: var(--violet-400);
+}
+
+.premium-menu-close {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--size-touch);
+  block-size: var(--size-touch);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.premium-menu-close:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-400);
+}
+
+.premium-menu-footer {
+  margin-block-start: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   21. PRELOADER
+   HOOKS: #mk-preloader + data-preloader, .mk-preloader-count +
+   data-preloader-count (receives 0-100), .mk-preloader-bar > i +
+   data-preloader-bar (scaled 0 → 1 on the X axis).
+   Capped at one second by the script; it never invents a delay.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.mk-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-preloader);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  background-color: var(--ink);
+}
+
+.mk-preloader-count {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-heading);
+  color: var(--text-1);
+}
+
+.mk-preloader-bar {
+  inline-size: min(18rem, 60vw);
+  block-size: var(--scroll-progress-h);
+  overflow: hidden;
+  background-color: var(--white-a08);
+}
+
+.mk-preloader-bar > i {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  background-image: var(--grad-brand);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   22. CURSOR — desktop, fine pointer, no reduced-motion request only.
+   HOOK: .mk-cursor is the node js/motion.js moves. .mk-cursor-ring is the
+   same element; .mk-cursor-dot rides inside it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.mk-cursor,
+.mk-cursor-ring {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-cursor);
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-icon-lg);
+  block-size: var(--size-icon-lg);
+  margin: calc(var(--size-icon-lg) / -2) 0 0 calc(var(--size-icon-lg) / -2);
+  border: var(--border-w) solid var(--violet-400);
+  border-radius: var(--radius-pill);
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.mk-cursor-dot {
+  inline-size: var(--chip-stroke-w);
+  block-size: var(--chip-stroke-w);
+  border-radius: var(--radius-pill);
+  background-color: var(--violet-100);
+}
+
+@media (pointer: coarse) {
+
+  .mk-cursor,
+  .mk-cursor-ring {
+    display: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   23. INTERACTION WIDGET — the persistent WhatsApp action.
+   HOOK: .interaction-widget. Hidden while the menu is open.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Mobile-first: a circle. The labelled pill measured ~180px on a 390px
+   screen — nearly half the width — and because it is fixed it sat on top of
+   body copy all the way down the page: the comparison card, the timeline, the
+   fourth project title. A 52px circle keeps the shortcut and gives the content
+   back. The pill returns at 640px, where there is room for it. */
+.interaction-widget {
+  position: fixed;
+  inset-block-end: var(--space-md);
+  inset-inline-end: var(--space-md);
+  z-index: var(--z-widget);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  inline-size: var(--size-touch-lg);
+  block-size: var(--size-touch-lg);
+  padding: 0;
+  border: var(--border-w) solid var(--teal-a50);
+  border-radius: var(--radius-pill);
+  background-color: rgba(var(--surface-3-rgb), .92);
+  box-shadow: var(--shadow-pop);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-1);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* Visually hidden, NOT display:none — the words are the link's accessible
+   name, so a screen reader must still get "Chat on WhatsApp" when only the
+   glyph is on screen. */
+.interaction-widget__label {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .interaction-widget {
+    inset-block-end: var(--space-lg);
+    inset-inline-end: var(--space-lg);
+    inline-size: auto;
+    block-size: auto;
+    min-block-size: var(--size-touch);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .interaction-widget__label {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+}
+
+.interaction-widget:hover {
+  border-color: var(--teal-400);
+  color: var(--text-1);
+  transform: translateY(var(--lift));
+}
+
+body.menu-open .interaction-widget {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   24. QUOTE — testimonials.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.quote__text {
+  font-size: var(--fs-h5);
+  line-height: var(--lh-snug);
+  color: var(--text-1);
+}
+
+.quote__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-block-start: var(--space-md);
+}
+
+.quote__avatar {
+  inline-size: var(--size-avatar);
+  block-size: var(--size-avatar);
+  border-radius: var(--radius-pill);
+  object-fit: cover;
+}
+
+.quote__name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-1);
+}
+
+.quote__role {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   25. TICK LIST — feature lists, comparison rows, guarantee points.
+   The glyph is decorative; the wording carries the yes/no, never the colour.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.tick-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.tick-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-2);
+}
+
+.tick-list__icon {
+  inline-size: var(--size-icon);
+  block-size: var(--size-icon);
+  margin-block-start: 0.2em;
+  stroke-width: var(--icon-stroke);
+  flex-shrink: 0;
+  color: var(--teal-400);
+}
+
+.tick-list__icon--absent {
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   26. HERO LAYERS — the only decorative background in the system.
+   HOOKS: js/motion.js animates .hero-grid, .side-glow-left, .side-glow-right
+   and .hero-scanner by name, and parallaxes the first three if no
+   [data-parallax] elements exist. All four are decoration: aria-hidden, inside
+   .layer-behind, and the hero reads correctly without any of them.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--white-a05) var(--border-w), transparent var(--border-w)),
+    linear-gradient(to bottom, var(--white-a05) var(--border-w), transparent var(--border-w));
+  background-size: var(--space-4xl) var(--space-4xl);
+  mask-image: radial-gradient(ellipse at 50% 0%, var(--mask-solid) 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, var(--mask-solid) 0%, transparent 70%);
+}
+
+.side-glow-left,
+.side-glow-right {
+  position: absolute;
+  inline-size: min(40rem, 70vw);
+  block-size: min(40rem, 70vw);
+  border-radius: var(--radius-pill);
+  filter: blur(var(--blur-glow));
+  opacity: 0.28;
+}
+
+.side-glow-left {
+  inset-block-start: 0;
+  inset-inline-start: calc(var(--space-4xl) * -1);
+  background-image: radial-gradient(circle, var(--violet-600) 0%, transparent 70%);
+}
+
+.side-glow-right {
+  inset-block-end: 0;
+  inset-inline-end: calc(var(--space-4xl) * -1);
+  background-image: radial-gradient(circle, var(--teal-400) 0%, transparent 70%);
+}
+
+/* One sweep on load, never a loop — js/motion.js owns the tween and clears the
+   CSS animation slot before it runs. */
+.hero-scanner {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--border-w-thick);
+  background-image: linear-gradient(180deg, transparent 0%, var(--violet-400) 35%, var(--teal-400) 100%);
+  opacity: 0;
+}

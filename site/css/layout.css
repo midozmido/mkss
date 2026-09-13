@@ -1,0 +1,326 @@
+/* ============================================================================
+   MK — LAYOUT
+   ----------------------------------------------------------------------------
+   The container, the section rhythm, the depth ramp and the handful of grid
+   primitives every section shares.
+
+   Mobile-first. THREE breakpoints on the whole site and they are all here:
+       640px   phone → small tablet
+       900px   tablet → laptop
+       1200px  laptop → desktop
+   A section agent must not introduce a fourth.
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. CONTAINER
+   ----------------------------------------------------------------------------
+   `width: 100%` is load-bearing. A container is frequently a flex or grid
+   item (inside .navbar__inner, inside a footer row). On a flex item,
+   `margin-inline: auto` alone shrink-wraps the box to its content and leaves a
+   narrow strip floating in the middle of the page. width:100% + max-width +
+   margin-inline:auto is the only correct form. Do not simplify it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-pad);
+}
+
+/* Prose, forms, the FAQ list — anything that should not run to 1400px. */
+.container--narrow {
+  max-width: var(--container-narrow);
+}
+
+/* Rails and full-bleed media only. */
+.container--wide {
+  max-width: var(--container-wide);
+}
+
+/* Keeps the horizontal padding but drops the max-width, for a strip that
+   should touch both edges (the marquee track). */
+.container--full {
+  max-width: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. SECTION RHYTHM
+   Two values for the entire page. --sec-pad everywhere; --sec-pad-tight for
+   the marquee and the stats strip only.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+  padding-block: var(--sec-pad);
+}
+
+.section--tight {
+  padding-block: var(--sec-pad-tight);
+}
+
+/* A section whose own content supplies the bottom edge (the hero, the footer
+   top rule). Use sparingly. */
+.section--flush-end {
+  padding-block-end: 0;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. DEPTH RAMP
+   ----------------------------------------------------------------------------
+   Applied in document order so no two adjacent sections share a background:
+
+     1  hero          .section--ink
+     2  marquee       .section--s2   (+ .section--tight)
+     3  about         .section--s1
+     4  stats         .section--s3   (+ .section--tight)
+     5  story         .section--s1
+     6  expertise     .section--s2
+     7  services      .section--s1
+     8  comparison    .section--s3
+     9  process       .section--s1
+    10  work          .section--s2
+    11  testimonials  .section--s1
+    12  timeline      .section--s3
+    13  contact       .section--s1
+    14  faq           .section--s2
+    15  guarantee     .section--s1
+    16  footer        .section--ink
+
+   The 1px inset hairline marks each seam, so the boundary stays readable on a
+   poorly calibrated screen where the luminance step alone would vanish.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section--ink {
+  background-color: var(--ink);
+}
+
+.section--s1 {
+  background-color: var(--surface-1);
+  box-shadow: var(--shadow-inset-seam);
+}
+
+.section--s2 {
+  background-color: var(--surface-2);
+  box-shadow: var(--shadow-inset-seam);
+}
+
+.section--s3 {
+  background-color: var(--surface-3);
+  box-shadow: var(--shadow-inset-seam);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. STACK — vertical rhythm without margins.
+   The default flow primitive. Set the gap with a modifier, never with a
+   margin on a child.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.stack--xs {
+  gap: var(--space-xs);
+}
+
+.stack--sm {
+  gap: var(--space-sm);
+}
+
+.stack--lg {
+  gap: var(--space-lg);
+}
+
+.stack--xl {
+  gap: var(--space-xl);
+}
+
+.stack--2xl {
+  gap: var(--space-2xl);
+}
+
+/* Centres the column and its text — for a centred section head. */
+.stack--center {
+  align-items: center;
+  text-align: center;
+}
+
+/* A prose <ul>/<ol> that keeps its markers but spaces its items with a gap
+   rather than a margin, so it never fights a parent flex gap. */
+.list-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  line-height: var(--lh-body);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. CLUSTER — a wrapping row. Buttons, chips, tags, filter pills.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.cluster--md {
+  gap: var(--space-md);
+}
+
+.cluster--lg {
+  gap: var(--space-lg);
+}
+
+.cluster--center {
+  justify-content: center;
+}
+
+.cluster--between {
+  justify-content: space-between;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. GRIDS
+   One base class plus a column modifier. Put data-anim="stagger" on the grid
+   element itself — never on the cards inside it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.grid {
+  display: grid;
+  gap: var(--gap-grid);
+  grid-template-columns: 1fr;
+}
+
+.grid--gap-lg {
+  gap: var(--gap-grid-lg);
+}
+
+/* Cards that size themselves. The min() keeps a single card full-width on a
+   narrow phone instead of overflowing. */
+.grid--auto {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+
+.grid--auto-wide {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+
+@media (min-width: 640px) {
+
+  .grid--2,
+  .grid--3,
+  .grid--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+
+  .grid--3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+
+  .grid--4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. SPLIT — the two-column section body (copy beside media, copy beside a
+   list). One column on a phone, two from 900px. The media half is second in
+   the source; .split--media-first pulls it above the copy on a phone.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.split {
+  display: grid;
+  gap: var(--gap-grid-lg);
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+.split--top {
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+
+  .split {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Copy leads, media follows, slightly wider copy column. */
+  .split--lead {
+    grid-template-columns: 1.15fr 0.85fr;
+  }
+
+  /* Media leads, copy follows. */
+  .split--trail {
+    grid-template-columns: 0.85fr 1.15fr;
+  }
+}
+
+/* Reverses the visual order from 900px without changing the source order, so
+   the reading order stays correct for a screen reader. */
+@media (min-width: 900px) {
+
+  .split--swap > .split__a {
+    order: 2;
+  }
+
+  .split--swap > .split__b {
+    order: 1;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. HELPERS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Caps body copy at a readable line length. */
+.measure {
+  max-width: var(--measure);
+}
+
+.measure--narrow {
+  max-width: var(--measure-narrow);
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Centres a block that is narrower than its parent. */
+.center-block {
+  margin-inline: auto;
+}
+
+/* A decorative layer behind a section's content. Always aria-hidden. */
+.layer-behind {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-below);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Raises a section's real content above .layer-behind. */
+.layer-front {
+  position: relative;
+  z-index: var(--z-base);
+}

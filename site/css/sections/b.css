@@ -1,0 +1,92 @@
+/* ============================================================================
+   MK — SECTIONS B
+   ----------------------------------------------------------------------------
+   05 story · 06 expertise · 07 services · 08 comparison
+
+   Almost everything these four sections need already exists in layout.css and
+   components.css: .section / .container / .split / .grid / .card / .icon-tile /
+   .tick-list / .chip / .badge / .media-cut / .stack. What is left here is only
+   what is genuinely specific to these four sections — five rules and one
+   breakpoint.
+
+   Held throughout: no importance flags anywhere · every value from tokens.css ·
+   maximum two levels of nesting · classes only · mobile-first · 640 / 900 /
+   1200 only.
+
+     06 expertise needs no rules at all: the cards are .card--static with a
+     .stack--center inside, which layout.css already provides.
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. STORY (05)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* The pull quote. A hard violet rule on the leading edge, the same gesture the
+   media plate makes elsewhere: flat colour, one edge, no glow. The rule is
+   twice the site's thick hairline so it reads as a bar rather than a border. */
+.story__quote {
+  padding: var(--space-lg);
+  border-inline-start: calc(var(--border-w-thick) * 2) solid var(--violet-600);
+  border-start-end-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+  background-color: var(--violet-a08);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-style: italic;
+  line-height: var(--lh-snug);
+  color: var(--text-1);
+}
+
+/* Story prose sits at the same rank as card and lede copy, so the quote above
+   it is the brightest thing in the column. */
+.story__body {
+  color: var(--text-2);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. SERVICES (07)
+   ----------------------------------------------------------------------------
+   Each card is a link to the enquiry form. The anchor lives inside the title,
+   so the name a screen reader announces is the service, not the paragraph —
+   and the arrow gives the link a visible affordance that is not colour.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* The glyph sits in the text flow (.icon .icon-inline carry the size and the
+   baseline shift) so a title that wraps to two lines keeps the arrow after its
+   last word instead of parking it beside the block. */
+.svc__arrow {
+  margin-inline-start: var(--space-xs);
+  color: var(--violet-400);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+/* Rides the one card gesture rather than adding a second one: no lift, no
+   scale, no rotation of its own. */
+.card:hover .svc__arrow,
+.card:focus-within .svc__arrow {
+  transform: translateX(var(--space-2xs));
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. COMPARISON (08)
+   ----------------------------------------------------------------------------
+   Two columns that must be the same height, and must not split into a cramped
+   pair at 640px — five rows of prose each need the full width until 900px.
+   Grid stretch gives the equal height; .split cannot, because it centres.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.compare {
+  display: grid;
+  gap: var(--gap-grid-lg);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+
+  .compare {
+    grid-template-columns: 1fr 1fr;
+  }
+}

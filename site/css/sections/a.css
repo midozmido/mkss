@@ -1,0 +1,188 @@
+/* ============================================================================
+   MK — SECTIONS A
+   ----------------------------------------------------------------------------
+   Only what is genuinely specific to the document shell and the opening four
+   sections. Everything that could be composed from .container / .stack /
+   .cluster / .grid / .card / .chip / .badge / .stat / .media-frame was, and is
+   not restated here.
+
+   Rules held, and checked:
+     · no importance override anywhere in this file — the count is zero
+     · every value resolves through css/tokens.css — no hex, no magic px,
+       no raw duration, no raw easing
+     · two levels of selector nesting, maximum; classes only
+     · mobile-first; the only media queries are 640 / 900 / 1200
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. NAVBAR — the one action that sits beside the menu trigger.
+   A phone has room for the logo and the trigger and nothing else, so the CTA
+   is absent below 640px rather than shrunk into an unreadable pill. Every
+   route it offers is still one tap away inside the menu.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.navbar__cta {
+  display: none;
+}
+
+@media (min-width: 640px) {
+
+  .navbar__cta {
+    display: inline-flex;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. MENU — the ordinal in front of each link.
+   Decorative numbering, aria-hidden in the markup, so the announced link name
+   stays "Work" and not "04 Work".
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.menu-link__index {
+  display: inline-block;
+  inline-size: var(--space-xl);
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. HERO
+   ----------------------------------------------------------------------------
+   One full viewport, content optically centred, the scroll cue parked in the
+   section's own bottom padding so it never lands on top of the copy.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-block-size: var(--hero-min-h-fallback);
+  min-block-size: var(--hero-min-h);
+  /* The navbar is fixed, so the hero has to clear it by hand. */
+  padding-block-start: calc(var(--nav-h) + var(--sec-pad));
+  /* .layer-behind sits at --z-below. Without a stacking context here that
+     negative layer resolves against the root and paints UNDER the hero's own
+     background colour, so the grid, the two glows and the scanner all vanish.
+     isolate keeps them inside the hero: over its background, under its copy. */
+  isolation: isolate;
+}
+
+/* Each line is its own block so the reveal splits where the copy is written
+   to break, and so the accent line can carry the brand gradient without the
+   clip crossing a line boundary. */
+.hero-title__line {
+  display: block;
+}
+
+.hero-title__line--accent {
+  background-image: var(--grad-brand-light);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.hero-description {
+  font-size: var(--fs-lede);
+  line-height: var(--lh-snug);
+  color: var(--text-2);
+}
+
+
+/* ── Scroll cue ─────────────────────────────────────────────────────────────
+   Not a control: it is a hint, so it is text and a glyph, never a link with a
+   name like "Scroll" that a screen reader would have to announce.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.scroll-indicator {
+  position: absolute;
+  inset-block-end: var(--space-lg);
+  inset-inline-start: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+  transform: translateX(-50%);
+}
+
+.scroll-indicator__mouse {
+  position: relative;
+  display: block;
+  inline-size: var(--size-icon-lg);
+  block-size: var(--size-touch);
+  border: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.scroll-indicator__wheel {
+  position: absolute;
+  inset-block-start: var(--space-xs);
+  inset-inline-start: 50%;
+  inline-size: var(--chip-stroke-w);
+  block-size: var(--space-xs);
+  border-radius: var(--radius-pill);
+  background-color: var(--violet-400);
+  transform: translate(-50%, 0);
+  animation: mk-scroll-cue var(--dur-slow) var(--ease-in-out) infinite alternate;
+}
+
+/* Both ends restate the -50% centring, or the keyframe would drop it and the
+   wheel would jump to the right edge of the mouse for the whole tween. */
+@keyframes mk-scroll-cue {
+
+  from {
+    transform: translate(-50%, 0);
+  }
+
+  to {
+    transform: translate(-50%, var(--space-sm));
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. ABOUT — the portrait.
+   .media-frame__plate sits at --z-below. Without a stacking context of its
+   own the plate would drop behind the section's background colour and vanish;
+   isolate keeps it inside the figure, one layer under the photograph.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.about__media {
+  isolation: isolate;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. STATS — four figures on a tight strip.
+   No cards: at four across, a card's inline padding leaves too little room for
+   the number, and a boxed figure reads as a widget rather than a fact. A
+   hairline between columns does the same separating work for nothing.
+   The rule only appears at 1200px, where the grid is genuinely four abreast —
+   at 640–1199 it is two columns and a left rule would land mid-row.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.stats__item {
+  padding-block: var(--space-md);
+}
+
+@media (min-width: 1200px) {
+
+  .stats__item + .stats__item {
+    border-inline-start: var(--border);
+  }
+}
+
+.stats__note {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}

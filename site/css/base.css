@@ -1,0 +1,451 @@
+/* ============================================================================
+   MK — BASE
+   ----------------------------------------------------------------------------
+   Reset, document defaults, element defaults, focus, motion preference and the
+   flash guard. Nothing here knows about a component or a section.
+   No literal values: everything resolves through tokens.css.
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. RESET
+   ══════════════════════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. DOCUMENT
+   The root font-size is the browser default (16px) at every width. The type
+   ramps in tokens.css are clamp()s — they do the scaling. Shrinking the root
+   on a phone, which the old build did three times over, is what pushed body
+   copy to 12.9px and triggered iOS input zoom.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  /* Anchor targets clear the fixed navbar. */
+  scroll-padding-top: calc(var(--nav-h) + var(--space-lg));
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-body);
+  color: var(--text-1);
+  background-color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Horizontal overflow is a bug, not a scroll axis. */
+  overflow-x: hidden;
+}
+
+/* The premium menu locks the page behind it. Set by js/onepage.js. */
+body.menu-open {
+  overflow: hidden;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. HEADINGS — one size per rank, mapped to the ramp. A section agent never
+   restates a heading size; it picks the right level.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  color: var(--text-1);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+}
+
+h2 {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+}
+
+h3 {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-snug);
+}
+
+h4 {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-snug);
+}
+
+h5 {
+  font-size: var(--fs-h5);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+}
+
+h6 {
+  font-size: var(--fs-h6);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. TEXT
+   ══════════════════════════════════════════════════════════════════════════ */
+
+p {
+  text-wrap: pretty;
+}
+
+strong,
+b {
+  font-weight: var(--fw-semibold);
+  color: var(--text-1);
+}
+
+em,
+i {
+  font-style: italic;
+}
+
+small {
+  font-size: var(--fs-xs);
+}
+
+abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+blockquote {
+  margin: 0;
+}
+
+hr {
+  height: var(--border-w);
+  border: 0;
+  background-color: var(--rule);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. LINKS
+   Inline links in prose keep an underline — colour alone never carries
+   meaning. Links that are buttons, cards or nav items opt out with a class.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+a {
+  color: var(--violet-400);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: from-font;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+a:hover {
+  color: var(--violet-100);
+}
+
+/* Structural links: buttons, cards, nav, logo, footer columns. */
+.link-plain {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link-plain:hover {
+  color: var(--violet-100);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. LISTS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+ul,
+ol {
+  padding-inline-start: var(--space-lg);
+}
+
+/* Spacing between list items is a gap on the list, never a margin on the item.
+   A margin here would double up against every flex and grid gap in the
+   component layer. Use .list-flow (layout.css) for a spaced prose list. */
+
+/* Semantic lists used for layout, not for bullets. Keeps the list role for a
+   screen reader while removing the marker. */
+.list-plain {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. MEDIA
+   ══════════════════════════════════════════════════════════════════════════ */
+
+img,
+picture,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  fill: none;
+  stroke: currentColor;
+}
+
+/* Icons that must sit on a text baseline inside a sentence. */
+.icon-inline {
+  display: inline-block;
+  vertical-align: -0.15em;
+}
+
+figure {
+  margin: 0;
+}
+
+figcaption {
+  margin-block-start: var(--space-sm);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. FORMS — inherit everything, then let components style them.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+textarea {
+  display: block;
+  resize: vertical;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+label {
+  display: block;
+}
+
+fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+legend {
+  padding: 0;
+}
+
+::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. TABLES
+   ══════════════════════════════════════════════════════════════════════════ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: start;
+  font-weight: var(--fw-semibold);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10. FOCUS & SELECTION
+   Focus is always visible and never removed. The ring is teal so it reads
+   against violet chrome as well as against the surfaces.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-xs);
+}
+
+/* Mouse users do not get a ring; keyboard users always do. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background-color: var(--violet-600);
+  color: var(--text-on-violet);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11. UTILITIES — the only three the base layer owns.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Visible to assistive tech, invisible on screen. Use for the label of a
+   control whose visible name is an icon, and for section landmarks. */
+.visually-hidden {
+  position: absolute;
+  width: var(--border-w);
+  height: var(--border-w);
+  margin: calc(var(--border-w) * -1);
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* First tabbable element in <body>. Jumps to <main id="main">. */
+.skip-link {
+  position: absolute;
+  inset-block-start: var(--space-xs);
+  inset-inline-start: var(--space-xs);
+  z-index: var(--z-preloader);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  background-color: var(--violet-600);
+  color: var(--text-on-violet);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Doubled on purpose. js/ui.js hides filtered project cards and js/form.js
+   hides inactive form steps by setting the `hidden` PROPERTY, and those
+   elements also carry component classes that declare a display. A single
+   [hidden] ties on specificity with a class and loses on source order, so the
+   card stays visible after being hidden. [hidden][hidden] outranks any single
+   class and needs no !important. */
+[hidden][hidden] {
+  display: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12. THE FLASH GUARD
+   ----------------------------------------------------------------------------
+   js/mk-motion.js reveals every [data-anim] element from a hidden start
+   state. Without this rule the content paints, then jumps to its from-state —
+   a visible flash on every load.
+
+   The guard is scoped to `.js` on <html>, set by a one-line inline script in
+   <head>. If scripting is off, or the script never runs, the class is never
+   added and every [data-anim] element is visible from the first paint.
+
+       <script>document.documentElement.classList.add('js')</script>
+
+   mk-motion removes the class as its nuclear reveal if anything fails.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.js [data-anim] {
+  visibility: hidden;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   13. REDUCED MOTION
+   ----------------------------------------------------------------------------
+   The visitor asked for stillness. Nothing animates, nothing lifts, nothing
+   auto-plays, and the flash guard lifts so no content depends on a tween that
+   will not run.
+
+   The mechanism is TOKEN REDEFINITION, not a blanket override. Every
+   transition and animation in this codebase is declared as
+   `var(--dur-…) var(--ease-…)`, so collapsing the duration tokens here stops
+   all of them at once — with no specificity fight and no !important. The
+   universal rule below is only a net for declarations that never read a token
+   (a third-party embed, a browser default); at specificity 0 it cannot and is
+   not meant to beat a component rule.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  :root {
+    --dur-instant: 0.01ms;
+    --dur-fast: 0.01ms;
+    --dur-base: 0.01ms;
+    --dur-slow: 0.01ms;
+    --dur-hero: 0.01ms;
+    --lift: 0px;
+    --stagger: 0s;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .js [data-anim] {
+    visibility: visible;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+  }
+}

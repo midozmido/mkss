@@ -1,0 +1,418 @@
+/* ============================================================================
+   MK — SECTION GROUP D
+   ----------------------------------------------------------------------------
+   13 contact · 14 faq · 15 guarantee · 16 footer
+   …and, at the end of the file, the card-rail system shared by sections
+   04 · 06 · 07 · 09 · 11. It lives in the last stylesheet on purpose: it has
+   to undo grid declarations that layout.css makes, and the only honest way to
+   win that without a priority override is to be the later file.
+
+   Everything these four sections could take from tokens.css, layout.css and
+   components.css, they take. What is left here is only what is genuinely
+   specific to closing the page:
+
+     · the legend that heads each form step (a <legend> cannot be a flex item,
+       so it is the one place a margin is honest)
+     · the payment note under the contact fields
+     · the two violet washes behind the guarantee card and the footer
+     · the footer's four-column plate and its link, payment and social parts
+
+   The FAQ needed no new CSS at all: .accordion, .faq-item, .faq-question,
+   .faq-answer and .badge already carry it, and the two trust chips are the
+   stock .badge--live (teal) and .badge--brand (violet) — which is how the
+   stray green and stray blue left the palette.
+
+   Rules held here: no priority overrides anywhere · every value from a token ·
+   at most two levels of nesting · classes only · mobile-first, and only the
+   site's three breakpoints (640 / 900 / 1200 — 900 is not needed here).
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   13 · CONTACT
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* The question that heads a form step. A <legend> is not a flex or grid item
+   in any engine, so the gap on .form-step cannot reach it — this margin is the
+   one place in the section where spacing is not a parent gap. */
+.form-step__legend {
+  display: block;
+  margin-block-end: var(--space-md);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-snug);
+  color: var(--text-1);
+}
+
+/* Payment and commitment note under step 3. Quiet by design: it answers a
+   question the visitor has, it does not sell. */
+.contact__note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--white-a05);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  color: var(--text-2);
+}
+
+.contact__note .icon {
+  color: var(--violet-400);
+}
+
+/* The line above the two direct-contact buttons under the form. */
+.contact__direct-note {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   15 · GUARANTEE
+   The old block layered a neon circle, two looping ripple rings and a 100px
+   blur. What survives is the wash: one violet ellipse behind the card, no
+   animation, clipped by .layer-behind.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.guarantee__glow {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: min(var(--container-narrow), 90vw);
+  block-size: calc(var(--space-4xl) * 4);
+  border-radius: var(--radius-pill);
+  background-image: radial-gradient(circle, var(--violet-600) 0%, transparent 65%);
+  filter: blur(var(--blur-glow));
+  opacity: 0.18;
+  transform: translate(-50%, -50%);
+}
+
+.guarantee__text {
+  font-size: var(--fs-lede);
+  line-height: var(--lh-snug);
+  color: var(--text-2);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   16 · FOOTER
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* .section--ink carries no seam shadow, so the footer draws its own top rule.
+   overflow clips the wash below. */
+.site-footer {
+  overflow: hidden;
+  border-block-start: var(--border-w) solid var(--rule-soft);
+}
+
+.site-footer__glow {
+  position: absolute;
+  inset-block-start: calc(var(--space-4xl) * -1);
+  inset-inline-start: 50%;
+  inline-size: min(var(--container-narrow), 100vw);
+  block-size: calc(var(--space-4xl) * 3);
+  background-image: radial-gradient(ellipse at center, var(--violet-600) 0%, transparent 70%);
+  filter: blur(var(--blur-glow));
+  opacity: 0.16;
+  transform: translateX(-50%);
+}
+
+/* Four columns, but not four equal ones: the brand column carries a logo, a
+   paragraph and four payment badges, the two link columns carry six words each.
+   Not .grid--4, because that would give the blurb a quarter of the width. */
+.footer__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-grid-lg);
+}
+
+.footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* A column title is 13px. Promoting it to a real heading would either skip a
+   rank after the section h2s or restate a heading size, so it is a paragraph
+   and the column is a named landmark instead. The short rule under it is the
+   old footer's one surviving flourish. */
+.footer__title {
+  position: relative;
+  padding-block-end: var(--space-sm);
+  font-size: var(--fs-eyebrow);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--violet-400);
+}
+
+.footer__title::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  inline-size: var(--space-xl);
+  block-size: var(--border-w-thick);
+  background-color: var(--violet-600);
+}
+
+.footer__logo {
+  block-size: var(--size-tile-lg);
+  inline-size: auto;
+}
+
+.footer__blurb {
+  max-width: var(--measure);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+
+.footer__payments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--white-a05);
+}
+
+.footer__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+/* The hover marker is an MK-angle stroke that grows from nothing, not an arrow
+   glyph: generated text is read aloud by some screen readers, and scaleX on a
+   fixed-width pseudo-element cannot shift the layout. */
+.footer__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.footer__link::before {
+  content: "";
+  inline-size: var(--space-sm);
+  block-size: var(--border-w-thick);
+  background-color: var(--violet-400);
+  transform: skewX(var(--mk-angle-neg)) scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.footer__link:hover {
+  color: var(--text-1);
+}
+
+.footer__link:hover::before {
+  transform: skewX(var(--mk-angle-neg)) scaleX(1);
+}
+
+.footer__contact-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.footer__contact-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.footer__contact-label {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+
+.footer__contact-value {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-1);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.footer__contact-value:hover {
+  color: var(--teal-400);
+}
+
+/* Icon-only, so the accessible name lives on aria-label in the markup. */
+.footer__social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--size-touch);
+  block-size: var(--size-touch);
+  border: var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-2);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.footer__social:hover {
+  border-color: var(--teal-400);
+  color: var(--teal-400);
+}
+
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-block-start: var(--space-2xl);
+  padding-block-start: var(--space-lg);
+  border-block-start: var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+
+  .footer__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+
+  .footer__grid {
+    grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   17 · CARD RAILS — one horizontal system, five card groups
+   ----------------------------------------------------------------------------
+   04 stats · 06 expertise · 07 services · 09 process · 11 testimonials.
+
+   Below 900px each of those groups stops being a one-column stack and becomes
+   a horizontal run: the cards travel sideways as the section passes through
+   the viewport (js/rails.js scrubs it) and the visitor can flick through them
+   by hand at any moment. From 900px every declaration here is undone and the
+   group is the ordinary .grid again — same columns, same gap, same everything.
+
+   THE CLASS SYSTEM — the same two classes for all five, so the behaviour is
+   identical everywhere:
+
+       .flick-rail          the TRACK. The element that already carries .grid.
+                            Below 900px it is the scroll container AND the row.
+       .flick-rail__item    one card ON the track. Direct child of the track.
+       .flick-rail.is-scrubbing   state, written by js/rails.js only.
+
+   To turn a future card group into a rail: put .flick-rail on the grid,
+   .flick-rail__item on every direct child, and give the grid tabindex="0"
+   plus an accessible name. Nothing else — js/rails.js finds it on its own.
+
+   Why the track is the scroll container rather than a viewport wrapping a
+   transformed row: a transform under scroll-snap fights the snap ports and
+   changes what the browser thinks the scrollable width is. Scrolling the real
+   scroller keeps the snap, the momentum and the keyboard behaviour native, and
+   leaves the scrub with nothing to do but move scrollLeft.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.flick-rail {
+  /* One card, and a strip of the next one showing. 100vw is the viewport, not
+     a magic number: card = screen minus the gutter it starts at and the two
+     gutters of the next card left peeking. Capped at the width the work rail
+     already uses, so a card is the same object in both places. */
+  --flick-item-w: min(var(--rail-card-w), calc(100vw - var(--container-pad) * 3));
+
+  display: flex;
+  gap: var(--gap-grid-lg);
+
+  /* Full-bleed: the row runs to both screen edges and puts the gutter back as
+     padding, so a card can leave the screen instead of stopping short of it.
+     The negative margin is exactly the container's own padding. */
+  margin-inline: calc(var(--container-pad) * -1);
+  padding-inline: var(--container-pad);
+
+  /* Room under the row for the hover/focus lift and the card shadow, which an
+     overflow container would otherwise clip. */
+  padding-block: var(--space-2xs) var(--space-md);
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--container-pad);
+
+  /* A sideways flick at the end of the row must not chain into the page or
+     into the browser's back gesture. */
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+
+  /* Hidden, not removed: the element keeps tabindex="0" in the markup, so it
+     is still reachable by Tab and still scrolls with the arrow keys. */
+  scrollbar-width: none;
+}
+
+.flick-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* Snap is mandatory for a hand swipe and off for the frames js/rails.js is
+   writing scrollLeft itself: a mandatory container re-snaps after every
+   programmatic scroll, which turns a smooth scrub into a stutter. The script
+   adds this class on the first write and drops it a moment after the last, so
+   the row still clicks onto a card when the scrub lets go. */
+.flick-rail.is-scrubbing {
+  scroll-snap-type: none;
+}
+
+.flick-rail__item {
+  flex: 0 0 var(--flick-item-w);
+  scroll-snap-align: start;
+}
+
+/* c.css gives the process step a definite 100% cross size. Correct in a grid
+   row; in a flex track it opts the card out of the stretch and the row ends
+   ragged — the same trap .project-card.rail__item had to be dug out of. */
+.flick-rail .process__step {
+  block-size: auto;
+}
+
+/* Title 25.5px over body 20px is barely a step, and on a card that reads as
+   one undifferentiated block. --fs-sm puts the ratio at 1.5 and fits a real
+   paragraph on a 336px card. Scoped to the five rail groups: the work rail's
+   cards carry one line under an image, which is a caption, not a paragraph. */
+.flick-rail .card__text {
+  font-size: var(--fs-sm);
+}
+
+@media (min-width: 900px) {
+
+  /* Every rail declaration above, undone. From here the group is the grid it
+     always was: .grid supplies the columns, this restores its gap and drops
+     the scroller, the bleed and the flex sizing. */
+  .flick-rail {
+    display: grid;
+    gap: var(--gap-grid);
+    margin-inline: 0;
+    padding-inline: 0;
+    padding-block: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .flick-rail .process__step {
+    block-size: 100%;
+  }
+}

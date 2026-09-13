@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#06050B">
+
+  <title>Mohamed Khaled — WordPress Design and Development</title>
+  <meta name="description"
+    content="Mohamed Khaled designs WordPress sites in Figma and builds them in Elementor Pro with custom CSS. Online stores, course platforms and business sites. 210+ projects delivered since 2020, each with 180 days of support.">
+  <meta name="author" content="Mohamed Khaled">
+  <link rel="canonical" href="https://profile.mk-wp.site/">
+
+  <!-- Open Graph -->
+  <meta property="og:site_name" content="Mohamed Khaled — WordPress">
+  <meta property="og:title" content="Mohamed Khaled — WordPress Design and Development">
+  <meta property="og:description"
+    content="Designed in Figma, built in Elementor Pro with custom CSS. Nothing starts from a purchased theme, and every page stays editable after handover.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://profile.mk-wp.site/">
+  <meta property="og:image" content="https://profile.mk-wp.site/assets/images/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Mohamed Khaled — custom WordPress, designed in Figma. 210+ projects since 2020.">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mohamed Khaled — WordPress Design and Development">
+  <meta name="twitter:description"
+    content="Designed in Figma, built in Elementor Pro with custom CSS. 210+ projects since 2020.">
+  <meta name="twitter:image" content="https://profile.mk-wp.site/assets/images/og-card.png">
+  <meta name="twitter:image:alt" content="Mohamed Khaled — custom WordPress, designed in Figma. 210+ projects since 2020.">
+
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/images/favicon-64.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/images/favicon-512.png">
+  <link rel="apple-touch-icon" href="assets/images/favicon-512.png">
+
+  <!-- ONE font request. Space Grotesk 500/700 display, Inter 400/500/600 body. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+
+  <!-- Load order is fixed: tokens must be first, and nothing may load after the
+       section sheets. Four section files, one per build group, in page order. -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/sections/a.css">
+  <link rel="stylesheet" href="css/sections/b.css">
+  <link rel="stylesheet" href="css/sections/c.css">
+  <link rel="stylesheet" href="css/sections/d.css">
+
+  <!-- REQUIRED. Arms the flash guard in base.css; js/motion.js removes the
+       class to reveal. If scripting is off this never runs, the guard never
+       applies, and every [data-anim] element paints normally. -->
+  <script>document.documentElement.classList.add('js')</script>
+
+  <!-- Escape hatch, no JavaScript. Declared after the stylesheets, so it wins
+       on source order alone, with no importance override:
+         · the preloader must never trap a page that cannot dismiss it
+         · the marquee's pause button is wired by js/motion.js, so with no
+           script the honest thing is to stop the movement, not offer a dead
+           control (WCAG 2.2.2). -->
+  <noscript>
+    <style>
+      .mk-preloader {
+        display: none;
+      }
+
+      .marquee-content {
+        animation-play-state: paused;
+      }
+
+      .mk-marquee-pause {
+        display: none;
+      }
+    </style>
+  </noscript>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "Mohamed Khaled — WordPress Design and Development",
+    "url": "https://profile.mk-wp.site/",
+    "image": "https://profile.mk-wp.site/assets/images/mohamed-khaled-portrait.png",
+    "email": "info@mk-wp.site",
+    "telephone": "+201099576398",
+    "founder": { "@type": "Person", "name": "Mohamed Khaled" },
+    "foundingDate": "2020",
+    "description": "WordPress sites designed in Figma and built in Elementor Pro with custom CSS. Online stores, course platforms, theme customisation, builds from scratch and redesigns.",
+    "areaServed": "Worldwide",
+    "sameAs": ["https://www.youtube.com/@mk-pro1996", "https://mk-wp.site"]
+  }
+  </script>
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- ═══ PRELOADER ═══
+       js/motion.js writes the count and scales the bar, and dismisses the
+       overlay within one second whatever the network does. -->
+  <div class="mk-preloader" id="mk-preloader" data-preloader aria-hidden="true">
+    <span class="mk-preloader-count" data-preloader-count>0</span>
+    <div class="mk-preloader-bar"><i data-preloader-bar></i></div>
+  </div>
+
+  <!-- ═══ READING PROGRESS ═══ decoration; the width is written by js/ui.js. -->
+  <div class="scroll-progress" id="scroll-progress" aria-hidden="true"></div>
+
+  <!-- ═══ NAVBAR ═══ -->
+  <header class="navbar" id="navbar">
+    <div class="navbar__inner container">
+      <a class="navbar__brand" href="#hero">
+        <img class="navbar__logo" src="assets/images/logo-gradient.png" alt="Mohamed Khaled — back to the top"
+          width="512" height="135">
+      </a>
+
+      <div class="navbar__actions">
+        <a class="btn btn--outline navbar__cta navbar-contact-link" href="#contact">Start a project</a>
+
+        <button class="menu-trigger" id="navToggle" type="button" aria-controls="premiumMenu" aria-expanded="false">
+          Menu
+          <span class="menu-trigger__bars" aria-hidden="true">
+            <span class="menu-trigger__bar"></span>
+            <span class="menu-trigger__bar"></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ FULLSCREEN MENU ═══
+       Closed, the panel is visibility:hidden, so none of its links are in the
+       tab order. js/ui.js owns .is-open, aria-hidden, the focus trap and the
+       scroll-spy that marks the current section. -->
+  <div class="premium-menu" id="premiumMenu" aria-hidden="true">
+    <div class="premium-menu-overlay"></div>
+
+    <div class="premium-menu-content" role="dialog" aria-modal="true" aria-label="Site menu">
+      <button class="premium-menu-close" id="menuClose" type="button" aria-label="Close the menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M18 6 6 18M6 6l12 12" stroke-linecap="round" />
+        </svg>
+      </button>
+
+      <nav aria-label="Sections of this page">
+        <ul class="premium-menu-nav list-plain">
+          <li><a class="premium-menu-link" href="#hero"><span class="menu-link__index"
+                aria-hidden="true">01</span>Home</a></li>
+          <li><a class="premium-menu-link" href="#about"><span class="menu-link__index"
+                aria-hidden="true">02</span>About</a></li>
+          <li><a class="premium-menu-link" href="#services"><span class="menu-link__index"
+                aria-hidden="true">03</span>Services</a></li>
+          <li><a class="premium-menu-link" href="#work"><span class="menu-link__index"
+                aria-hidden="true">04</span>Work</a></li>
+          <li><a class="premium-menu-link" href="#process"><span class="menu-link__index"
+                aria-hidden="true">05</span>Process</a></li>
+          <li><a class="premium-menu-link" href="#testimonials"><span class="menu-link__index"
+                aria-hidden="true">06</span>Clients</a></li>
+          <li><a class="premium-menu-link" href="#faq"><span class="menu-link__index"
+                aria-hidden="true">07</span>Questions</a></li>
+          <li><a class="premium-menu-link" href="#contact"><span class="menu-link__index"
+                aria-hidden="true">08</span>Contact</a></li>
+        </ul>
+      </nav>
+
+      <div class="premium-menu-footer">
+        <div class="stack stack--xs">
+          <a class="link-plain" href="mailto:info@mk-wp.site">info@mk-wp.site</a>
+          <div class="cluster cluster--md">
+            <a class="link-plain" href="https://wa.me/201099576398" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="link-plain" href="https://www.youtube.com/@mk-pro1996" target="_blank"
+              rel="noopener">YouTube</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main id="main">
+    <!-- ════════════════════════════════════════════════════════════════════
+         Sections 01–16 follow, in file order:
+         hero · stack strip · about · stats · story · expertise · services ·
+         comparison · process · work · testimonials · timeline · contact ·
+         faq · guarantee · footer.
+         The document is closed by 99-shell-end.html.
+         ════════════════════════════════════════════════════════════════════ -->
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       01 · HERO — the one screen every visitor sees.
+       .hero is a hard requirement: js/motion.js looks for `.hero` or `#hero`
+       to play the opening timeline, and it animates .hero-title,
+       .hero-description, .hero-actions and .scroll-indicator by name.
+       The four background layers are decoration — the hero reads correctly
+       with every one of them missing.
+       ══════════════════════════════════════════════════════════════════════ -->
+  <section class="hero section section--ink" id="hero" aria-labelledby="hero-title">
+
+    <div class="layer-behind" aria-hidden="true">
+      <span class="hero-grid"></span>
+      <span class="side-glow-left"></span>
+      <span class="side-glow-right"></span>
+      <span class="hero-scanner"></span>
+    </div>
+
+    <div class="container layer-front">
+      <div class="stack stack--lg stack--center">
+
+        <p class="badge badge--brand" data-anim="fade">WordPress design and build · since 2020</p>
+
+        <h1 class="hero-title" id="hero-title" data-anim="lines">
+          <span class="hero-title__line">Custom WordPress sites,</span>
+          <span class="hero-title__line hero-title__line--accent">built to hand over.</span>
+        </h1>
+
+        <p class="hero-description measure" data-anim="up" data-delay="0.08">
+          I design in Figma, then build in Elementor Pro with custom CSS. Online stores, course platforms and
+          business sites, for clients across the Arab world, Europe and America. Nothing starts from a purchased
+          theme, and every page stays editable after the handover.
+        </p>
+
+        <div class="hero-actions cluster cluster--md cluster--center" data-anim="fade" data-delay="0.16">
+          <a class="btn btn--primary btn--lg" href="#contact">Start a project</a>
+          <a class="btn btn--outline btn--lg" href="#work">See the work</a>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- A hint, not a control: plain text and a glyph, so there is no link
+         called "Scroll" for a screen reader to announce. -->
+    <div class="scroll-indicator" data-anim="fade" data-delay="0.45">
+      <span class="scroll-indicator__mouse" aria-hidden="true">
+        <span class="scroll-indicator__wheel"></span>
+      </span>
+      Scroll
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       02 · PROMISE STRIP — the moving band under the hero.
+       Was a row of technology logos (WordPress, Elementor, WooCommerce…).
+       Logos say what the tools are; they say nothing about why to hire him,
+       and every competitor lists the same six. This carries the promises
+       instead — each one a fact already stated elsewhere on the page, so the
+       strip reinforces the pitch rather than decorating it.
+       Two identical .marquee-content lists make the loop seamless; the second
+       is aria-hidden so the list is not announced twice.
+       ══════════════════════════════════════════════════════════════════════ -->
+  <section class="section section--tight section--s2" id="promise-strip" aria-labelledby="promise-strip-title">
+    <div class="container container--full">
+      <div class="stack stack--xl">
+
+        <div class="text-center" data-anim="up">
+          <h2 class="visually-hidden" id="promise-strip-title">What you get on every project</h2>
+          <p class="chip chip--muted" aria-hidden="true">
+            <span class="chip__mark">
+              <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+            </span>
+            What you get on every project
+          </p>
+        </div>
+
+        <div class="marquee-container" data-anim="fade">
+
+          <ul class="marquee-content list-plain">
+            <li class="marquee__item">210+ sites delivered since 2020<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+            <li class="marquee__item">Designed in Figma before a line of code<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+            <li class="marquee__item">Nothing starts from a purchased theme<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+            <li class="marquee__item">Every page stays editable after handover<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+            <li class="marquee__item">180 days of support after launch<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+            <li class="marquee__item">You own the files, the hosting and the admin<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+            <li class="marquee__item">Clients across the Arab world, Europe and America<span class="marquee__sep"
+                aria-hidden="true"></span></li>
+          </ul>
+
+          <ul class="marquee-content list-plain" aria-hidden="true">
+            <li class="marquee__item">210+ sites delivered since 2020<span class="marquee__sep"></span></li>
+            <li class="marquee__item">Designed in Figma before a line of code<span class="marquee__sep"></span></li>
+            <li class="marquee__item">Nothing starts from a purchased theme<span class="marquee__sep"></span></li>
+            <li class="marquee__item">Every page stays editable after handover<span class="marquee__sep"></span></li>
+            <li class="marquee__item">180 days of support after launch<span class="marquee__sep"></span></li>
+            <li class="marquee__item">You own the files, the hosting and the admin<span class="marquee__sep"></span>
+            </li>
+            <li class="marquee__item">Clients across the Arab world, Europe and America<span
+                class="marquee__sep"></span></li>
+          </ul>
+
+          <!-- WCAG 2.2.2: movement lasting more than five seconds needs an
+               in-page stop. js/motion.js draws the glyph and rewrites the
+               label and aria-pressed as the state changes; the values here are
+               the correct starting state if it never gets the chance. -->
+          <button class="mk-marquee-pause" type="button" data-marquee-toggle aria-pressed="false"
+            aria-label="Pause the scrolling text"></button>
+
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       03 · ABOUT — portrait and positioning.
+       The frame is a 1px hairline with a hard violet plate offset behind it.
+       No glow, no pulse, no animated border: .media-frame owns all of it, and
+       .about__media only gives the plate a stacking context to sit in.
+       ══════════════════════════════════════════════════════════════════════ -->
+  <section class="section section--s1" id="about" aria-labelledby="about-title">
+    <div class="container">
+      <div class="split split--lead">
+
+        <div class="split__a">
+
+          <div class="section-head">
+            <p class="chip" data-anim="up">
+              <span class="chip__mark" aria-hidden="true">
+                <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+              </span>
+              About
+            </p>
+            <h2 class="section-head__title" id="about-title" data-anim="lines">
+              Designed in Figma. Built in WordPress.
+            </h2>
+            <p class="section-head__lede" data-anim="up" data-delay="0.06">
+              Every project starts as a Figma file, not a theme demo. Once the design is signed off I build it in
+              Elementor Pro with custom CSS, so the site that ships is the one you approved — and the pages stay
+              editable in the WordPress admin the day it becomes yours.
+            </p>
+          </div>
+
+          <div class="stack stack--lg">
+            <p class="measure" data-anim="up" data-delay="0.12">
+              More than 210 projects since 2020, for clients across the Arab world, Europe and America. Most of them
+              are one of six jobs: a personal site, an online store, a course platform, a theme customisation, a
+              build from scratch, or a redesign of a site that already exists.
+            </p>
+
+            <ul class="cluster list-plain" data-anim="fade" data-delay="0.18">
+              <li><span class="badge badge--brand">210+ projects since 2020</span></li>
+              <li><span class="badge">180 days of support</span></li>
+              <li><span class="badge">7-day money-back</span></li>
+            </ul>
+
+            <div class="cluster cluster--md" data-anim="fade" data-delay="0.24">
+              <a class="btn btn--primary" href="#contact">Start a project</a>
+              <a class="btn btn--outline" href="#services">See the six services</a>
+            </div>
+          </div>
+
+        </div>
+
+        <figure class="split__b about__media media-frame" data-anim="media">
+          <span class="media-frame__plate" aria-hidden="true"></span>
+          <img class="media-frame__img" src="assets/images/mohamed-khaled-portrait.png"
+            alt="Mohamed Khaled, WordPress designer and developer, in a grey suit against a dark violet backdrop"
+            width="1024" height="1024"
+            loading="lazy" decoding="async">
+        </figure>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       04 · STATS — four figures on a tight strip.
+       The numbers are printed in the markup and never counted up. A counter
+       animation is the loudest template tell there is, it makes the figure
+       unreadable for the first second, and the old build had already disabled
+       it. Size does the work instead: .stat-number runs to 80px.
+       ══════════════════════════════════════════════════════════════════════ -->
+  <section class="section section--tight section--s3" id="stats" aria-labelledby="stats-title">
+    <div class="container">
+      <div class="stack stack--lg">
+
+        <h2 class="visually-hidden" id="stats-title">The numbers so far</h2>
+
+        <!-- flick-rail: below 900px this row becomes a horizontal track the
+             cards travel along as the section passes (css/sections/d.css +
+             js/rails.js). tabindex makes the scroller keyboard-operable, since
+             its scrollbar is hidden; js/rails.js takes the attribute off again
+             at 900px, where the row stops scrolling. -->
+        <ul class="grid grid--4 list-plain flick-rail" data-anim="stagger" tabindex="0"
+          aria-label="The numbers so far">
+
+          <li class="stats__item stack stack--md stack--center flick-rail__item">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" focusable="false">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div class="stat stat--center">
+              <span class="stat-number">210+</span>
+              <span class="stat__label">Projects delivered</span>
+            </div>
+          </li>
+
+          <li class="stats__item stack stack--md stack--center flick-rail__item">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" focusable="false">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div class="stat stat--center">
+              <span class="stat-number">Global</span>
+              <span class="stat__label">Clients in the Arab world, Europe and America</span>
+            </div>
+          </li>
+
+          <li class="stats__item stack stack--md stack--center flick-rail__item">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" focusable="false">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+                  stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="9" cy="7" r="4" />
+              </svg>
+            </span>
+            <div class="stat stat--center">
+              <span class="stat-number">256</span>
+              <span class="stat__label">Clients served</span>
+            </div>
+          </li>
+
+          <li class="stats__item stack stack--md stack--center flick-rail__item">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" focusable="false">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M9 11.5 11 13.5 15 9.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
+            <div class="stat stat--center">
+              <span class="stat-number">98%</span>
+              <span class="stat__label">Client satisfaction rate</span>
+            </div>
+          </li>
+
+        </ul>
+
+        <p class="stats__note text-center" data-anim="fade">Counted from the first project in 2020.</p>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 05 · STORY ══ depth: s1 ══════════════════════════════════════════ -->
+  <section class="section section--s1" id="story" aria-labelledby="story-title">
+    <div class="container">
+      <div class="split split--trail">
+
+        <figure class="split__a" data-anim="media">
+          <div class="media-cut">
+            <img src="assets/images/transformation-visual.png"
+                 alt="Illustration of a WordPress page-builder panel and blocks of code projected above a holographic city."
+                 width="1024" height="1024" loading="lazy" decoding="async">
+          </div>
+        </figure>
+
+        <div class="split__b stack stack--lg">
+          <p class="chip" data-anim="up">
+            <span class="chip__mark" aria-hidden="true">
+              <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+            </span>
+            My story
+          </p>
+
+          <h2 id="story-title" data-anim="lines">Started in 2020</h2>
+
+          <p class="story__quote" data-anim="up" data-delay="0.1">
+            A site is finished when the owner can change it without me.
+          </p>
+
+          <div class="stack stack--md measure" data-anim="up" data-delay="0.15">
+            <p class="story__body">
+              I built my first WordPress sites in 2020. The count has since passed 210, for clients
+              across the Arab world, Europe and America. Most of them are stores, course platforms
+              and portfolio sites.
+            </p>
+            <p class="story__body">
+              The method has not changed. I draw the pages in Figma, you approve them, then I build
+              them in Elementor Pro and write the CSS by hand. Nothing starts from a purchased theme,
+              and nothing ships that you cannot edit yourself.
+            </p>
+          </div>
+
+          <p data-anim="fade" data-delay="0.2">
+            <a class="btn btn--quiet" href="#work">See the projects</a>
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 06 · EXPERTISE ══ depth: s2 ═══════════════════════════════════════ -->
+  <section class="section section--s2" id="expertise" aria-labelledby="expertise-title">
+    <div class="container">
+
+      <div class="section-head section-head--center" data-anim="up">
+        <p class="chip">
+          <span class="chip__mark" aria-hidden="true">
+            <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+          </span>
+          The stack
+        </p>
+        <h2 class="section-head__title" id="expertise-title" data-anim="lines">Design first, then the build</h2>
+        <p class="section-head__lede">
+          Six things every project runs on. The first two are the ones people usually get backwards.
+        </p>
+      </div>
+
+      <!-- flick-rail: horizontal track below 900px, the ordinary grid from
+           900px. See css/sections/d.css §17 and js/rails.js. -->
+      <div class="grid grid--3 flick-rail" data-anim="stagger" role="group" tabindex="0"
+        aria-label="The stack">
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md stack--center">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 20l4-1 9.4-9.4a2.1 2.1 0 0 0-3-3L5 16z" />
+                <path d="M14.5 6.5l3 3" />
+              </svg>
+            </span>
+            <h3 class="card__title">Figma</h3>
+            <p class="card__text">
+              Every page is drawn and approved in Figma before anything is built. You see the layout,
+              the type and the spacing while they are still cheap to change.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md stack--center">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M9 7v10M13 8h4M13 12h4M13 16h4" />
+              </svg>
+            </span>
+            <h3 class="card__title">Elementor Pro and custom CSS</h3>
+            <p class="card__text">
+              I build the approved design in Elementor Pro and write the CSS by hand. Nothing starts
+              from a purchased theme, and the pages stay editable after handover.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md stack--center">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3.2" />
+                <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1" />
+              </svg>
+            </span>
+            <h3 class="card__title">WordPress core</h3>
+            <p class="card__text">
+              Theme structure, plugin choices and a clean admin. The screen your team logs into gets
+              the same attention as the one visitors see.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md stack--center">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9.5" cy="20" r="1.4" />
+                <circle cx="18" cy="20" r="1.4" />
+                <path d="M2.5 3h2.8l2.3 11.4a1.7 1.7 0 0 0 1.7 1.4h8.4a1.7 1.7 0 0 0 1.7-1.4L21 7H6" />
+              </svg>
+            </span>
+            <h3 class="card__title">WooCommerce</h3>
+            <p class="card__text">
+              Product pages, cart and checkout, set up so the catalogue and the payment methods can
+              grow later without a rebuild.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md stack--center">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2.5 4h5.5a3.5 3.5 0 0 1 3.5 3.5V20a3 3 0 0 0-3-2.5H2.5z" />
+                <path d="M21.5 4H16a3.5 3.5 0 0 0-3.5 3.5V20a3 3 0 0 1 3-2.5h6z" />
+              </svg>
+            </span>
+            <h3 class="card__title">LMS and memberships</h3>
+            <p class="card__text">
+              LearnDash and TutorLMS for selling courses, with the enrolment and content access rules
+              that have to go with them.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md stack--center">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 18a9 9 0 1 1 16 0" />
+                <path d="M12 14.5l4-4.5" />
+                <circle cx="12" cy="15.5" r="1.2" />
+              </svg>
+            </span>
+            <h3 class="card__title">Performance and SEO</h3>
+            <p class="card__text">
+              Image weight, script loading, heading structure and metadata are handled during the
+              build, not bolted on after launch.
+            </p>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 07 · SERVICES ══ depth: s1 ════════════════════════════════════════ -->
+  <section class="section section--s1" id="services" aria-labelledby="services-title">
+    <div class="container">
+
+      <div class="section-head" data-anim="up">
+        <p class="chip">
+          <span class="chip__mark" aria-hidden="true">
+            <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+          </span>
+          Services
+        </p>
+        <h2 class="section-head__title" id="services-title" data-anim="lines">Six kinds of site I build</h2>
+        <p class="section-head__lede">
+          Each one is designed in Figma first and handed over in a state you can edit.
+        </p>
+      </div>
+
+      <!-- flick-rail: horizontal track below 900px, the ordinary grid from
+           900px. See css/sections/d.css §17 and js/rails.js. -->
+      <div class="grid grid--3 flick-rail" data-anim="stagger" role="group" tabindex="0"
+        aria-label="Six kinds of site I build">
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </span>
+            <h3 class="card__title">
+              <a class="link-plain card__link" href="#contact">
+                Personal sites
+                <svg class="icon icon-inline svc__arrow" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </h3>
+            <p class="card__text">
+              Portfolios and CVs. One page or several, built around the work you actually want people
+              to look at.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9.5" cy="20" r="1.4" />
+                <circle cx="18" cy="20" r="1.4" />
+                <path d="M2.5 3h2.8l2.3 11.4a1.7 1.7 0 0 0 1.7 1.4h8.4a1.7 1.7 0 0 0 1.7-1.4L21 7H6" />
+              </svg>
+            </span>
+            <h3 class="card__title">
+              <a class="link-plain card__link" href="#contact">
+                Online stores
+                <svg class="icon icon-inline svc__arrow" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </h3>
+            <p class="card__text">
+              WooCommerce, from the product page through to the checkout, with the payment methods
+              your buyers already use.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2.5 4h5.5a3.5 3.5 0 0 1 3.5 3.5V20a3 3 0 0 0-3-2.5H2.5z" />
+                <path d="M21.5 4H16a3.5 3.5 0 0 0-3.5 3.5V20a3 3 0 0 1 3-2.5h6z" />
+              </svg>
+            </span>
+            <h3 class="card__title">
+              <a class="link-plain card__link" href="#contact">
+                Course platforms
+                <svg class="icon icon-inline svc__arrow" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </h3>
+            <p class="card__text">
+              LearnDash or TutorLMS: lessons, enrolment and access rules for selling what you teach.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M3 9h18M9 21V9" />
+              </svg>
+            </span>
+            <h3 class="card__title">
+              <a class="link-plain card__link" href="#contact">
+                Theme customisation
+                <svg class="icon icon-inline svc__arrow" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </h3>
+            <p class="card__text">
+              You already bought a theme. I reshape it around your brand and take out the parts that
+              are fighting your content.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2.5 2.5 7 12 11.5 21.5 7 12 2.5" />
+                <polyline points="2.5 16.5 12 21 21.5 16.5" />
+                <polyline points="2.5 11.8 12 16.2 21.5 11.8" />
+              </svg>
+            </span>
+            <h3 class="card__title">
+              <a class="link-plain card__link" href="#contact">
+                Built from scratch
+                <svg class="icon icon-inline svc__arrow" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </h3>
+            <p class="card__text">
+              No theme underneath. The design starts on a blank Figma page and the build follows it
+              exactly.
+            </p>
+          </div>
+        </article>
+
+        <article class="card flick-rail__item">
+          <div class="stack stack--md">
+            <span class="icon-tile" aria-hidden="true">
+              <svg class="icon-tile__glyph" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.5 12a8.5 8.5 0 1 1-2.9-6.4" />
+                <polyline points="20.5 3.5 20.5 9 15 9" />
+              </svg>
+            </span>
+            <h3 class="card__title">
+              <a class="link-plain card__link" href="#contact">
+                Redesign
+                <svg class="icon icon-inline svc__arrow" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </h3>
+            <p class="card__text">
+              The content stays, the structure gets fixed. For a site that still works but no longer
+              looks like the business behind it.
+            </p>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 08 · COMPARISON ══ depth: s3 ══════════════════════════════════════ -->
+  <section class="section section--s3" id="comparison" aria-labelledby="comparison-title">
+    <div class="container">
+
+      <div class="section-head section-head--center" data-anim="up">
+        <p class="chip">
+          <span class="chip__mark" aria-hidden="true">
+            <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+          </span>
+          The difference
+        </p>
+        <h2 class="section-head__title" id="comparison-title" data-anim="lines">Standard vs premium</h2>
+        <p class="section-head__lede">
+          The same brief, two ways of working. The gap between them shows up after launch, not on
+          launch day.
+        </p>
+      </div>
+
+      <div class="stack stack--2xl">
+
+        <div class="compare" data-anim="stagger">
+
+          <!-- The quiet column. Every row opens with "No", the glyph is a cross and
+               the icon is muted — the accent never says "bad". -->
+          <article class="card card--static card--sunken" aria-labelledby="compare-standard">
+            <div class="stack stack--lg">
+              <p><span class="badge">Standard build</span></p>
+              <h3 id="compare-standard">What the theme decides for you</h3>
+              <ul class="tick-list">
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon tick-list__icon--absent" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                  No design step: pages are assembled in the builder and reviewed once they already exist.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon tick-list__icon--absent" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                  No layout of your own: a purchased theme decides it, and so does every other site running that theme.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon tick-list__icon--absent" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                  No plugin discipline: extras get stacked on to patch what the theme cannot do, and each one adds weight.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon tick-list__icon--absent" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                  No editor you can use: handover is a set of login details, and changing a section means finding a developer.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon tick-list__icon--absent" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                  No support after launch: the work ends on the day the site goes live.
+                </li>
+              </ul>
+            </div>
+          </article>
+
+          <!-- The column that carries the accent. -->
+          <article class="card card--static card--highlight" aria-labelledby="compare-premium">
+            <div class="stack stack--lg">
+              <p><span class="badge badge--brand">Premium build</span></p>
+              <h3 id="compare-premium">What I hand over instead</h3>
+              <ul class="tick-list">
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12l5 5L20 6" />
+                  </svg>
+                  Every page is drawn in Figma and approved before a single element is built.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12l5 5L20 6" />
+                  </svg>
+                  The build runs in Elementor Pro with custom CSS, starting from your design instead of a theme.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12l5 5L20 6" />
+                  </svg>
+                  Plugins are chosen for a job, so the page stays as light as the design allows.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12l5 5L20 6" />
+                  </svg>
+                  You get an editor you can use. Text, images and whole sections change without me.
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12l5 5L20 6" />
+                  </svg>
+                  180 days of support after launch, and 7 days to ask for your money back.
+                </li>
+              </ul>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="stack stack--md stack--center" data-anim="up">
+          <p class="measure--narrow text-center">
+            Tell me what you are building and I will tell you what it takes.
+          </p>
+          <a class="btn btn--primary btn--lg" href="#contact">Start a project</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     09 — PROCESS   ·   depth: --s1 (surface-1)
+     Four numbered steps. The numbering is a real sequence, so it is an <ol>
+     and every step also carries a visually-hidden "Step n of 4".
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section section--s1" id="process" aria-labelledby="process-title">
+  <div class="container stack stack--2xl">
+
+    <div class="section-head" data-anim="up">
+      <p class="chip">
+        <span class="chip__mark" aria-hidden="true">
+          <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+        </span>
+        How the work runs
+      </p>
+      <h2 class="section-head__title" id="process-title" data-anim="lines">Four steps from brief to handover</h2>
+      <p class="section-head__lede">The same sequence on every project, so you always know what happens next and what I need from you.</p>
+    </div>
+
+    <!-- flick-rail: horizontal track below 900px, the ordinary grid from 900px.
+         The steps keep their source order either way, so the sequence reads the
+         same to a screen reader. See css/sections/d.css §17 and js/rails.js. -->
+    <ol class="grid grid--4 list-plain process__list flick-rail" data-anim="stagger" tabindex="0"
+      aria-label="Four steps from brief to handover">
+
+      <li class="card process__step flick-rail__item">
+        <div class="stack stack--md">
+          <p class="process__marker">
+            <span class="icon-tile icon-tile--numeral" aria-hidden="true">
+              <span class="process__numeral">01</span>
+            </span>
+            <span class="process__thread" aria-hidden="true"></span>
+            <span class="visually-hidden">Step 1 of 4.</span>
+          </p>
+          <h3 class="card__title">Brief</h3>
+          <p class="card__text">We agree what the site has to do, who it is for and which pages it needs. Scope is settled before anything is drawn.</p>
+        </div>
+      </li>
+
+      <li class="card process__step flick-rail__item">
+        <div class="stack stack--md">
+          <p class="process__marker">
+            <span class="icon-tile icon-tile--numeral" aria-hidden="true">
+              <span class="process__numeral">02</span>
+            </span>
+            <span class="process__thread" aria-hidden="true"></span>
+            <span class="visually-hidden">Step 2 of 4.</span>
+          </p>
+          <h3 class="card__title">Design</h3>
+          <p class="card__text">Every screen is drawn in Figma first. You review layout, type and colour there, while changes are still cheap.</p>
+        </div>
+      </li>
+
+      <li class="card process__step flick-rail__item">
+        <div class="stack stack--md">
+          <p class="process__marker">
+            <span class="icon-tile icon-tile--numeral" aria-hidden="true">
+              <span class="process__numeral">03</span>
+            </span>
+            <span class="process__thread" aria-hidden="true"></span>
+            <span class="visually-hidden">Step 3 of 4.</span>
+          </p>
+          <h3 class="card__title">Build</h3>
+          <p class="card__text">The approved design is built in WordPress with Elementor Pro and custom CSS. Nothing starts from a purchased theme.</p>
+        </div>
+      </li>
+
+      <li class="card process__step flick-rail__item">
+        <div class="stack stack--md">
+          <p class="process__marker">
+            <span class="icon-tile icon-tile--numeral" aria-hidden="true">
+              <span class="process__numeral">04</span>
+            </span>
+            <span class="process__thread process__thread--end" aria-hidden="true"></span>
+            <span class="visually-hidden">Step 4 of 4.</span>
+          </p>
+          <h3 class="card__title">Handover</h3>
+          <p class="card__text">The site goes live and you get a walkthrough of the editor, so you can change text and images yourself. Support runs for 180 days.</p>
+        </div>
+      </li>
+
+    </ol>
+
+    <div class="cluster cluster--center" data-anim="up" data-delay="0.15">
+      <a class="btn btn--primary btn--lg" href="#contact">Tell me about your project</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     10 — WORK   ·   depth: --s2 (surface-2)
+     Filter pills + eight real projects on the pinned rail.
+     JS hooks that must survive verbatim:
+       .pill-filter.filter-btn[data-filter]
+       .rail.mk-rail[data-rail] > .rail__track.mk-rail-track[data-rail-track]
+       .project-card[data-category][data-brief] > .project-title
+                                                + .project-link
+                                                + .project-details-btn
+       #projectDialog with [data-dialog-title|body|link|close]
+     The dialog exists ONCE on the page and sits outside the section, because
+     motion.js pins the section and a pinned ancestor would trap a fixed panel.
+
+     Two things about the copy, both deliberate:
+
+     · Every line here is the owner's own description of the client, and
+       nothing more — no durations, no outcomes, no invented metrics. Where a
+       project needs sizing, use a public and checkable fact: SL Smarts is
+       sized by its 4,000+ live listings. Nothing commercial about a client
+       belongs on a public page.
+
+     · Laft is finished but still waiting on its production domain, so it
+       carries a "Launching soon" badge and deliberately has NO .project-link.
+       js/ui.js already handles that: open() hides [data-dialog-link] when the
+       card has no link, so the brief panel degrades on its own.
+
+     Image loading: the first two cards are what a visitor sees before any
+     scroll, so they load eagerly. The other six are lazy.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section section--s2" id="work" aria-labelledby="work-title">
+  <div class="container container--wide stack stack--2xl">
+
+    <div class="section-head" data-anim="up">
+      <p class="chip">
+        <span class="chip__mark" aria-hidden="true">
+          <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+        </span>
+        Selected work
+      </p>
+      <h2 class="section-head__title" id="work-title" data-anim="lines">Eight builds across five sectors</h2>
+      <p class="section-head__lede">Seven of these are online now. The eighth is finished and waiting on its production domain.</p>
+    </div>
+
+    <div class="cluster" role="group" aria-label="Filter projects by category" data-anim="up">
+      <button class="pill-filter filter-btn is-active" type="button" data-filter="all" aria-pressed="true">All</button>
+      <button class="pill-filter filter-btn" type="button" data-filter="corporate" aria-pressed="false">Corporate</button>
+      <button class="pill-filter filter-btn" type="button" data-filter="marketplace" aria-pressed="false">Marketplace</button>
+      <button class="pill-filter filter-btn" type="button" data-filter="government" aria-pressed="false">Government</button>
+      <button class="pill-filter filter-btn" type="button" data-filter="education" aria-pressed="false">Education</button>
+      <button class="pill-filter filter-btn" type="button" data-filter="healthcare" aria-pressed="false">Healthcare</button>
+    </div>
+
+    <div class="rail mk-rail" data-rail>
+      <div class="rail__track mk-rail-track" data-rail-track data-anim="stagger">
+
+        <!-- 1 — Sakhaa Program -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="government"
+                 data-brief="Sakhaa Program, run by the Saudi Ministry of Human Resources and Social Development. I am the site's lead admin.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/sakhaa.jpg"
+                 alt="The Sakhaa Program home page, showing the Arabic navigation bar above a full-width carousel slide"
+                 width="1100" height="688">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Government</p>
+            <h3 class="project-title">Sakhaa Program</h3>
+            <p class="card__text">A Saudi ministry programme site, where I am the lead admin.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="https://sakhaaprogram.hrsd.gov.sa/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: Sakhaa Program">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: Sakhaa Program">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2 — SL Smarts -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="marketplace"
+                 data-brief="A classifieds marketplace in the Dubizzle mould, carrying more than 4,000 real listings. A large amount of the functionality is custom-coded rather than assembled from plugins.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/slsmarts.jpg"
+                 alt="The SL Smarts home page, showing the listing search bar with fields for what and where, above a row of category shortcuts"
+                 width="1100" height="688">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Marketplace</p>
+            <h3 class="project-title">SL Smarts</h3>
+            <p class="card__text">A classifieds marketplace carrying more than 4,000 real listings.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="https://slsmarts.com/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: SL Smarts">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: SL Smarts">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3 — Sharik -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="corporate"
+                 data-brief="Sharik is an integrated marketing services company in Saudi Arabia.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/sharikco.jpg"
+                 alt="The Sharik home page, showing the Arabic welcome headline, the main navigation and a scroll prompt"
+                 width="1100" height="688" loading="lazy" decoding="async">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Corporate</p>
+            <h3 class="project-title">Sharik</h3>
+            <p class="card__text">An integrated marketing services company in Saudi Arabia.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="https://sharikco.com/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: Sharik">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: Sharik">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4 — Dr Mohamed Osama -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="healthcare"
+                 data-brief="A site for Dr Mohamed Osama's dental practice. The interactions on it are hand-coded rather than driven by plugins.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/drmo.jpg"
+                 alt="The Dr Mohamed Osama home page, showing a treatment-room photograph beside the Arabic headline and two contact buttons"
+                 width="1100" height="688" loading="lazy" decoding="async">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Healthcare</p>
+            <h3 class="project-title">Dr Mohamed Osama</h3>
+            <p class="card__text">A dental practice, with the interactions hand-coded rather than dropped in.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="https://drmo.dentx-agency.com/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: Dr Mohamed Osama">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: Dr Mohamed Osama">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5 — Laft.  No .project-link: the production domain is not live yet,
+             and a staging address is not a site to send a visitor to. The badge
+             says so in words, and ui.js hides the dialog's link by itself. -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="corporate"
+                 data-brief="Laft is a large Saudi B2B brand. The build is finished and waiting on its production domain, so there is no public address to link to yet.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/laft.jpg"
+                 alt="The Laft home page, showing the Arabic headline over a dark gradient with two calls to action"
+                 width="1100" height="688" loading="lazy" decoding="async">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Corporate</p>
+            <h3 class="project-title">Laft</h3>
+            <p class="card__text">A large Saudi B2B brand. The build is finished.</p>
+            <div class="project-card__actions">
+              <span class="badge badge--brand">Launching soon</span>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: Laft">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 6 — Dremora -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="marketplace"
+                 data-brief="Dremora sells children's stories online.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/dremora.jpg"
+                 alt="The Dremora home page, showing an illustrated space scene with a headline and an order button"
+                 width="1100" height="688" loading="lazy" decoding="async">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Marketplace</p>
+            <h3 class="project-title">Dremora</h3>
+            <p class="card__text">Children's stories, sold online.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="http://dremora.fun/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: Dremora">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: Dremora">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 7 — Rehal -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="corporate"
+                 data-brief="Rehal runs light-aviation transport services in Saudi Arabia.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/rehal.jpg"
+                 alt="The Rehal home page, showing the headline about urgent shipments beside a live operations panel"
+                 width="1100" height="688" loading="lazy" decoding="async">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Corporate</p>
+            <h3 class="project-title">Rehal</h3>
+            <p class="card__text">Light-aviation transport services in Saudi Arabia.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="https://rehal.sa/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: Rehal">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: Rehal">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 8 — London Royal Academy -->
+        <article class="card card--flush project-card rail__item"
+                 data-category="education"
+                 data-brief="London Royal Academy works in education.">
+          <div class="project-card__media media-cut">
+            <img class="project-card__img" src="assets/projects/londonra.jpg"
+                 alt="The London Royal Academy home page, showing a featured course with its dates and venues above a course search row"
+                 width="1100" height="688" loading="lazy" decoding="async">
+          </div>
+          <div class="card__body">
+            <p class="card__meta">Education</p>
+            <h3 class="project-title">London Royal Academy</h3>
+            <p class="card__text">An education provider.</p>
+            <div class="project-card__actions">
+              <a class="btn btn--quiet project-link" href="https://londonra.com/" target="_blank" rel="noopener"
+                 aria-label="Visit the site: London Royal Academy">Visit the site</a>
+              <button class="btn btn--quiet project-details-btn" type="button"
+                      aria-label="Project brief: London Royal Academy">Project brief</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+    </div>
+
+    <p class="work__note" data-anim="fade">The row scrolls sideways. Use the filters above to narrow it to one sector.</p>
+
+  </div>
+</section>
+
+<!-- The project brief panel. One per page, never one per card. js/ui.js fills the
+     title from .project-title, the body from the card's data-brief and the link
+     from .project-link — it writes no copy of its own, and it hides the link on
+     a card that has none (Laft). -->
+<div class="dialog" id="projectDialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-hidden="true">
+  <div class="dialog__panel">
+    <button class="dialog__close" type="button" data-dialog-close aria-label="Close the project brief">
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="24" height="24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <h2 class="dialog__title" id="dialogTitle" data-dialog-title></h2>
+    <p class="dialog__body" data-dialog-body></p>
+    <a class="btn btn--primary" data-dialog-link href="#" target="_blank" rel="noopener">Visit the site</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     11 — TESTIMONIALS   ·   depth: --s1 (surface-1)
+     Three quotes. Three slides is below Swiper's loop threshold, so this is a
+     plain grid: no slider, no library, no pagination that lies about how much
+     content there is. The rating is spelled out in text as well as drawn, so
+     nothing here depends on colour or on counting shapes.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section section--s1" id="testimonials" aria-labelledby="testimonials-title">
+  <div class="container stack stack--2xl">
+
+    <div class="section-head" data-anim="up">
+      <p class="chip">
+        <span class="chip__mark" aria-hidden="true">
+          <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+        </span>
+        Client feedback
+      </p>
+      <h2 class="section-head__title" id="testimonials-title" data-anim="lines">What clients said after launch</h2>
+      <p class="section-head__lede">Three people who hired me, in their own words.</p>
+    </div>
+
+    <!-- flick-rail: the three quotes run sideways below 900px and sit in the
+         ordinary grid from 900px. Still no slider — no pagination, no autoplay
+         and no clone: one row, three cards, scrollable by hand at any moment.
+         See css/sections/d.css §17 and js/rails.js. -->
+    <div class="grid grid--3 flick-rail" data-anim="stagger" role="group" tabindex="0"
+      aria-label="What clients said after launch">
+
+      <figure class="card quote flick-rail__item">
+        <p class="quote__rating">
+          <span class="quote__stars" aria-hidden="true">
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+          </span>
+          <span class="quote__score">5 out of 5</span>
+        </p>
+        <blockquote class="quote__text">Mohamed understood what I needed from the first call. The site looks like a professional practice, and the process was calm from start to finish.</blockquote>
+        <figcaption class="quote__footer">
+          <span class="quote__monogram" aria-hidden="true">AH</span>
+          <span class="stack stack--xs">
+            <span class="quote__name">Ahmed Hassan</span>
+            <span class="quote__role">Business coach, Cairo</span>
+          </span>
+        </figcaption>
+      </figure>
+
+      <figure class="card quote flick-rail__item">
+        <p class="quote__rating">
+          <span class="quote__stars" aria-hidden="true">
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+          </span>
+          <span class="quote__score">5 out of 5</span>
+        </p>
+        <blockquote class="quote__text">My store looks the way I pictured it and the checkout simply works. He was patient with every change I asked for, and he explained why some of them were a bad idea.</blockquote>
+        <figcaption class="quote__footer">
+          <span class="quote__monogram" aria-hidden="true">SM</span>
+          <span class="stack stack--xs">
+            <span class="quote__name">Sara Mohamed</span>
+            <span class="quote__role">Boutique owner, Alexandria</span>
+          </span>
+        </figcaption>
+      </figure>
+
+      <figure class="card quote flick-rail__item">
+        <p class="quote__rating">
+          <span class="quote__stars" aria-hidden="true">
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+          </span>
+          <span class="quote__score">5 out of 5</span>
+        </p>
+        <blockquote class="quote__text">I asked for a course platform and got one. Students find their way around it without help, and I add a new lesson myself in a few minutes.</blockquote>
+        <figcaption class="quote__footer">
+          <span class="quote__monogram" aria-hidden="true">KA</span>
+          <span class="stack stack--xs">
+            <span class="quote__name">Karim Abdelrahman</span>
+            <span class="quote__role">Online educator, Dubai</span>
+          </span>
+        </figcaption>
+      </figure>
+
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     12 — TIMELINE   ·   depth: --s3 (surface-3)
+     2020 to now, in order, so it is an <ol>. The spine runs down the left on a
+     phone and down the middle from 900px; the years alternate sides there.
+     Cards use .card--sunken because surface-4 is too close a step to the
+     surface-3 the section sits on.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section section--s3" id="timeline" aria-labelledby="timeline-title">
+  <div class="container container--narrow stack stack--2xl">
+
+    <div class="section-head section-head--center" data-anim="up">
+      <p class="chip">
+        <span class="chip__mark" aria-hidden="true">
+          <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+        </span>
+        Timeline
+      </p>
+      <h2 class="section-head__title" id="timeline-title" data-anim="lines">From the first build in 2020 to now</h2>
+      <p class="section-head__lede">One year at a time, and what each one added to how the work is done today.</p>
+    </div>
+
+    <ol class="timeline__list list-plain" data-anim="stagger">
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2020</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">First WordPress builds</h3>
+            <p class="card__text">Learned WordPress properly rather than plugin by plugin, and shipped the first custom sites for real clients.</p>
+          </div>
+        </article>
+      </li>
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2021</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">Stores and checkout</h3>
+            <p class="card__text">Moved into e-commerce: WooCommerce catalogues, payment setup and checkout flows a shop owner can run without help.</p>
+          </div>
+        </article>
+      </li>
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2022</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">Work beyond one market</h3>
+            <p class="card__text">Started building for clients across the Arab world, Europe and America, which meant handling different languages, currencies and time zones as a matter of routine.</p>
+          </div>
+        </article>
+      </li>
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2023</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">Course platforms</h3>
+            <p class="card__text">Added LMS work: lessons, enrolment and student access for educators who sell what they know online.</p>
+          </div>
+        </article>
+      </li>
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2024</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">Figma before Elementor</h3>
+            <p class="card__text">Settled the method still used today: design every screen in Figma, then build it in Elementor Pro with custom CSS, so the layout is decided before the build and the client can still edit it after.</p>
+          </div>
+        </article>
+      </li>
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2025</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">Speed and detail</h3>
+            <p class="card__text">Turned attention to what happens after launch: page weight, loading behaviour and the small interface details that separate a finished site from a live one.</p>
+          </div>
+        </article>
+      </li>
+
+      <li class="timeline__item stack stack--sm">
+        <span class="timeline__dot" aria-hidden="true"></span>
+        <p class="timeline__year">2026</p>
+        <article class="card card--sunken timeline__card">
+          <div class="stack stack--sm">
+            <h3 class="card__title">Sites the owner can run</h3>
+            <p class="card__text">Where the work sits now: builds handed over with a walkthrough and 180 days of support, so the site keeps moving without waiting on me.</p>
+          </div>
+        </article>
+      </li>
+
+    </ol>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     12b — SIGNATURE   ·   depth: --ink
+     ----------------------------------------------------------------------------
+     Sits between the timeline (--s3) and the contact form (--s1), so the depth
+     ramp reads s3 → ink → s1 and no two neighbours share a step. The file name
+     sorts between 12- and 13- on its own, which is all assemble2.js needs.
+
+     ONE PINNED, SCRUBBED SCENE, driven frame by frame by js/signature.js:
+       0 → 35%    the sentence assembles, a word at a time, each word arriving
+                  along the --mk-angle vector rather than straight up
+       35 → 55%   it holds, fully legible — a scene with no rest is a gimmick
+       55 → 75%   it disperses on the same vector, the other way
+       75 → 100%  the mark builds out of nothing: a clip-path wipe travelling
+                  along --mk-angle, the picture counter-scaling inside it so it
+                  settles rather than zooms, and the violet-to-teal gradient
+                  igniting last
+
+     WHY THERE IS NO data-anim IN HERE. js/motion.js claims every [data-anim]
+     element on the page and gives it its own trigger. These two elements belong
+     to the scrubbed timeline instead; claimed twice they would fight, and the
+     one that lost would be left invisible. So this section brings its own copy
+     of the base.css flash guard: .signature__veil hides only while the `js`
+     class is on <html>, js/signature.js lifts it the instant it has set the
+     from-state, and c.css lifts it again under prefers-reduced-motion.
+
+     BOTH HALVES ARE REAL CONTENT. The sentence is the section's <h2> and its
+     accessible name; the mark is a real <img> with a real alt. A screen reader,
+     a no-JavaScript visitor, a phone and anyone who asked for reduced motion
+     all get the same two things, simply stacked and still.
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section section--ink signature" id="signature" aria-labelledby="signature-title" data-signature>
+  <div class="container">
+    <div class="signature__frame" data-signature-frame>
+
+      <!-- Six words. SplitText splits them BY WORD, never by character: a
+           character split breaks the joins in a joined script, and this page
+           may carry Arabic later. -->
+      <h2 class="signature__words signature__veil" id="signature-title" data-signature-words>Nothing starts from a purchased theme.</h2>
+
+      <div class="signature__logo signature__veil" data-signature-logo>
+        <span class="signature__glow" aria-hidden="true"></span>
+        <span class="signature__wipe" data-signature-wipe>
+          <img class="signature__mark" src="assets/images/logo-gradient.png"
+            alt="MK, the studio mark of Mohamed Khaled" width="512" height="135" loading="lazy" decoding="async"
+            data-signature-mark>
+        </span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     13 · CONTACT — the three-step enquiry form.
+     Depth: --surface-1 (.section--s1). Sits between timeline (s3) and faq (s2).
+
+     JS hooks owned by this section (js/form.js), spelled exactly:
+       #contactForm · .form-step[data-step="1|2|3"] · .progress-step[data-step]
+       .next-step · .prev-step · #formSuccess
+       field names: projectType · budget · name · email · phone · details
+
+     Step 2 is SCOPE, not price. The old EGP ladder was removed on purpose:
+     it anchored an international buyer at roughly $200. No numbers here.
+     ========================================================================== -->
+<section class="section section--s1" id="contact" aria-labelledby="contact-title">
+  <div class="container container--narrow">
+
+    <div class="section-head" data-anim="up">
+      <p class="chip">
+        <span class="chip__mark" aria-hidden="true">
+          <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+        </span>
+        Contact
+      </p>
+      <h2 class="section-head__title" id="contact-title" data-anim="lines">Tell me what you are building</h2>
+      <p class="section-head__lede">Three short steps. Answer them and I reply within 24 hours.</p>
+    </div>
+
+    <div class="stack stack--lg">
+
+      <form class="card card--static" id="contactForm" novalidate data-anim="up" data-delay="0.1">
+
+        <ol class="form-progress list-plain">
+          <li class="progress-step" data-step="1"><span class="progress-step__num">1</span>Project</li>
+          <li class="progress-step" data-step="2"><span class="progress-step__num">2</span>Scope</li>
+          <li class="progress-step" data-step="3"><span class="progress-step__num">3</span>Contact</li>
+        </ol>
+
+        <!-- ── Step 1 · what kind of site ─────────────────────────────────── -->
+        <div class="form-step" data-step="1">
+          <fieldset>
+            <legend class="form-step__legend">What are you building?</legend>
+            <div class="stack stack--md">
+              <p class="card__text">Pick the closest one. There is room for detail on the next step.</p>
+
+              <!-- The .field wrapper is load-bearing, not decoration: js/form.js
+                   finds an error box with input.closest('.field'), so a radio
+                   group outside one gets a blocked Continue and no reason why. -->
+              <div class="field">
+                <div class="grid grid--2">
+                  <label class="option">
+                    <input class="option__input" type="radio" name="projectType" value="Personal site" required>
+                    <span class="option__card">A personal site or portfolio</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="projectType" value="Online store">
+                    <span class="option__card">An online store</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="projectType" value="Course platform">
+                    <span class="option__card">A course platform</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="projectType" value="Theme customisation">
+                    <span class="option__card">Customising a theme I already have</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="projectType" value="From scratch">
+                    <span class="option__card">A new site from scratch</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="projectType" value="Redesign">
+                    <span class="option__card">A redesign of a site I have</span>
+                  </label>
+                </div>
+                <span class="field__error" aria-live="polite"></span>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button class="btn btn--primary next-step" type="button">Continue to scope</button>
+          </div>
+        </div>
+
+        <!-- ── Step 2 · how much site · SCOPE, never a price ──────────────── -->
+        <div class="form-step" data-step="2" hidden>
+          <fieldset>
+            <legend class="form-step__legend">How much site is there?</legend>
+            <div class="stack stack--md">
+              <p class="card__text">This sets the shape of the work, not a figure.</p>
+
+              <div class="field">
+                <div class="stack stack--sm">
+                  <label class="option">
+                    <input class="option__input" type="radio" name="budget" value="One page" required>
+                    <span class="option__card">One page — a landing page, a CV, or a single offer</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="budget" value="A small site">
+                    <span class="option__card">A few pages — home, about, services, contact</span>
+                  </label>
+                  <label class="option">
+                    <input class="option__input" type="radio" name="budget" value="A full build">
+                    <span class="option__card">A full build — a catalogue, a store, or a course platform</span>
+                  </label>
+                </div>
+                <span class="field__error" aria-live="polite"></span>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="field">
+            <label class="field__label" for="f-details">What should it do?</label>
+            <textarea class="field__input field__textarea" id="f-details" name="details" rows="5"
+              aria-describedby="f-details-hint f-details-err"></textarea>
+            <span class="field__hint" id="f-details-hint">Pages you need, anything it has to connect to, anything you
+              already have.</span>
+            <span class="field__error" id="f-details-err" aria-live="polite"></span>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn--outline prev-step" type="button">Back</button>
+            <button class="btn btn--primary next-step" type="button">Continue to contact</button>
+          </div>
+        </div>
+
+        <!-- ── Step 3 · how to reach you ──────────────────────────────────── -->
+        <div class="form-step" data-step="3" hidden>
+          <fieldset>
+            <legend class="form-step__legend">Where do I send the reply?</legend>
+
+            <div class="stack stack--md">
+              <div class="grid grid--2">
+                <div class="field">
+                  <label class="field__label" for="f-name">Name <span class="field__required">*</span></label>
+                  <input class="field__input" id="f-name" name="name" type="text" required autocomplete="name"
+                    aria-describedby="f-name-err">
+                  <span class="field__error" id="f-name-err" aria-live="polite"></span>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="f-email">Email <span class="field__required">*</span></label>
+                  <input class="field__input" id="f-email" name="email" type="email" required autocomplete="email"
+                    aria-describedby="f-email-err">
+                  <span class="field__error" id="f-email-err" aria-live="polite"></span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="f-phone">WhatsApp number</label>
+                <input class="field__input" id="f-phone" name="phone" type="tel" autocomplete="tel"
+                  aria-describedby="f-phone-hint f-phone-err">
+                <span class="field__hint" id="f-phone-hint">Optional. Include the country code if you are outside
+                  Egypt.</span>
+                <span class="field__error" id="f-phone-err" aria-live="polite"></span>
+              </div>
+            </div>
+          </fieldset>
+
+          <p class="contact__note">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="5" width="20" height="14" rx="2" />
+              <path d="M2 10h20" />
+            </svg>
+            Payment is taken later, by Vodafone Cash, InstaPay, bank transfer or PayPal. Sending this form costs
+            nothing and commits you to nothing.
+          </p>
+
+          <div class="form-actions">
+            <button class="btn btn--outline prev-step" type="button">Back</button>
+            <button class="btn btn--primary" type="submit">Continue on WhatsApp</button>
+          </div>
+        </div>
+
+      </form>
+
+      <!-- js/form.js clears `hidden`, adds .is-active and moves focus here. -->
+      <div class="card card--static form-success" id="formSuccess" tabindex="-1" hidden>
+        <span class="form-success__icon" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <!-- Never "sent". WhatsApp opens with the message written out, but the
+             visitor still has to press Send there — so this says exactly that,
+             and keeps a way back in case WhatsApp did not open. -->
+        <h3>Your message is ready in WhatsApp</h3>
+        <p class="measure--narrow">Press <strong>Send</strong> in WhatsApp to deliver it. I read every message myself
+          and reply within 24 hours.</p>
+        <a class="btn btn--outline" id="formReopen" href="https://wa.me/201099576398" target="_blank"
+          rel="noopener">WhatsApp did not open? Open it here</a>
+      </div>
+
+      <div class="stack stack--sm stack--center" data-anim="fade">
+        <p class="contact__direct-note">Would rather skip the form?</p>
+        <div class="cluster cluster--md cluster--center">
+          <a class="btn btn--outline" href="mailto:info@mk-wp.site">Email info@mk-wp.site</a>
+          <a class="btn btn--outline" href="https://wa.me/201099576398" target="_blank" rel="noopener">
+            <svg class="icon icon--filled" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 12.05 0m0 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884" />
+            </svg>
+            Message on WhatsApp
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     14 · FAQ — seven questions, answered the way a contract states terms.
+     Depth: --surface-2 (.section--s2). Sits between contact (s1) and guarantee (s1).
+
+     JS hooks (js/ui.js): .faq-item · .faq-question · .faq-answer · .faq-answer-content
+     The question is a real <button>. ui.js writes aria-expanded and aria-controls —
+     they are deliberately absent from this markup.
+
+     The two trust chips are violet and teal only. The old pair imported a stray
+     green (#22c55e) and a stray blue (#3b82f6) from outside the palette.
+     ========================================================================== -->
+<section class="section section--s2" id="faq" aria-labelledby="faq-title">
+  <div class="container container--narrow">
+
+    <div class="section-head section-head--center" data-anim="up">
+      <p class="chip">
+        <span class="chip__mark" aria-hidden="true">
+          <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+        </span>
+        Questions
+      </p>
+      <h2 class="section-head__title" id="faq-title" data-anim="lines">What people ask before starting</h2>
+      <p class="section-head__lede">The terms of a project, stated plainly.</p>
+    </div>
+
+    <div class="stack stack--xl">
+
+    <div class="cluster cluster--md cluster--center" data-anim="stagger">
+      <span class="badge badge--live">
+        <span class="badge__dot" aria-hidden="true"></span>
+        7-day money-back window
+      </span>
+      <span class="badge badge--brand">
+        <span class="badge__dot" aria-hidden="true"></span>
+        180 days of support
+      </span>
+    </div>
+
+    <ul class="accordion list-plain" data-anim="stagger">
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          Do you start from a purchased theme?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>No. Every layout is drawn in Figma first, then built in WordPress with Elementor Pro and custom CSS
+                written for that layout. There is no demo import and no marketplace theme underneath.</p>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          Why Elementor Pro rather than hand-written code?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>Because you keep the site after I hand it over. The design comes from Figma and the custom CSS, so
+                the site does not look like a template. Elementor Pro is what makes it editable afterwards, by you,
+                without a developer on retainer.</p>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          Can I edit the site myself after handover?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>Yes. You get the WordPress dashboard and the Elementor editor. Text, images, products, posts and
+                prices are yours to change. Nothing that a client normally needs to update is locked behind code.</p>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          What is the 7-day money-back window?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>For the first seven days after a project starts, you can stop it and have the payment returned in
+                full. You do not have to justify the decision. After that window the project runs to its agreed end.
+              </p>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          What does the 180-day support cover?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>Support runs for 180 days from the day the site goes live. It covers what was built: anything that
+                breaks, anything that behaves differently from what we agreed, and your questions about editing the
+                site yourself.</p>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          How do I pay?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>Four methods, depending on where you are:</p>
+              <ul class="tick-list">
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  Vodafone Cash
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  InstaPay
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  Bank transfer
+                </li>
+                <li class="tick-list__item">
+                  <svg class="tick-list__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  PayPal
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li class="faq-item">
+        <button class="faq-question" type="button">
+          Do you work with clients outside Egypt?
+          <svg class="faq-question__icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            <div class="faq-answer__text stack stack--sm">
+              <p>Yes. Since 2020 I have delivered more than 210 projects for clients across the Arab world, Europe and
+                America. Bank transfer and PayPal cover payment from outside Egypt, and the whole project runs over
+                email and WhatsApp.</p>
+            </div>
+          </div>
+        </div>
+      </li>
+
+    </ul>
+
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     15 · GUARANTEE — the 180-day support block and its two CTAs.
+     Depth: --surface-1 (.section--s1). Sits between faq (s2) and footer (ink).
+
+     The old block used a 110px neon circle with two looping ripple rings. The
+     ripples are gone: the icon tile leans at --mk-angle like every other tile
+     on the page, and the only movement left is the single violet wash behind
+     the card, which does not animate.
+     ========================================================================== -->
+<section class="section section--s1" id="guarantee" aria-labelledby="guarantee-title">
+
+  <div class="layer-behind" aria-hidden="true">
+    <span class="guarantee__glow"></span>
+  </div>
+
+  <div class="container container--narrow layer-front">
+    <div class="card card--static card--highlight" data-anim="up">
+      <div class="stack stack--lg stack--center">
+
+        <p class="chip chip--teal">
+          <span class="chip__mark" aria-hidden="true">
+            <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
+          </span>
+          After launch
+        </p>
+
+        <span class="icon-tile icon-tile--lg" aria-hidden="true">
+          <svg class="icon-tile__glyph" viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linejoin="round" />
+            <path d="M9 11.5l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+
+        <h2 id="guarantee-title" data-anim="lines">180 days of support after handover</h2>
+
+        <p class="guarantee__text measure" data-anim="up" data-delay="0.1">
+          Support runs for 180 days from the day the site goes live. The first seven days of a project also carry a
+          money-back window: stop it inside that week and the payment is returned. Both terms are set before any work
+          starts, so neither one is a favour asked for later.
+        </p>
+
+        <div class="cluster cluster--md cluster--center" data-anim="stagger">
+          <a class="btn btn--primary btn--lg" href="#contact">Start a project</a>
+          <a class="btn btn--outline btn--lg" href="https://wa.me/201099576398" target="_blank" rel="noopener">
+            <svg class="icon icon--filled" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 12.05 0m0 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884" />
+            </svg>
+            Message on WhatsApp
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     16 · FOOTER — brand, navigation, services, contact, payment, copyright.
+     Depth: --ink (.section--ink), closing the ramp where the hero opened it.
+
+     Column headings are paragraphs, not headings: the page's heading ranks stop
+     at h3 and a footer column title is 13px, so promoting one to a real heading
+     would either skip a rank or restate a heading size. Each column is a named
+     landmark instead — aria-labelledby points at the visible title.
+
+     The YouTube glyph carries fill-rule="evenodd". Its play triangle is a second
+     subpath winding the same way as the body; under the default nonzero rule the
+     hole fills and the mark renders as a solid blob. That bug is live on the
+     current site.
+     ========================================================================== -->
+<footer class="section section--ink site-footer" id="footer" aria-labelledby="footer-title">
+  <h2 class="visually-hidden" id="footer-title">Site footer</h2>
+
+  <div class="layer-behind" aria-hidden="true">
+    <span class="site-footer__glow"></span>
+  </div>
+
+  <div class="container layer-front">
+
+    <div class="footer__grid" data-anim="stagger">
+
+      <!-- ── Brand ────────────────────────────────────────────────────────── -->
+      <div class="footer__col">
+        <img class="footer__logo" src="assets/images/logo-gradient.png"
+          alt="MK, the studio mark of Mohamed Khaled" width="160" height="56">
+        <p class="footer__blurb">
+          WordPress sites designed in Figma, then built in Elementor Pro with custom CSS so you can edit them after
+          handover. 210+ projects delivered since 2020 for clients across the Arab world, Europe and America.
+        </p>
+        <div class="footer__payments">
+          <span class="badge">Vodafone Cash</span>
+          <span class="badge">InstaPay</span>
+          <span class="badge">Bank transfer</span>
+          <span class="badge">PayPal</span>
+        </div>
+      </div>
+
+      <!-- ── Navigation ───────────────────────────────────────────────────── -->
+      <nav class="footer__col" aria-labelledby="footer-nav-title">
+        <p class="footer__title" id="footer-nav-title">Navigation</p>
+        <ul class="footer__list">
+          <li><a class="footer__link" href="#hero">Home</a></li>
+          <li><a class="footer__link" href="#about">About</a></li>
+          <li><a class="footer__link" href="#services">Services</a></li>
+          <li><a class="footer__link" href="#work">Work</a></li>
+          <li><a class="footer__link" href="#process">Process</a></li>
+          <li><a class="footer__link" href="#contact">Contact</a></li>
+        </ul>
+      </nav>
+
+      <!-- ── Services ─────────────────────────────────────────────────────── -->
+      <nav class="footer__col" aria-labelledby="footer-services-title">
+        <p class="footer__title" id="footer-services-title">Services</p>
+        <ul class="footer__list">
+          <li><a class="footer__link" href="#services">Personal sites</a></li>
+          <li><a class="footer__link" href="#services">Online stores</a></li>
+          <li><a class="footer__link" href="#services">Course platforms</a></li>
+          <li><a class="footer__link" href="#services">Theme customisation</a></li>
+          <li><a class="footer__link" href="#services">Builds from scratch</a></li>
+          <li><a class="footer__link" href="#services">Redesigns</a></li>
+        </ul>
+      </nav>
+
+      <!-- ── Contact ──────────────────────────────────────────────────────── -->
+      <div class="footer__col">
+        <p class="footer__title" id="footer-contact-title">Get in touch</p>
+
+        <p class="footer__contact-item">
+          <span class="icon-tile" aria-hidden="true">
+            <svg class="icon-tile__glyph" viewBox="0 0 24 24">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <path d="M2.5 6.5L12 13l9.5-6.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="footer__contact-body">
+            <span class="footer__contact-label">Email</span>
+            <a class="footer__contact-value" href="mailto:info@mk-wp.site">info@mk-wp.site</a>
+          </span>
+        </p>
+
+        <div class="cluster">
+          <a class="footer__social" href="https://wa.me/201099576398" target="_blank" rel="noopener"
+            aria-label="Mohamed Khaled on WhatsApp">
+            <svg class="icon icon--filled" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 12.05 0m0 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884" />
+            </svg>
+          </a>
+          <a class="footer__social" href="https://www.youtube.com/@mk-pro1996" target="_blank" rel="noopener"
+            aria-label="Mohamed Khaled on YouTube">
+            <svg class="icon icon--filled" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill-rule="evenodd"
+                d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33zM9.75 15.02V8.48l5.75 3.27-5.75 3.27z" />
+            </svg>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer__bottom" data-anim="fade">
+      <p>&copy; 2026 Mohamed Khaled. All rights reserved.</p>
+    </div>
+
+  </div>
+</footer>
+
+  </main>
+
+  <!-- ═══ PERSISTENT ACTION ═══
+       The visible word is the accessible name, so nothing here depends on the
+       glyph being recognised. js/ui.js hides it while the menu is open. -->
+  <a class="interaction-widget" href="https://wa.me/201099576398" target="_blank" rel="noopener">
+    <svg class="icon icon--filled" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413" />
+    </svg>
+    <span class="interaction-widget__label">Chat on WhatsApp</span>
+  </a>
+
+  <!-- ═══ SCRIPTS ═══
+       GSAP and its three plugins, then Lenis, then this build's own three
+       files. Every one is deferred, so they execute in this order after the
+       document is parsed. js/motion.js loads last because it reads the DOM the
+       other two have already wired. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/SplitText.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollToPlugin.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/form.js" defer></script>
+  <script src="js/motion.js" defer></script>
+  <!-- Both extend the motion system rather than modify it, so they load after it
+       and register nothing it has already registered. -->
+  <script src="js/signature.js" defer></script>
+  <script src="js/rails.js" defer></script>
+
+  <!-- ═══ CURSOR ═══ one node, last in the body, hidden on a coarse pointer. -->
+  <div class="mk-cursor mk-cursor-ring" aria-hidden="true"><i class="mk-cursor-dot"></i></div>
+</body>
+
+</html>

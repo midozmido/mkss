@@ -1,0 +1,415 @@
+/* ============================================================
+   ui.js — every non-motion interaction on the page.
+
+   Replaces four legacy files that had grown into each other:
+     onepage.js         menu, anchors, scroll-spy
+     onepage-extras.js  scroll progress, navbar state, anchor fallback
+     main.js            portfolio filter, FAQ, project modal, counters
+     animations.js      a second reveal system that never reliably fired
+
+   Between them they bound the same events twice, shipped a dead navbar
+   listener, and left 40 of 50 headings at opacity 0 on desktop. One file,
+   one binding each.
+
+   Depends on nothing. Motion is motion.js's job; this file never animates
+   anything GSAP owns.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ── helpers ─────────────────────────────────────────────── */
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  /* Each module is isolated: one throwing must not take the others down. */
+  function module(name, fn) {
+    try { return fn(); } catch (e) {
+      if (window.console && console.warn) console.warn('[ui] ' + name + ' failed:', e);
+      return null;
+    }
+  }
+
+  function raf(fn) {
+    var pending = false;
+    return function () {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function () { pending = false; try { fn(); } catch (e) { } });
+    };
+  }
+
+  /* Which element scrolls. Check <html> FIRST: if it overflows it IS the
+     scrollport, regardless of what <body> measures. The old code compared the
+     two and took whichever was taller, which picked <body> mid-load and left
+     every scroll-driven feature frozen. */
+  function scroller() {
+    var d = document.documentElement, b = document.body;
+    if (d && d.scrollHeight - d.clientHeight > 1) return d;
+    if (b && b.scrollHeight - b.clientHeight > 1) return b;
+    return document.scrollingElement || d;
+  }
+  function scrollTop() {
+    var el = scroller();
+    return (el === document.documentElement || el === document.scrollingElement)
+      ? (window.pageYOffset || el.scrollTop || 0)
+      : (el.scrollTop || 0);
+  }
+  /* A scroll on <body>-as-scrollport does not reach window, and — measured —
+     not a document capture listener either. Bind every candidate. */
+  function onScroll(cb) {
+    var o = { passive: true };
+    window.addEventListener('scroll', cb, o);
+    document.addEventListener('scroll', cb, { passive: true, capture: true });
+    if (document.body) document.body.addEventListener('scroll', cb, o);
+    if (document.documentElement) document.documentElement.addEventListener('scroll', cb, o);
+  }
+
+  var reduced = function () {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  };
+
+  /* ── 1. Fullscreen menu ──────────────────────────────────── */
+  function initMenu() {
+    var menu = $('#premiumMenu'), toggle = $('#navToggle');
+    if (!menu || !toggle) return null;
+
+    var overlay = $('.premium-menu-overlay', menu);
+    var closeBtn = $('#menuClose') || $('.premium-menu-close', menu);
+    var links = $$('.premium-menu-link', menu);
+    var lastFocus = null;
+
+    var isOpen = function () { return menu.classList.contains('is-open'); };
+
+    function open() {
+      if (isOpen()) return;
+      lastFocus = document.activeElement;
+      menu.classList.add('is-open');
+      toggle.classList.add('is-active');
+      toggle.setAttribute('aria-expanded', 'true');
+      menu.setAttribute('aria-hidden', 'false');
+      /* Compensate for the scrollbar so the page does not jump on lock. */
+      var gap = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      if (gap > 0) document.body.style.paddingRight = gap + 'px';
+      document.body.classList.add('menu-open');
+      if (closeBtn) closeBtn.focus();
+    }
+
+    function close() {
+      if (!isOpen()) return;
+      menu.classList.remove('is-open');
+      toggle.classList.remove('is-active');
+      toggle.setAttribute('aria-expanded', 'false');
+      menu.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+      document.body.classList.remove('menu-open');
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    /* A toggle, not open-only — the old build bound openMenu to the burger, so
+       a second click could never close it. */
+    toggle.addEventListener('click', function (e) { e.preventDefault(); isOpen() ? close() : open(); });
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (overlay) overlay.addEventListener('click', close);
+    links.forEach(function (l) { l.addEventListener('click', close); });
+
+    document.addEventListener('keydown', function (e) {
+      if (!isOpen()) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key !== 'Tab') return;
+      /* Trap focus inside the panel while it is open. */
+      var f = $$('a[href], button:not([disabled])', menu).filter(function (el) {
+        return el.offsetWidth || el.offsetHeight;
+      });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    toggle.setAttribute('aria-expanded', 'false');
+    menu.setAttribute('aria-hidden', 'true');
+    return { open: open, close: close, isOpen: isOpen };
+  }
+
+  /* ── 2. Anchor navigation ────────────────────────────────── */
+  function initAnchors(menu) {
+    var navbar = $('.navbar');
+
+    function offset() {
+      /* The navbar is a floating pill with a gap above it, so content has to
+         clear its BOTTOM edge — using its height alone leaves the heading
+         tucked under the bar by exactly that gap. */
+      return navbar ? navbar.getBoundingClientRect().bottom + 16 : 96;
+    }
+
+    function goTo(target) {
+      var el = scroller();
+      var dest = Math.max(0, target.getBoundingClientRect().top + scrollTop() - offset());
+      if (reduced()) { el.scrollTop = dest; window.scrollTo(0, dest); return; }
+      if (el.scrollTo) el.scrollTo({ top: dest, behavior: 'smooth' });
+      else el.scrollTop = dest;
+      /* If smooth scrolling is unavailable or refused, land anyway. */
+      setTimeout(function () {
+        if (Math.abs(scrollTop() - dest) > 4) { el.scrollTop = dest; window.scrollTo(0, dest); }
+      }, 700);
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target.closest ? e.target.closest('a[href^="#"]') : null;
+      if (!a) return;
+      var hash = a.getAttribute('href');
+      if (!hash || hash === '#' || hash === '#!') return;
+      var target;
+      try { target = document.getElementById(hash.slice(1)); } catch (err) { return; }
+      if (!target) return;
+
+      e.preventDefault();
+      var wasOpen = menu && menu.isOpen && menu.isOpen();
+      if (wasOpen) menu.close();
+      /* Let the panel start fading before moving, or the scroll happens behind it. */
+      setTimeout(function () { goTo(target); }, wasOpen ? 260 : 0);
+      if (history.replaceState) history.replaceState(null, '', hash);
+    });
+
+    /* DEEP LINKS — /#contact from a shared link, or a reload after a menu tap.
+
+       The browser jumps to the anchor before any script runs, and on this page
+       that position is wrong within a second: the work rail and the signature
+       scene are PINNED, and ScrollTrigger inserts a pin-spacer for each one
+       when it builds them — pushing everything below the first pin down by
+       ~1,800px. Measured: /#contact stopped at scroll 12,414 while the form
+       had moved to 14,189. The visitor landed on the wrong section and the
+       form, never scrolled into view, stayed invisible.
+
+       So land once on load, then land AGAIN every time ScrollTrigger finishes
+       a refresh — that is the moment the pin spacers exist and positions are
+       real. Stop as soon as the visitor scrolls on their own; we must never
+       yank the page out from under a person who has started reading. */
+    if (location.hash && location.hash.length > 1) {
+      var target = null;
+      try { target = document.getElementById(location.hash.slice(1)); } catch (err) { }
+
+      if (target) {
+        /* Take over from the browser's own restoration, which runs on its
+           own clock and would fight the corrected landing. */
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+        var userMoved = false;
+        var stop = function () { userMoved = true; };
+        ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(function (ev) {
+          window.addEventListener(ev, stop, { passive: true, once: true });
+        });
+
+        var land = function () { if (!userMoved) goTo(target); };
+
+        window.addEventListener('load', function () { setTimeout(land, 120); });
+
+        /* ScrollTrigger is loaded after this file, so wait for it to exist. */
+        var tries = 0;
+        (function hook() {
+          if (window.ScrollTrigger && ScrollTrigger.addEventListener) {
+            ScrollTrigger.addEventListener('refresh', function () { setTimeout(land, 0); });
+            return;
+          }
+          if (++tries < 40) setTimeout(hook, 100);   /* give up after ~4s */
+        })();
+
+        /* After a few seconds everything has settled; release the hash so a
+           later refresh (a resize, a font swap) cannot pull the page back. */
+        setTimeout(stop, 6000);
+      }
+    }
+  }
+
+  /* ── 3. Scroll-spy ───────────────────────────────────────── */
+  function initSpy() {
+    var links = $$('.premium-menu-link[href^="#"]');
+    if (!links.length) return;
+
+    var entries = links.map(function (link) {
+      var id = link.getAttribute('href').slice(1);
+      return { link: link, el: document.getElementById(id) };
+    }).filter(function (e) { return e.el; });
+    if (!entries.length) return;
+
+    var current = -1;
+    var update = raf(function () {
+      var line = scrollTop() + (($('.navbar') || {}).getBoundingClientRect
+        ? $('.navbar').getBoundingClientRect().bottom : 96) + 24;
+      var best = -1, bestTop = -Infinity;
+
+      /* The menu is not in DOM order (Work is listed before Process but sits
+         after it on the page), so "first section not yet passed" picks wrong.
+         Take the passed section nearest the navbar instead. */
+      entries.forEach(function (e, i) {
+        var top = e.el.getBoundingClientRect().top + scrollTop();
+        if (top <= line && top > bestTop) { bestTop = top; best = i; }
+      });
+      /* Pin the DOM-last section once the page bottoms out. */
+      var el = scroller();
+      if (el.scrollHeight - scrollTop() - el.clientHeight < 4) {
+        var lastIdx = 0, lastTop = -Infinity;
+        entries.forEach(function (e, i) {
+          var t = e.el.getBoundingClientRect().top + scrollTop();
+          if (t > lastTop) { lastTop = t; lastIdx = i; }
+        });
+        best = lastIdx;
+      }
+      if (best === current) return;
+      if (entries[current]) {
+        entries[current].link.classList.remove('is-active');
+        entries[current].link.removeAttribute('aria-current');
+      }
+      if (entries[best]) {
+        entries[best].link.classList.add('is-active');
+        entries[best].link.setAttribute('aria-current', 'true');
+      }
+      current = best;
+    });
+
+    onScroll(update);
+    window.addEventListener('resize', update, { passive: true });
+    update();
+  }
+
+  /* ── 4. Navbar state + reading progress ──────────────────── */
+  function initChrome() {
+    var navbar = $('.navbar'), bar = $('#scroll-progress');
+
+    var update = raf(function () {
+      var top = scrollTop();
+      if (navbar) navbar.classList.toggle('scrolled', top > 50);
+      if (bar) {
+        var el = scroller();
+        var max = el.scrollHeight - el.clientHeight;
+        /* The old version divided by documentElement, which measured 0 on that
+           layout, so the bar sat permanently at Infinity%. */
+        bar.style.width = max > 0 ? Math.max(0, Math.min(100, (top / max) * 100)) + '%' : '0%';
+      }
+    });
+
+    onScroll(update);
+    window.addEventListener('resize', update, { passive: true });
+    update();
+  }
+
+  /* ── 5. Portfolio filter ─────────────────────────────────── */
+  function initFilter() {
+    var btns = $$('.filter-btn');
+    var cards = $$('.project-card');
+    if (!btns.length || !cards.length) return;
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var want = btn.getAttribute('data-filter');
+        btns.forEach(function (b) {
+          var on = b === btn;
+          b.classList.toggle('is-active', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        cards.forEach(function (card) {
+          var cat = card.getAttribute('data-category');
+          var show = (want === 'all' || cat === want);
+          card.hidden = !show;
+        });
+        /* Filtering changes the rail's width, so the pinned scroll has to
+           re-measure or its end position is stale. */
+        if (window.ScrollTrigger) requestAnimationFrame(function () { ScrollTrigger.refresh(); });
+      });
+      btn.setAttribute('aria-pressed', btn.classList.contains('is-active') ? 'true' : 'false');
+    });
+  }
+
+  /* ── 6. FAQ accordion ────────────────────────────────────── */
+  function initFaq() {
+    var items = $$('.faq-item');
+    if (!items.length) return;
+
+    items.forEach(function (item, i) {
+      var q = $('.faq-question', item);
+      var a = $('.faq-answer', item);
+      if (!q || !a) return;
+
+      if (!a.id) a.id = 'faq-answer-' + i;
+      q.setAttribute('aria-expanded', 'false');
+      q.setAttribute('aria-controls', a.id);
+
+      q.addEventListener('click', function () {
+        var open = item.classList.contains('is-open');
+        /* One at a time — two open answers push the next question off screen. */
+        items.forEach(function (other) {
+          if (other === item) return;
+          other.classList.remove('is-open');
+          var oq = $('.faq-question', other);
+          if (oq) oq.setAttribute('aria-expanded', 'false');
+        });
+        item.classList.toggle('is-open', !open);
+        q.setAttribute('aria-expanded', String(!open));
+      });
+    });
+  }
+
+  /* ── 7. Project detail dialog ────────────────────────────── */
+  function initProjectDialog() {
+    var cards = $$('.project-card');
+    if (!cards.length) return;
+
+    var dialog = $('#projectDialog');
+    if (!dialog) return;
+
+    var titleEl = $('[data-dialog-title]', dialog);
+    var bodyEl = $('[data-dialog-body]', dialog);
+    var linkEl = $('[data-dialog-link]', dialog);
+    var closeEl = $('[data-dialog-close]', dialog);
+    var lastFocus = null;
+
+    function open(card) {
+      lastFocus = document.activeElement;
+      var t = $('.project-title', card);
+      var link = $('.project-link', card);
+      var brief = card.getAttribute('data-brief') || '';
+      if (titleEl) titleEl.textContent = t ? t.textContent.trim() : '';
+      if (bodyEl) bodyEl.textContent = brief;
+      if (linkEl && link) { linkEl.href = link.href; linkEl.hidden = false; }
+      else if (linkEl) linkEl.hidden = true;
+      dialog.classList.add('is-open');
+      dialog.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      if (closeEl) closeEl.focus();
+    }
+    function close() {
+      dialog.classList.remove('is-open');
+      dialog.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    cards.forEach(function (card) {
+      var btn = $('.project-details-btn', card);
+      if (btn) btn.addEventListener('click', function (e) { e.preventDefault(); open(card); });
+    });
+    if (closeEl) closeEl.addEventListener('click', close);
+    dialog.addEventListener('click', function (e) { if (e.target === dialog) close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && dialog.classList.contains('is-open')) close();
+    });
+    dialog.setAttribute('aria-hidden', 'true');
+  }
+
+  /* ── boot ────────────────────────────────────────────────── */
+  function boot() {
+    var menu = module('menu', initMenu);
+    module('anchors', function () { initAnchors(menu); });
+    module('scroll-spy', initSpy);
+    module('chrome', initChrome);
+    module('filter', initFilter);
+    module('faq', initFaq);
+    module('project dialog', initProjectDialog);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();

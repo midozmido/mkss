@@ -1,0 +1,422 @@
+/* ============================================================================
+   MK — SECTIONS C
+   ----------------------------------------------------------------------------
+   Only what is genuinely specific to four sections:
+
+       09  process        the numbered step marker and its sequence thread
+       10  work           one muted note under the rail
+       11  testimonials   the rating row and the initials monogram
+       12  timeline       the spine, the dots and the alternating ladder
+       12b signature      the pinned stage, the wipe target and the bloom
+
+   Everything else — the card, the icon tile, the grid, the rail, the project
+   card, the quote, the section head — comes from the foundation files and is
+   not restated here.
+
+   Rules this file keeps: no cascade overrides of any kind, no literal value
+   that is not a token, no selector deeper than two levels, mobile-first with
+   the three site breakpoints and no fourth.
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   09 — PROCESS
+   ----------------------------------------------------------------------------
+   The step number lives in the standard .icon-tile--numeral, which leans at
+   --mk-angle like every other tile on the page. The digits counter-skew so
+   they read upright, exactly as .icon-tile__glyph does for an svg.
+
+   The thread is the sequence made visible: a one-pixel rule running out of
+   each tile towards the next step. It is decoration only — the running order
+   is carried by the <ol> and by the visually-hidden "Step n of 4".
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.process__step {
+  block-size: 100%;
+}
+
+.process__marker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* Counter-skew: the tile leans, the number stands up. */
+.process__numeral {
+  display: block;
+  transform: skewX(var(--mk-angle));
+}
+
+.process__thread {
+  flex: 1;
+  block-size: var(--border-w);
+  background-image: linear-gradient(to right, var(--violet-a45), transparent);
+}
+
+/* Last step: nothing follows it, so the rule does not point anywhere. The box
+   stays, so the marker row keeps the same height as the other three. */
+.process__thread--end {
+  background-image: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10 — WORK
+   ----------------------------------------------------------------------------
+   The rail, the filter pills, the project card, the badge and the dialog are
+   all components. What this section adds is the line under the rail, the
+   sector label's small-caps treatment, and the three declarations that let
+   eight cards of unequal copy length end on one straight line.
+
+   components.css gives .project-card a block-size of 100%. That is a definite
+   cross size, so the flex item opts out of the track's stretch and the row of
+   eight ends up ragged along the bottom. Restoring `auto` puts the stretch
+   back; making the card a column and pushing the action row to the end lines
+   up the actions across all eight cards — including Laft, whose row holds a
+   "Launching soon" badge where the other seven hold a link. Ordinary
+   specificity — two classes on one element — does all of it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.project-card.rail__item {
+  display: flex;
+  flex-direction: column;
+  block-size: auto;
+}
+
+.project-card .card__body {
+  flex: 1;
+}
+
+.project-card .project-card__actions {
+  margin-block-start: auto;
+  padding-block-start: var(--space-xs);
+}
+
+/* The sector on the card is the same taxonomy as the filter pill above it —
+   Corporate, Marketplace, Government, Education, Healthcare. Setting it in the
+   pills' own small caps makes the answer to "what did that filter just do?"
+   legible at a glance. Colour is left alone: .card__meta's --text-3 already
+   clears 5:1 on --surface-4, and the weight carries the small size. */
+.project-card .card__meta {
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+.work__note {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11 — TESTIMONIALS
+   ----------------------------------------------------------------------------
+   Three quotes in the standard grid. No slider: three slides is below the
+   threshold where a carousel earns its controls, and a paginated row of three
+   pretends there is more to see.
+
+   The rating is drawn AND written. "5 out of 5" is the accessible fact; the
+   stars are aria-hidden decoration, so the rating never depends on colour or
+   on counting shapes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.quote {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.quote__rating {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.quote__stars {
+  display: inline-flex;
+  gap: var(--space-2xs);
+  color: var(--violet-400);
+}
+
+/* base.css draws every svg as an outline. A star is a filled shape. */
+.quote__star {
+  fill: currentColor;
+  stroke: none;
+}
+
+.quote__score {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-2);
+}
+
+/* Three quotes of different length in one grid row: the cards are already the
+   same height, so the attributions should end on the same line too. `auto`
+   replaces the component's fixed top margin (same specificity, later file —
+   no override needed) and the padding puts the spacing back. */
+.quote__footer {
+  margin-block-start: auto;
+  padding-block-start: var(--space-xs);
+}
+
+/* There are no portraits for these three clients, so the avatar slot carries
+   initials instead of an <img> pointing at a file that does not exist. All
+   three use the one brand gradient: the initials tell them apart, not a
+   colour invented for each person. */
+.quote__monogram {
+  display: grid;
+  place-items: center;
+  inline-size: var(--size-avatar);
+  block-size: var(--size-avatar);
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
+  background-image: var(--grad-brand);
+  font-family: var(--font-display);
+  font-size: var(--fs-h6);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-snug);
+  color: var(--text-on-violet);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12 — TIMELINE
+   ----------------------------------------------------------------------------
+   A phone gets one column with the spine down the left, because an
+   alternating ladder on a phone is two half-width columns of broken words.
+   At the middle breakpoint the spine moves to the centre and the years
+   alternate sides.
+
+   Geometry: the spine is --border-w-thick wide and its centre sits at
+   --space-md from the left edge of the list. Each item starts --space-2xl in,
+   so the dot's offset back to the spine is (--space-xl + half a dot),
+   corrected by --border-w. Every term is a token; nothing here is a measured
+   magic number.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.timeline__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+  padding-inline-start: var(--space-2xl);
+}
+
+/* The spine. Fades out at both ends so it reads as a passage of time rather
+   than a rule with two hard stops. */
+.timeline__list::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--space-md);
+  inline-size: var(--border-w-thick);
+  background-image: linear-gradient(180deg,
+      transparent 0%,
+      var(--violet-600) 12%,
+      var(--teal-400) 88%,
+      transparent 100%);
+}
+
+.timeline__item {
+  position: relative;
+}
+
+.timeline__dot {
+  position: absolute;
+  inset-block-start: var(--space-md);
+  inset-inline-start: calc((var(--space-xl) + var(--size-dot) / 2) * -1 + var(--border-w));
+  inline-size: var(--size-dot);
+  block-size: var(--size-dot);
+  border-radius: var(--radius-pill);
+  background-color: var(--violet-400);
+  box-shadow: 0 0 0 var(--space-2xs) var(--violet-a28);
+}
+
+/* max-content matters: background-clip:text paints the gradient across the
+   element's box, not across the glyphs. Left to stretch the full column, each
+   year would show a different slice of violet-to-teal depending on which side
+   of the spine it sat. Hugging the four digits makes every year run the whole
+   gradient, the same way .stat-number does. */
+.timeline__year {
+  inline-size: max-content;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: var(--ls-tight);
+  background-image: var(--grad-brand-light);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* The year follows its side of the spine; the card's prose always reads from
+   the start edge, because right-ragged body copy is harder to read. */
+.timeline__card {
+  text-align: start;
+}
+
+@media (min-width: 900px) {
+
+  .timeline__list {
+    padding-inline-start: 0;
+  }
+
+  .timeline__list::before {
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+  }
+
+  .timeline__item {
+    inline-size: 50%;
+    padding-inline-end: var(--space-3xl);
+    text-align: end;
+  }
+
+  .timeline__item:nth-child(even) {
+    margin-inline-start: 50%;
+    padding-inline-start: var(--space-3xl);
+    padding-inline-end: 0;
+    text-align: start;
+  }
+
+  /* The year is a max-content box, so it no longer stretches and text-align
+     cannot move it. On the left of the spine it aligns itself to the end. */
+  .timeline__item:nth-child(odd) .timeline__year {
+    align-self: end;
+  }
+
+  .timeline__item:nth-child(odd) .timeline__dot {
+    inset-inline-start: auto;
+    inset-inline-end: calc(var(--size-dot) / -2);
+  }
+
+  .timeline__item:nth-child(even) .timeline__dot {
+    inset-inline-start: calc(var(--size-dot) / -2);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12b — SIGNATURE
+   ----------------------------------------------------------------------------
+   A pinned, scrubbed scene: the sentence assembles in the middle of the
+   screen, holds, disperses along --mk-angle, and the mark builds out of
+   nothing behind it. js/signature.js drives every frame of that from the
+   scroll position; this file only draws the stage and the two resting states.
+
+   Everything here is written so the scene can be absent. Below 900px there is
+   no pin, so the section is an ordinary one: the sentence sits above the mark
+   with a normal gap and normal section padding. From 900px it becomes the one
+   other full-viewport block on the page, and js/signature.js adds
+   .signature__frame--scene to drop both halves into the same grid cell — that
+   overlap is the scene's, not the document's, so it never applies without it.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* This section's own copy of the flash guard from base.css §12, and for the
+   same reason: js/signature.js sets a from-state that would otherwise paint
+   once at full opacity and then jump. Identical mechanism — scoped to the `js`
+   class that the inline script in <head> adds, so with scripting off the class
+   is never added, the rule never matches and both halves paint normally.
+   js/signature.js removes the class the moment the from-state is set, and
+   again from its own four-second safety net if anything threw. */
+.js .signature__veil {
+  visibility: hidden;
+}
+
+/* The words travel out along --mk-angle at the end of their run; nothing they
+   do may widen the page. */
+.signature {
+  overflow: hidden;
+}
+
+.signature__frame {
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  align-content: center;
+  gap: var(--space-2xl);
+  text-align: center;
+}
+
+/* The scene state: one cell, both halves in it, so the mark builds exactly
+   where the sentence just dissolved. Added by js/signature.js only when the
+   pinned timeline is actually built, and removed again if the viewport drops
+   below 900px or the visitor asks for reduced motion. */
+.signature__frame--scene .signature__words,
+.signature__frame--scene .signature__logo {
+  grid-area: 1 / 1;
+}
+
+/* No font-size here: an h2 is an h2 everywhere on this page. */
+.signature__words {
+  max-inline-size: var(--measure-narrow);
+}
+
+/* SplitText wraps each word in one of these. Declaring the display mode is
+   what makes the per-word transform reliable rather than dependent on the
+   plugin's own inline style. */
+.signature__word {
+  display: inline-block;
+}
+
+.signature__logo {
+  position: relative;
+  display: block;
+  inline-size: var(--signature-logo-w);
+  max-inline-size: 100%;
+}
+
+/* The bloom that ignites under the mark in the last quarter of the scene.
+   Decoration, so it is aria-hidden in the markup and starts at zero here —
+   with no JavaScript it simply never arrives, and the mark is unaffected.
+   It uses --grad-brand rather than a second gradient: there are two on this
+   site and this is one of them. It sits outside .signature__wipe on purpose,
+   so the clip-path never cuts the light. */
+.signature__glow {
+  position: absolute;
+  inset: 0;
+  background-image: var(--grad-brand);
+  filter: blur(var(--blur-glow));
+  opacity: 0;
+}
+
+/* The clip-path target. Positioned, and later in the source than the glow, so
+   the mark paints over its own light without a z-index. */
+.signature__wipe {
+  position: relative;
+  display: block;
+}
+
+.signature__mark {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+@media (min-width: 900px) {
+
+  /* The stage. Exactly one viewport tall, which is what a pinned scene needs:
+     anything taller would leave part of the section below the fold for the
+     whole pin. svh first fails on older engines, so the vh fallback is
+     declared ahead of it, the same pair the hero uses. */
+  .signature {
+    display: grid;
+    align-content: center;
+    min-block-size: var(--hero-min-h-fallback);
+    min-block-size: var(--hero-min-h);
+    padding-block: var(--sec-pad-tight);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  /* The visitor asked for stillness, so nothing may depend on a script running
+     to become visible. Same lift as base.css does for [data-anim]; later in
+     the cascade than the guard above, at the same specificity, so it wins on
+     source order with no importance override. */
+  .js .signature__veil {
+    visibility: visible;
+  }
+}
