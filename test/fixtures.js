@@ -115,7 +115,9 @@ export function startFixtureServer() {
     const name = url.pathname.slice(1);
 
     if (name === '__slow') {
-      setTimeout(() => res.end('متأخر'), 30000); // يتجاوز أي مهلة معقولة
+      // unref مقصودة: بدونها يبقى المؤقّت ماسكًا حلقة الأحداث بعد إغلاق
+      // السيرفر، فتظل عملية الاختبار حية 30 ثانية بلا داعٍ.
+      setTimeout(() => { try { res.end('متأخر'); } catch {} }, 30000).unref();
       return;
     }
     if (name === '__error500') {
