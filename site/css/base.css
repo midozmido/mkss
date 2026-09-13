@@ -374,13 +374,23 @@ th {
   transform: translateY(0);
 }
 
-/* Doubled on purpose. js/ui.js hides filtered project cards and js/form.js
+/* Repeated on purpose. js/ui.js hides filtered project cards and js/form.js
    hides inactive form steps by setting the `hidden` PROPERTY, and those
    elements also carry component classes that declare a display. A single
-   [hidden] ties on specificity with a class and loses on source order, so the
-   card stays visible after being hidden. [hidden][hidden] outranks any single
-   class and needs no !important. */
-[hidden][hidden] {
+   [hidden] ties with one class and loses on source order, so the element stays
+   visible after being hidden.
+
+   TWO was not enough. [hidden][hidden] is (0,2,0), which beats a single class
+   but only TIES with a two-class rule — and css/sections/c.css:80 declares
+   `.project-card.rail__item { display: flex }`, on exactly the elements the
+   project filter hides. base.css loads first (index.html:49), so on that tie
+   the section sheet won and the filter hid nothing: measured 7 cards carrying
+   the hidden attribute and still computing display:flex.
+
+   Three compounds is (0,3,0). Nothing in this codebase stacks three classes on
+   one element, so this wins outright without reaching for !important, and it
+   keeps working if another component ever adds its own two-class display. */
+[hidden][hidden][hidden] {
   display: none;
 }
 

@@ -95,6 +95,20 @@
         } catch (e) { /* nothing left to try */ }
     }
 
+    /* The overlay is normally dismissed inside runPreloader(), which is only
+       reached once start() runs. Both plugin guards below return before that,
+       so each bail-out has to clear it itself — otherwise a missing CDN file
+       leaves an opaque full-screen sheet over a page that is otherwise fine.
+       css/components.css carries a 2.5s fallback for the case where this file
+       never arrives at all; this is the instant path when it did. */
+    function dropPreloader() {
+        try {
+            var pre = document.getElementById('mk-preloader') ||
+                document.querySelector('[data-preloader]');
+            if (pre) pre.style.display = 'none';
+        } catch (e) { /* nothing left to try */ }
+    }
+
     /* Marks an element as claimed by this system, so the safety net below can
        tell "hidden because it is waiting for its scroll trigger" apart from
        "hidden because something failed". */
@@ -119,7 +133,7 @@
           A single failed CDN file must never leave the page blank.
        ═══════════════════════════════════════════════════════════════════ */
 
-    if (typeof gsap === 'undefined' || !gsap || !gsap.core) { showAll(); return; }
+    if (typeof gsap === 'undefined' || !gsap || !gsap.core) { dropPreloader(); showAll(); return; }
 
     var HAS = {
         ST: (typeof ScrollTrigger !== 'undefined') && !!ScrollTrigger,
@@ -145,7 +159,7 @@
 
     /* ScrollTrigger is load-bearing: without it nothing below the fold would
        ever reveal, so hand the page straight back to CSS. */
-    if (!HAS.ST) { showAll(); return; }
+    if (!HAS.ST) { dropPreloader(); showAll(); return; }
 
     /* ═══════════════════════════════════════════════════════════════════════
        2. SAFETY NET — nothing stays invisible.

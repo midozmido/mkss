@@ -1365,6 +1365,38 @@
   background-color: var(--ink);
 }
 
+/* DEAD-MAN'S SWITCH. The overlay is opaque and covers the viewport, and the
+   only thing that dismisses it is runPreloader() in js/motion.js — which is
+   reached only after both plugin guards pass. A blocked CDN, an ad blocker or
+   a 404 on motion.js therefore leaves the visitor staring at a black screen
+   with a "0" on it, permanently.
+
+   So the stylesheet takes the overlay away on its own. The scripted path has a
+   hard ceiling: assetsReady() is called with PRELOADER_CAP = 1s and arms a
+   setTimeout at that cap whatever the network does, then the exit tween runs
+   MOTION.dur.slow = 1.05s — so the overlay is display:none by ~2.05s in the
+   worst case. The 3s delay below clears that with margin to spare on a device
+   dropping frames, and on the normal path the element is long gone by then, so
+   this changes nothing.
+
+   It fades rather than flipping visibility: `visibility` interpolates
+   discretely and Chromium does not hold the hidden end state under
+   animation-fill-mode: forwards (measured), whereas opacity is continuous and
+   does. opacity alone would leave an invisible sheet still swallowing clicks,
+   so the keyframe carries pointer-events too. Reduced motion keeps this —
+   base.css only clamps animation-iteration-count, it does not disable
+   animations. */
+@keyframes mk-preloader-bail {
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.mk-preloader {
+  animation: mk-preloader-bail var(--dur-base, 0.3s) linear 3s forwards;
+}
+
 .mk-preloader-count {
   font-family: var(--font-display);
   font-size: var(--fs-h2);
