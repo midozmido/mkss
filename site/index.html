@@ -40,8 +40,26 @@
   <!-- ONE font request. Space Grotesk 500/700 display, Inter 400/500/600 body. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
+  <!-- Loaded non-blocking. A stylesheet in <head> gates first paint, and this
+       one is on a third-party host: measured here, the page painted at 176ms
+       when this request failed fast and at 8144ms when it merely hung for 8s —
+       nothing at all on screen in between. fonts.googleapis.com is slow on poor
+       connections and blocked outright in some regions, so a visitor there sat
+       in front of a blank page.
+
+       media="print" makes it non-render-blocking; onload flips it to all once
+       it has arrived. tokens.css:126-127 ends both stacks in system-ui, so the
+       text is readable in a real font the whole time, and display=swap keeps
+       the upgrade from hiding anything when it lands.
+
+       The <noscript> copy keeps the webfonts for a visitor with scripting off,
+       who cannot run the onload and is not waiting on any of this page's JS. -->
+  <link rel="stylesheet" media="print" onload="this.media='all'"
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+  </noscript>
 
   <!-- Load order is fixed: tokens must be first, and nothing may load after the
        section sheets. Four section files, one per build group, in page order. -->

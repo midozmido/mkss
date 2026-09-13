@@ -123,15 +123,42 @@
      desktop, open a new tab so the site stays where the visitor left it. */
   var isTouch = window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+  /* No 'noopener' in the features string. Per spec window.open() returns null
+     whenever noopener is requested — the caller is deliberately denied a handle
+     — so `!w` was true on EVERY desktop submit, not just a blocked one, and the
+     fallback below dragged the visitor's own tab off the site to wa.me. They
+     got WhatsApp twice and lost the portfolio they were reading.
+
+     Severing .opener on the handle gives the same protection and still lets the
+     null check mean what it says: the popup was actually blocked. */
   function openWhatsApp(url) {
     if (isTouch) { location.href = url; return; }
-    var w = window.open(url, '_blank', 'noopener');
-    if (!w) location.href = url;       /* popup blocked — go there directly */
+    var w = window.open(url, '_blank');
+    if (w) { try { w.opener = null; } catch (e) { /* cross-origin, already safe */ } }
+    else { location.href = url; }      /* popup genuinely blocked — go there directly */
+  }
+
+  /* Every step, not just the visible one. A form is submittable by Enter from
+     any field, and the browser's implicit submission does not care which step
+     is on screen: picking a project type on step 1 and pressing Enter used to
+     deliver the message and show the "ready in WhatsApp" panel as though it had
+     worked. Measured before this fix, the whole enquiry read:
+         Hi Mohamed, / I would like to talk about a new website. / Project: Online store
+     — no name, no email, no phone, and no way to reply to it.
+
+     On failure, reveal the offending step FIRST, then re-validate it, so the
+     message is announced against a field that is actually on screen and focus
+     does not land on something hidden. */
+  function validateAll() {
+    for (var i = 0; i < steps.length; i++) {
+      if (!validate(steps[i])) { show(i); validate(steps[i]); return false; }
+    }
+    return true;
   }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!validate(steps[current])) return;
+    if (!validateAll()) return;
 
     var url = whatsappUrl();
 
