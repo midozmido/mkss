@@ -119,7 +119,19 @@
 
     window.setTimeout(function () {
         module('safety net', function () {
-            if (!settled) module('net final state', showFinal);
+            /* `settled` only records that run() reached its last line — a
+               matchMedia branch that threw inside its own module() wrapper
+               still gets there, so the flag can read true while the scene is
+               stuck in its from-state. Check what is actually on screen too. */
+            var stuck = false;
+            try {
+                var probe = words || logo;
+                if (probe) {
+                    var s = window.getComputedStyle(probe);
+                    stuck = s.visibility === 'hidden' || parseFloat(s.opacity) === 0;
+                }
+            } catch (e) { stuck = !settled; }
+            if (!settled || stuck) module('net final state', showFinal);
             unveil();
         });
     }, 4000);

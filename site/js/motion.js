@@ -99,7 +99,7 @@
        reached once start() runs. Both plugin guards below return before that,
        so each bail-out has to clear it itself — otherwise a missing CDN file
        leaves an opaque full-screen sheet over a page that is otherwise fine.
-       css/components.css carries a 2.5s fallback for the case where this file
+       css/components.css carries a 3s fallback for the case where this file
        never arrives at all; this is the instant path when it did. */
     function dropPreloader() {
         try {
@@ -123,9 +123,15 @@
         return !!(el && el.getAttribute && el.getAttribute('data-mk') === 'on');
     }
 
+    /* visibility AND opacity. The reveals run on autoAlpha, which lands on
+       both, but a tween that dies part-way can leave opacity at 0 with
+       visibility still visible — and the 4s safety net below only rescues what
+       this reports as hidden, so that content could never be recovered. */
     function isHidden(el) {
-        try { return window.getComputedStyle(el).visibility === 'hidden'; }
-        catch (e) { return false; }
+        try {
+            var s = window.getComputedStyle(el);
+            return s.visibility === 'hidden' || parseFloat(s.opacity) === 0;
+        } catch (e) { return false; }
     }
 
     /* ═══════════════════════════════════════════════════════════════════════

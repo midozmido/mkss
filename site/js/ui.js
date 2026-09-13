@@ -171,10 +171,19 @@
       if (!target) return;
 
       e.preventDefault();
+      /* Scrolling alone is not navigation. This handler preventDefaults every
+         in-page anchor, which also cancels the browser's own focus move — so
+         the skip link scrolled to #main and left focus on itself, and the next
+         Tab went back into the navbar. It skipped nothing for the people who
+         need it. Give the target a programmatic focus stop if it has none. */
+      if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
       var wasOpen = menu && menu.isOpen && menu.isOpen();
       if (wasOpen) menu.close();
       /* Let the panel start fading before moving, or the scroll happens behind it. */
-      setTimeout(function () { goTo(target); }, wasOpen ? 260 : 0);
+      setTimeout(function () {
+        goTo(target);
+        if (target.focus) target.focus({ preventScroll: true });
+      }, wasOpen ? 260 : 0);
       if (history.replaceState) history.replaceState(null, '', hash);
     });
 

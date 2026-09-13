@@ -94,6 +94,25 @@
       .mk-marquee-pause {
         display: none;
       }
+
+      /* The enquiry form is a three-step wizard: js/form.js reveals steps 2
+         and 3, validates them, and builds the WhatsApp message on submit. With
+         no script, steps 2 and 3 stay `hidden`, Continue does nothing, and the
+         form has no action to post to — a dead end that still looks live.
+         Hide it and let the direct contact block below it carry the section;
+         the email and WhatsApp links there are plain anchors and work. */
+      #contactForm {
+        display: none;
+      }
+
+      /* Both lines describe the form that is no longer there: the lede
+         promises "three short steps", and the note offers to skip a form the
+         visitor cannot see. The heading and the two contact buttons stand on
+         their own. */
+      #contact .section-head__lede,
+      .contact__direct-note {
+        display: none;
+      }
     </style>
   </noscript>
 
