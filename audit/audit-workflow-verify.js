@@ -1,0 +1,1496 @@
+export const meta = {
+  name: 'mk-site-audit-verify',
+  description: 'Adversarially verify the 87 unique findings from the mk site audit, then critique the audit for gaps',
+  phases: [
+    { title: 'Verify', detail: 'refute-by-default; critical/high also get an empirical reproduce lens' },
+    { title: 'Critic', detail: 'what the audit missed, then verify those too' },
+  ],
+}
+
+const SITE = '/home/user/mkss/site'
+
+const ENV = `
+WORKING CONTEXT — read carefully before you start.
+
+A static one-page portfolio site is under audit at:
+  ${SITE}
+Files: index.html (2124 lines), css/tokens.css, css/base.css, css/layout.css,
+css/components.css, css/sections/{a,b,c,d}.css, js/{ui,form,motion,signature,rails}.js.
+It is served live at http://localhost:8099/index.html
+
+TOOLING
+- Playwright is installed globally. Use it with:  export NODE_PATH=/opt/node22/lib/node_modules
+  then  node -e "const {chromium}=require('playwright'); ..."
+  Chromium is at /opt/pw-browsers. Do NOT run "playwright install".
+- Write scratch scripts under /tmp/claude-0/-home-user-mkss/62ba9b9c-0f4f-5dc3-b0ac-bed87a749296/scratchpad/
+
+CRITICAL ENVIRONMENT LIMITATION
+The egress proxy BLOCKS cdnjs.cloudflare.com, cdn.jsdelivr.net and fonts.googleapis.com.
+So at runtime in this sandbox: window.gsap, ScrollTrigger, SplitText, ScrollToPlugin and
+Lenis are ALL undefined, and the webfonts never load.
+- "GSAP fails to load" is NOT a bug of the site. That is the sandbox.
+- But a real visitor with an adblocker, a corporate proxy, or a blocked region hits the
+  same state, so how the page DEGRADES in it is legitimately in scope.
+- Code paths that need GSAP cannot be executed here. Verify those by static tracing, and
+  reason precisely about the GSAP 3.13+ / ScrollTrigger API contract.
+- If a finding's whole premise is "GSAP is missing therefore X", judge whether X would
+  ALSO happen for a real visitor, not just in this sandbox.
+`
+
+const VERDICT_SCHEMA = {
+  type: 'object',
+  properties: {
+    refuted: { type: 'boolean', description: 'true if the finding is wrong, already handled elsewhere, or not reproducible' },
+    reason: { type: 'string', description: 'the evidence for your verdict, citing lines you actually read or measurements you actually took' },
+    severityCorrection: { type: 'string', enum: ['critical', 'high', 'medium', 'low', 'unchanged'] },
+    fixCorrection: { type: 'string', description: 'empty string if the proposed fix is sound, otherwise the corrected fix' },
+  },
+  required: ['refuted', 'reason', 'severityCorrection', 'fixCorrection'],
+}
+
+const FINDINGS_SCHEMA = {
+  type: 'object',
+  properties: {
+    findings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          file: { type: 'string' },
+          line: { type: 'number' },
+          severity: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+          category: { type: 'string' },
+          title: { type: 'string' },
+          detail: { type: 'string' },
+          failure: { type: 'string' },
+          fix: { type: 'string' },
+          evidence: { type: 'string' },
+        },
+        required: ['file', 'line', 'severity', 'category', 'title', 'detail', 'failure', 'fix', 'evidence'],
+      },
+    },
+    coverage: { type: 'string' },
+  },
+  required: ['findings', 'coverage'],
+}
+
+const REFUTE = `Your job is to REFUTE this finding. Open the file, read the cited line and everything around it that matters, and look hard for the reason this is NOT a bug: a guard elsewhere that already handles it, a CSS rule that already covers it, a misread of the code, a wrong line number, a scenario that cannot actually occur, or a claim about an API that is wrong. Default to refuted=true when you are not certain the bug is real. Only set refuted=false if you can state the failing path line by line.`
+
+const REPRODUCE = `Your job is to REPRODUCE this finding empirically. If it is a runtime, layout, contrast or a11y claim, drive it in Playwright at http://localhost:8099/index.html (export NODE_PATH=/opt/node22/lib/node_modules) and show the measurement — computed styles, bounding boxes, screenshot comparisons, whatever settles it. If it is a static-analysis claim about a code path that cannot run here, trace that path line by line and quote each step. If you cannot reproduce it or trace it end to end, set refuted=true. Also judge whether the proposed fix would actually work and whether it would break anything else; if not, put the corrected fix in fixCorrection.`
+
+function card(f) {
+  return `file: ${f.file}\nline: ${f.line}\nseverity: ${f.severity}\ncategory: ${f.category}\n` +
+    `title: ${f.title}\ndetail: ${f.detail}\nfailure: ${f.failure}\nproposed fix: ${f.fix}\nreported evidence: ${f.evidence}\n` +
+    `reported by: ${[...new Set(f.corroborators || [])].join(', ')}`
+}
+
+const FINDINGS = [
+  {
+    "finder": "runtime-desktop",
+    "file": "js/motion.js",
+    "line": 122,
+    "severity": "critical",
+    "category": "resilience",
+    "title": "GSAP guard returns before the preloader is ever dismissed, leaving an opaque full-screen overlay forever",
+    "detail": "Line 122 is the very first guard in motion.js:\n\n    if (typeof gsap === 'undefined' || !gsap || !gsap.core) { showAll(); return; }\n\n`showAll()` only does `root.classList.remove('js')` + `root.setAttribute('data-mk-motion','on')` (lines 89-96) — it reveals the `[data-anim]` elements and nothing else. The preloader is dismissed exclusively inside `runPreloader()` (js/motion.js:615-691), which is defined ~490 lines BELOW this `return` and is therefore never reached. The overlay it was supposed to remove is `index.html:108` `<div class=\"mk-preloader\" id=\"mk-preloader\" data-preloader aria-hidden=\"true\">`, styled at `css/components.css:1356` with `position: fixed; inset: 0; z-index: var(--z-preloader); background-color: var(--ink)` — an opaque sheet over the entire viewport. The `<noscript>` escape hatch at index.html:70 (`.mk-preloader{display:none}`) only fires when scripting is OFF; it does nothing in this state, where JS runs fine and only the CDN is unreachable. index.html:106 even promises the opposite: \"dismisses the overlay within one second whatever the network does\".",
+    "failure": "A visitor on any network where cdnjs.cloudflare.com is unreachable — a corporate proxy, an adblocker/uBlock list that blocks CDN script hosts, a captive portal, China, or a transient CDN outage — loads the page and sees a black screen with \"0\" and an empty progress bar, permanently. Measured in Chromium at 1440x900 with the CDN blocked: at t=1s, t=3s and t=8s the computed style of #mk-preloader is identical — display:flex, opacity:1, visibility:visible, pointer-events:auto, z-index:1000, rect 0,0,1440x900. document.elementFromPoint at (720,60), (100,100) and (1300,850) all return #mk-preloader. A Playwright click on #navToggle times out after 2.5s with \"<div id='mk-preloader'> intercepts pointer events\". The whole site — nav, work, the contact form — is unreachable by mouse, touch and click, and the same happens under prefers-reduced-motion.",
+    "fix": "Dismiss the overlay on the failure path before returning. Change line 122 to hide the preloader first, e.g.: `if (typeof gsap === 'undefined' || !gsap || !gsap.core) { var pre = qs('#mk-preloader') || qs('[data-preloader]'); if (pre) { pre.style.display = 'none'; } showAll(); return; }` — and apply the same to the `if (!HAS.ST)` return at line 148. A belt-and-braces alternative is a CSS/inline fallback that hides .mk-preloader after ~2s unless a class such as `data-mk-motion=\"loading\"` is present.",
+    "evidence": "Playwright Chromium 1440x900 against http://localhost:8099/index.html with cdnjs/jsdelivr blocked. requestfailed for all four GSAP files and Lenis. Snapshots at 1s/3s/8s: {display:\"flex\", opacity:\"1\", pointerEvents:\"auto\", visibility:\"visible\", zIndex:\"1000\", inlineStyle:null}; preRect {x:0,y:0,width:1440,height:900}. elementFromPoint at four viewport corners/centres all return DIV#mk-preloader. page.click('#navToggle') → TimeoutError, \"#mk-preloader intercepts pointer events\". Under reducedMotion:'reduce' at t=3s: {preDisp:\"flex\", preOp:\"1\", preVis:\"visible\"}.",
+    "corroborators": [
+      "runtime-desktop",
+      "runtime-mobile",
+      "runtime-a11y",
+      "html-structure",
+      "js-motion-a",
+      "perf-seo",
+      "cross-contract",
+      "resilience"
+    ]
+  },
+  {
+    "finder": "runtime-desktop",
+    "file": "js/form.js",
+    "line": 128,
+    "severity": "critical",
+    "category": "correctness",
+    "title": "window.open(url,'_blank','noopener') always returns null, so the fallback navigates the site away on every desktop submit",
+    "detail": "js/form.js:126-130:\n\n    function openWhatsApp(url) {\n      if (isTouch) { location.href = url; return; }\n      var w = window.open(url, '_blank', 'noopener');\n      if (!w) location.href = url;       /* popup blocked — go there directly */\n    }\n\nPassing `noopener` inside the *features* string (third argument) makes `window.open` return **null by specification** — the HTML standard's window-open steps say that when the tokenized features contain `noopener`, the return value is null even though the window opened successfully. So `w` is null on every successful desktop open, `!w` is always true, and line 129 runs unconditionally: the current tab is navigated to wa.me as well. The code's own comment at lines 121-123 states the intent it defeats: \"On a desktop, open a new tab so the site stays where the visitor left it.\" The success panel written immediately before (lines 141-146: `form.hidden = true; success.hidden = false; success.classList.add('is-active')`) and the `#formReopen` link set at line 140 — the file's stated safety net for \"whose browser blocked it\" — are painted and then destroyed by that same navigation.",
+    "failure": "A desktop visitor (any non-touch pointer, so every laptop and desktop) completes the three-step enquiry form and presses Submit. Two things happen at once: a new tab opens on wa.me, AND the portfolio tab they were reading is itself replaced by wa.me. They lose the site, get a duplicate WhatsApp window, and never see the \"WhatsApp is open, press Send\" panel or the reopen button — the only instructions telling them WhatsApp does not send by itself. Reproduced in Chromium 1440x900: after form.requestSubmit(), the main frame navigated away (framenavigated → wa.me) and a second page was created (NEWPAGE → wa.me); document.getElementById('contactForm') afterwards returned false, i.e. the site's DOM was gone.",
+    "fix": "Line 128: drop the features string and set the opener-severing on the handle instead — `var w = window.open(url, '_blank'); if (w) { w.opener = null; } else { location.href = url; }`. That keeps the real popup-blocked fallback working (a blocked open genuinely returns null) without firing it on every success.",
+    "evidence": "Direct in-page probe in Chromium: `window.open(u,'_blank','noopener')` → returned \"null\"; `window.open(u,'_blank')` → returned \"object\". Full submit run with wa.me routed to abort: MAIN NAV -> chrome-error (the aborted wa.me navigation of the main frame) plus POPUPS OPENED [\"NEWPAGE http://localhost:8099/index.html\", \"NEWPAGE chrome-error\"], and a post-submit evaluate showed `contactForm = false`.",
+    "corroborators": [
+      "runtime-desktop"
+    ]
+  },
+  {
+    "finder": "css-components",
+    "file": "css/components.css",
+    "line": 1356,
+    "severity": "critical",
+    "category": "resilience",
+    "title": "Opaque full-viewport preloader has no CSS-side dismissal, so a blocked CDN leaves the page black",
+    "detail": ".mk-preloader is declared as an unconditional, opaque, top-of-ladder blocker:\n\n```\n.mk-preloader {\n  position: fixed;\n  inset: 0;\n  z-index: var(--z-preloader);   /* 1000 — the top of the ladder */\n  display: flex;\n  ...\n  background-color: var(--ink);\n}\n```\n\nNothing in CSS ever takes it down. The only removal path is js/motion.js's `gsap.set(pre, { autoAlpha: 0, display: 'none' })` inside runPreloader(). But js/motion.js line 122 bails before that: `if (typeof gsap === 'undefined' || !gsap || !gsap.core) { showAll(); return; }`, and showAll() only does `root.classList.remove('js')` — it never touches the overlay. The <noscript> block in index.html lines 69-71 sets `.mk-preloader { display: none }`, but <noscript> only applies when scripting is OFF; it does not fire when JS runs and GSAP is merely missing.",
+    "failure": "Any visitor whose network or extension blocks cdnjs.cloudflare.com (corporate proxy, uBlock's CDN lists, China, a CDN outage) loads the page, motion.js returns at its GSAP guard, and the #mk-preloader sheet stays on screen permanently. Reproduced live in this sandbox at 1440x900: after 2.5s `getComputedStyle('.mk-preloader')` is `display:flex; opacity:1; visibility:visible`, its rect is the full 1440x900 viewport, and `document.elementFromPoint(700,450)` returns the `mk-preloader` element — the entire site is an unreachable black rectangle. The irony is that js/motion.js line 118 comments \"A single failed CDN file must never leave the page blank.\"",
+    "fix": "Give the overlay a bounded CSS-only exit that the script supersedes when it runs. At line 1366, inside `.mk-preloader`, add `animation: mk-preloader-bail 1ms linear var(--dur-hero) forwards;` and add the keyframes next to it: `@keyframes mk-preloader-bail { to { visibility: hidden; opacity: 0; pointer-events: none; } }`. GSAP's inline `autoAlpha:0; display:none` still wins when motion.js is alive, and when it is not the sheet clears itself after 1.4s.",
+    "evidence": "Playwright against http://localhost:8099/index.html with the sandbox's blocked egress: `PRELOADER flex op=1 vis=visible inDOM` after 2500ms; `preloaderRect={\"x\":0,\"y\":0,\"w\":1440,\"h\":900} elementAtCenter=mk-preloader`. Console showed `net::ERR_TUNNEL_CONNECTION_FAILED` for the CDN scripts and `window.gsap === \"undefined\"`.",
+    "corroborators": [
+      "css-components"
+    ]
+  },
+  {
+    "finder": "js-ui",
+    "file": "js/ui.js",
+    "line": 316,
+    "severity": "critical",
+    "category": "correctness",
+    "title": "Portfolio filter hides nothing — `card.hidden` is out-specified by .project-card.rail__item",
+    "detail": "initFilter's only hiding mechanism is the `hidden` property: `cards.forEach(function (card) { var cat = card.getAttribute('data-category'); var show = (want === 'all' || cat === want); card.hidden = !show; });` (ui.js 313-317). It relies on css/base.css:383 `[hidden][hidden] { display: none }`, whose specificity is (0,2,0). But every project card carries BOTH classes required by css/sections/c.css:80 `.project-card.rail__item { display: flex; flex-direction: column; block-size: auto; }` — also (0,2,0) — and sections/c.css is linked AFTER base.css (index.html 49 vs 54), so on a tie the later rule wins. The `hidden` attribute is set, and the card still computes `display: flex`.",
+    "failure": "Any visitor on any viewport clicks the 'Corporate' (or Government / Education / Healthcare / Marketplace) pill in the Work section. The pill turns active and reports aria-pressed=\"true\", but all eight project cards stay on screen at full size. The filter appears completely inert; a screen-reader user is told a filter is applied while every card is still announced and still tabbable.",
+    "fix": "Make the hide rule outrank the two-class section rule: change css/base.css:383 from `[hidden][hidden]` to `[hidden][hidden][hidden]` (specificity 0,3,0), or add `.project-card[hidden] { display: none; }` to css/sections/c.css directly after line 83.",
+    "evidence": "Playwright on http://localhost:8099/index.html after clicking the 'education' pill: `cards visible: government:hidden:flex marketplace:hidden:flex corporate:hidden:flex healthcare:hidden:flex corporate:hidden:flex marketplace:hidden:flex corporate:hidden:flex education:SHOWN:flex` — every card carries the hidden attribute yet computes display:flex. `focusable inside hidden cards: 13` (13 links/buttons inside 'hidden' cards still have client rects). CSSOM cascade dump for a hidden card: `[hidden][hidden]{display:none} [base.css]`, `.card{display:block}`, `.project-card{display:block}`, `.project-card.rail__item{display:flex} [sections/c.css]` → computed `flex`. The rail's scrollWidth was unchanged by the filter (2869 → 2869).",
+    "corroborators": [
+      "js-ui"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1289,
+    "severity": "critical",
+    "category": "resilience",
+    "title": "Preloader overlay is only dismissed from inside start(), which the plugin guard can skip — page stays a black screen",
+    "detail": "Line 1289 `runPreloader(function (heroDelay) {` is the ONLY call site of runPreloader(), and runPreloader() holds the only two places that ever hide the overlay (line 662 `gsap.set(pre, { autoAlpha: 0, display: 'none' })` and line 683 the same inside the exit tween's onComplete). start() is reached only from boot() at line 1458, and both live behind the plugin guards at line 122 `if (typeof gsap === 'undefined' || !gsap || !gsap.core) { showAll(); return; }` and line 148 `if (!HAS.ST) { showAll(); return; }`. showAll() (lines 89-96) only does `root.classList.remove('js')` and `root.setAttribute('data-mk-motion','on')` — it never touches `#mk-preloader`. The `<noscript>` escape hatch at index.html:70 (`.mk-preloader { display: none }`) only applies when scripting is off, not when scripting works and the CDN does not.",
+    "failure": "A visitor whose browser cannot fetch cdnjs.cloudflare.com (uBlock/Brave blocking third-party CDNs, a corporate proxy, a CDN outage, or a flaky mobile connection that times the file out) loads the page: gsap is undefined, motion.js returns at line 122, and `#mk-preloader` — position:fixed, inset:0, z-index:1000, opacity:1 — stays on top of the whole document forever. The entire site is a black rectangle with a static \"0\" in the middle. No content, no navigation, no contact form, permanently.",
+    "fix": "Hide the overlay in the two bail-out paths before returning. At line 122 and line 148, insert `var p = document.getElementById('mk-preloader'); if (p) { p.style.display = 'none'; }` immediately before `showAll(); return;` (or factor it into a two-line killPreloader() helper called from both). It must NOT go inside showAll() itself, because showAll() is also called at line 1339 while the exit tween is still sliding the sheet away.",
+    "evidence": "Live page at http://localhost:8099/index.html with the CDN blocked, measured 5s after load: `.mk-preloader` computed {display:\"flex\", opacity:\"1\", visibility:\"visible\", position:\"fixed\", zIndex:\"1000\", 1440x900 at 0,0}. document.elementFromPoint returns DIV.mk-preloader at (100,100), (720,80) and (1300,800), and SPAN.mk-preloader-count at (720,450). documentElement.className === \"\" and data-mk-motion === \"on\", proving showAll() ran and the guard returned. window.MKMotion is undefined.",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-form",
+    "file": "js/form.js",
+    "line": 134,
+    "severity": "critical",
+    "category": "correctness",
+    "title": "Submit validates only the current step, so Enter on a radio sends an anonymous enquiry",
+    "detail": "The submit handler is `form.addEventListener('submit', function (e) { e.preventDefault(); if (!validate(steps[current])) return; ... })` — line 134 validates `steps[current]` only, never steps 0..2. The submit *button* lives in step 3 (index.html:1688), but the form is a real `<form>` and implicit submission fires whenever Enter is pressed while a radio has focus. Step 1 (index.html:1555) and step 2 (index.html:1602) are nothing but radio groups, so `current` is still 0 or 1 when the submit event arrives, `validate(steps[0])` passes on the single picked radio, and the handler runs to completion: it sets `reopen.href`, hides the form (line 142), shows the success panel and opens WhatsApp.",
+    "failure": "Desktop or keyboard visitor on step 1: click \"An online store\" (which focuses the radio), press Enter. The page immediately leaves for `https://wa.me/201099576398?text=Hi Mohamed,\\nI would like to talk about a new website.\\n\\nProject: Online store` and #contactForm is gone. Same from step 2: picking \"A full build\", typing a brief, then pressing Enter on the radio produces `...Project: Redesign\\nScope: A full build\\n\\nNeed a shop with payments.` — no name, no email, no phone. Mohamed receives an unattributed enquiry, and the visitor sees the \"Your message is ready in WhatsApp\" panel with no way back to the form (nothing in form.js ever un-hides it).",
+    "fix": "Validate every step on submit, not just the visible one: replace line 134 with `for (var i = 0; i < steps.length; i++) { if (!validate(steps[i])) { show(i); return; } }` so a failing earlier step is re-shown with its error. Adding `type=\"button\"` guards on step 1/2 does not help — no button is involved in implicit submission.",
+    "evidence": "Playwright against localhost:8099: after `click('input[name=\"projectType\"][value=\"Online store\"]')` + `keyboard.press('Enter')`, the main-frame navigation list was `[\"http://localhost:8099/index.html\", \"https://wa.me/201099576398?text=Hi%20Mohamed%2C%0AI%20would%20like%20to%20talk%20about%20a%20new%20website.%0A%0AProject%3A%20Online%20store\"]` and a subsequent `document.getElementById('contactForm')` threw because the document had been replaced. The step-2 variant produced the decoded text `Hi Mohamed,\\nI would like to talk about a new website.\\n\\nProject: Redesign\\nScope: A full build\\n\\nNeed a shop with payments.`",
+    "corroborators": [
+      "js-form"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 43,
+    "severity": "critical",
+    "category": "perf",
+    "title": "Render-blocking Google Fonts stylesheet gates first paint; 12.7 s blank page when it hangs",
+    "detail": "Lines 43-44 are a plain render-blocking stylesheet on a third-party origin: `<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap\">`. The browser will not paint anything until every stylesheet in the head resolves, including this one, and \"resolves\" for an unreachable host means waiting out the full connection timeout. The `preconnect` hints on lines 41-42 speed up the happy path but do nothing for the failure path.",
+    "failure": "A visitor on a network where fonts.googleapis.com is unreachable but does not RST immediately (corporate proxy that black-holes the connection, national filtering, a DNS-blocking resolver) sees a completely white page for the length of the TCP/TLS timeout. Measured on this machine, where the egress proxy makes fonts.googleapis.com hang before erroring: first-contentful-paint = 12,744 ms and LCP = 12,744 ms. With the same request aborted instantly instead, FCP = 168-188 ms and LCP = 444 ms. The identical 8 local stylesheets, the HTML and the images were all served in under 200 ms in both runs — the entire 12.5 s is the third-party font sheet.",
+    "fix": "Make the font sheet non-blocking. Replace lines 43-44 with `<link rel=\"stylesheet\" media=\"print\" onload=\"this.media='all'\" href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap\">` and add the same `<link>` without the media trick inside a `<noscript>`. Paint then never depends on a third-party origin; the webfont swaps in when it arrives.",
+    "evidence": "PerformanceObserver in Chromium against http://localhost:8099/index.html. Run A (proxy left to hang fonts.googleapis.com): {\"fcp\":[12744],\"lcp\":[{\"t\":12744,\"tag\":\"SPAN.hero-title__line\"}]}, navigation domContentLoadedEventEnd 12664 ms. Run B (route '**fonts.googleapis**' aborted): {\"fcp\":[168],\"lcp\":[{\"t\":444,\"tag\":\"SPAN.hero-title__line\"}]}.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "cross-contract",
+    "file": "css/sections/c.css",
+    "line": 80,
+    "severity": "critical",
+    "category": "contract",
+    "title": "Portfolio filter hides nothing — .project-card.rail__item display beats [hidden][hidden]",
+    "detail": "js/ui.js:316 filters by setting the `hidden` PROPERTY: `card.hidden = !show;`. base.css:383 doubles the attribute selector specifically so it can win — `[hidden][hidden] { display: none; }` — and components.css:914 documents that this is the reason. But css/sections/c.css:80 later declares `.project-card.rail__item { display: flex; flex-direction: column; block-size: auto; }`. `[hidden][hidden]` is (0,2,0); `.project-card.rail__item` is also (0,2,0). It is a specificity TIE, and c.css is the 7th stylesheet while base.css is the 2nd, so source order hands the win to c.css. Every project card is `class=\"card card--flush project-card rail__item\"` (index.html:1067 and 7 more), so the doubled-attribute guard is defeated on exactly the eight elements it was written for.",
+    "failure": "Desktop or mobile, GSAP present or absent. Load /index.html, scroll to the Work section, click the \"Education\" filter pill. The pill goes active and aria-pressed flips correctly, and all seven non-education cards get hidden=true — but all eight cards stay on screen at full size. The filter is visually a no-op for every one of the six pills; only screen-reader users (who honour the hidden attribute) see it work, so the sighted and non-sighted views of the rail disagree.",
+    "fix": "css/sections/c.css:80 — change the selector to `.project-card.rail__item:not([hidden])` so the rule stops applying to a filtered-out card. (Equivalently, raise base.css:383 to `[hidden][hidden][hidden]`.)",
+    "evidence": "Playwright, real page at http://localhost:8099/index.html, after clicking .filter-btn[data-filter=\"education\"]: [\"government:hidden:flex\",\"marketplace:hidden:flex\",\"corporate:hidden:flex\",\"healthcare:hidden:flex\",\"corporate:hidden:flex\",\"marketplace:hidden:flex\",\"corporate:hidden:flex\",\"education:shown:flex\"] — seven cards carry hidden=true and every one still computes display:flex. Control: setting .hidden on a .form-step (single class) yields display:none, and on [data-dialog-link] (.btn.btn--primary) yields display:none, so the guard works everywhere except the two-class project card.",
+    "corroborators": [
+      "cross-contract"
+    ]
+  },
+  {
+    "finder": "runtime-desktop",
+    "file": "css/sections/c.css",
+    "line": 80,
+    "severity": "high",
+    "category": "correctness",
+    "title": "Portfolio filter hides nothing: .project-card.rail__item ties with [hidden][hidden] and wins on source order",
+    "detail": "js/ui.js:316 filters by setting the property: `card.hidden = !show;`. base.css:383 is the defence written for exactly that:\n\n    [hidden][hidden] {   /* specificity (0,2,0) */\n      display: none;\n    }\n\nwith a comment claiming it \"outranks any single class\". But css/sections/c.css:80-84 declares:\n\n    .project-card.rail__item {   /* also (0,2,0) */\n      display: flex;\n      flex-direction: column;\n      block-size: auto;\n    }\n\nTwo classes on one element is the same specificity as two attribute selectors, so the tie is broken by source order — and index.html loads base.css at line 49 but css/sections/c.css at line 54, so c.css wins. Every card carries both classes (index.html:1066: `class=\"card card--flush project-card rail__item\"`), so `hidden` cards keep `display: flex`. The `[hidden][hidden]` rule was written against `.project-card { display: block }` (components.css:918, one class) and was never updated when c.css added the second class. The form steps are unaffected — `.form-step` is a single class, so they hide correctly.",
+    "failure": "A visitor clicks the \"Government\" pill in the work section expecting one project. All eight cards stay on screen: measured after the click, seven cards have hidden=true yet computed display \"flex\", visibility \"visible\", opacity \"1\" and a rect of 336x546. Only aria-pressed on the pills changes, so the control looks like it fired and did nothing — and a screen-reader or keyboard user is worse off, because the 13 links and buttons inside those seven `hidden` cards are still in the tab order: tabbing forward from the Government pill reaches \"SL Smarts\", \"Sharik\" and \"Dr Mohamed Osama\" (all hidden=true) while the pill announces Government as pressed.",
+    "fix": "Raise the hide rule above any two-class component rule. Either change base.css:383 to `[hidden][hidden][hidden] { display: none !important; }`, or — minimally and locally — scope the exception at css/sections/c.css:80 to `.project-card.rail__item:not([hidden]) { display: flex; ... }` so a hidden card falls back to the [hidden][hidden] rule.",
+    "evidence": "Playwright at 1440x900, after clicking the data-filter=\"government\" pill: per-card readout showed 7 cards {hiddenAttr:true, display:\"flex\", vis:\"visible\", op:\"1\", w:336, h:546} alongside the 1 matching card. A tab sweep starting from the Government pill landed on `A.btn btn--quiet project-link [card=SL Smarts hidden=true]`, then Sharik, then Dr Mohamed Osama. Confirmed the same for every pill: `hiddenButPainted` was 5, 6, 7, 7 and 7 for corporate/marketplace/government/education/healthcare.",
+    "corroborators": [
+      "runtime-desktop",
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "runtime-desktop",
+    "file": "css/components.css",
+    "line": 1255,
+    "severity": "high",
+    "category": "a11y",
+    "title": "Transitioning `visibility` makes the menu's closeBtn.focus() a silent no-op, so focus never enters the aria-modal panel",
+    "detail": "css/components.css:1247-1256:\n\n    .premium-menu {\n      visibility: hidden;\n      opacity: 0;\n      transition:\n        opacity var(--dur-fast) var(--ease-out),\n        visibility var(--dur-fast) var(--ease-out);   /* line 1255 */\n    }\n\nBecause `visibility` is in the transition list with a 0.36s eased timing, the computed visibility of the panel — and of everything inside it, including `#menuClose` — is still `hidden` at the moment js/ui.js:95 runs:\n\n      document.body.classList.add('menu-open');\n      if (closeBtn) closeBtn.focus();      /* ui.js:95 */\n\nAn element with computed `visibility: hidden` is not focusable, so `.focus()` throws nothing and does nothing. Focus stays wherever it was. That in turn disables the focus trap at ui.js:117-129, which only intercepts Tab when `document.activeElement === first` or `=== last` of the menu's focusables — with focus outside the menu entirely, neither branch matches and Tab/Shift+Tab are never prevented. The panel carries `role=\"dialog\" aria-modal=\"true\"` (`.premium-menu-content`) and nothing behind it is `inert` or `aria-hidden`.",
+    "failure": "A keyboard or screen-reader visitor opens the site menu (mouse click or Enter on the burger). Focus remains on #navToggle, which is painted UNDERNEATH the panel (navbar z-index 300 vs .premium-menu 500), so there is no visible focus ring and no dialog boundary is announced. Pressing Shift+Tab then walks straight out of the supposedly modal dialog into the page behind it: measured sequence is `A.btn btn--outline navbar__cta` → `A.navbar__brand` → `A.skip-link`, all obscured by the overlay. Nothing tells the user they have left the menu.",
+    "fix": "Line 1254-1255: make visibility flip instantly on open and only delay on close — `transition: opacity var(--dur-fast) var(--ease-out), visibility 0s linear var(--dur-fast);` on `.premium-menu`, plus `transition: opacity var(--dur-fast) var(--ease-out), visibility 0s;` on `.premium-menu.is-open` (components.css:1258). (Separately, ui.js:95 should still be treated as fallible.)",
+    "evidence": "A/B proof in Chromium 1440x900. As shipped, synchronously after open(): {visSyncAfterOpen:\"hidden\", activeAfterOpen:\"BODY#\"}; an immediate second `closeBtn.focus()` also left activeElement on BODY; at +600ms visibility became \"visible\" and focus() then succeeded (BUTTON#menuClose). With only the transition changed to `visibility 0s linear .36s` / `visibility 0s` on .is-open: {visSyncAfterOpen:\"visible\", activeAfterOpen:\"BUTTON#menuClose\"}. Real mouse click on #navToggle: active stayed BUTTON#navToggle at t+50ms and t+650ms. Shift+Tab x3 from there produced navbar__cta → navbar__brand → skip-link, with inMenu=false throughout; #main had aria-hidden=null and inert=false.",
+    "corroborators": [
+      "runtime-desktop"
+    ]
+  },
+  {
+    "finder": "runtime-desktop",
+    "file": "js/ui.js",
+    "line": 396,
+    "severity": "high",
+    "category": "a11y",
+    "title": "Project dialog declares aria-modal=\"true\" but has no focus trap, so Tab walks out into the page behind it",
+    "detail": "initProjectDialog's only keyboard handler is js/ui.js:396-398:\n\n    document.addEventListener('keydown', function (e) {\n      if (e.key === 'Escape' && dialog.classList.contains('is-open')) close();\n    });\n\nThere is no Tab branch — unlike the menu, which does trap (ui.js:117-129). The dialog markup is `<div class=\"dialog\" id=\"projectDialog\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"dialogTitle\">` and `open()` (ui.js:369-382) never sets `inert` or `aria-hidden` on `#main`/`.navbar`, so the background stays both focusable and exposed to assistive tech while the dialog covers it.",
+    "failure": "A keyboard visitor opens a project brief (Enter on \"Details\"). Focus correctly lands on the close button, but it contains only two controls; the second Tab silently leaves the modal. Measured sequence from the dialog: `A.btn btn--primary` (in dialog) → `DIV.grid grid--3 flick-rail` → `INPUT.option__input` → `BUTTON.next-step` → `A.btn btn--outline` → `A.btn btn--outline` → `BUTTON.faq-question` → `BUTTON.faq-question`. The visitor is now tabbing through the contact form and FAQ they cannot see, behind an overlay, with no way to tell they have left the dialog and no wrap back to the close button.",
+    "fix": "Give the dialog the same Tab trap the menu already has. Inside the js/ui.js:396 keydown handler, after the Escape branch, add: collect `$('a[href]:not([hidden]), button:not([disabled])', dialog)` filtered to visible nodes, and on `e.key === 'Tab'` wrap Shift+Tab from the first element to the last and Tab from the last to the first with `e.preventDefault()`.",
+    "evidence": "Playwright at 1440x900: opened #projectDialog via the first .project-details-btn (dialog is-open=true, aria-hidden=\"false\", activeElement BUTTON.dialog__close), then pressed Tab eight times and logged `activeElement.closest('#projectDialog')` each time — inDialog was true only for the first press and false for the remaining seven. With the dialog open, `#main` reported aria-hidden=null and hasAttribute('inert')=false.",
+    "corroborators": [
+      "runtime-desktop",
+      "runtime-a11y",
+      "js-ui"
+    ]
+  },
+  {
+    "finder": "runtime-desktop",
+    "file": "index.html",
+    "line": 306,
+    "severity": "high",
+    "category": "a11y",
+    "title": "Marquee pause button ships empty and unwired, so a visible control with a stuck aria-pressed does nothing while the text keeps scrolling",
+    "detail": "index.html:306-307 ships the control with no content at all:\n\n    <button class=\"mk-marquee-pause\" type=\"button\" data-marquee-toggle aria-pressed=\"false\"\n      aria-label=\"Pause the scrolling text\"></button>\n\nEverything that makes it work lives in js/motion.js's initMarquee: the click handler at lines 1262-1265, and `paint()` at 1253-1260, which is what injects the pause/play SVG glyph and keeps aria-pressed/aria-label in sync. initMarquee is called from line 1287, far below the `return` at js/motion.js:122, so with GSAP unavailable none of it runs. The `<noscript>` block at index.html:78-80 hides the button and pauses `.marquee-content`, but only when scripting is off — here scripting works and only the CDN is blocked, so neither applies and the CSS `animation: mk-marquee 40s linear infinite` keeps running with no working way to stop it (WCAG 2.2.2 Pause, Stop, Hide).",
+    "failure": "A visitor with a CDN-blocking adblocker (or on a restricted network) reaches the credentials strip. The text scrolls continuously for as long as the page is open. Next to it sits a 44px empty circular button — no icon, no text — announced as \"Pause the scrolling text, not pressed\". Clicking or activating it changes nothing: measured before {aria-pressed:\"false\", animationPlayState:\"running\"} and after the click {aria-pressed:\"false\", animationPlayState:\"running\"}. Users with vestibular or attention-related needs have no way to stop the motion, and the empty button reads as a rendering fault.",
+    "fix": "Make the control work without motion.js: bind a tiny inline handler (or a line in js/ui.js, which has no GSAP dependency) that toggles a `.is-paused` class on `.marquee-content` — with `.marquee-content.is-paused { animation-play-state: paused }` in CSS — and flips aria-pressed/aria-label, and ship the default pause glyph as static markup inside the button at index.html:307 instead of leaving it empty for motion.js to inject.",
+    "evidence": "Playwright at 1440x900 with cdnjs blocked. Probe of `.mk-marquee-pause`: {exists:true, display:\"flex\", width:44, textContent:\"\", aria-pressed:\"false\"}, outerHTML shows an empty button; `.marquee-content` computed animationName \"mk-marquee\", animationPlayState \"running\", animationDuration \"40s\". After `btn.click()`: aria-pressed still \"false\", aria-label still \"Pause the scrolling text\", playState still \"running\". Under reducedMotion:'reduce' the CSS does pause it (playState \"paused\"), so only the default-motion path is affected.",
+    "corroborators": [
+      "runtime-desktop",
+      "runtime-a11y",
+      "html-structure"
+    ]
+  },
+  {
+    "finder": "runtime-mobile",
+    "file": "css/components.css",
+    "line": 899,
+    "severity": "high",
+    "category": "responsive",
+    "title": "Work rail is overflow:hidden from 900px, stranding 6 of 8 project cards",
+    "detail": "`@media (min-width: 900px) { .rail, .mk-rail { overflow: hidden; scroll-snap-type: none; } }` turns the project rail from a real scroller into a clipped box, on the assumption that js/motion.js will pin it and scrub `scrollLeft`. That scrub is GSAP/ScrollTrigger-only (js/motion.js:122 and :148 both `return` before any rail is built), so when GSAP does not load there is no scroll mechanism left at all: not touch-drag, not wheel, not a scrollbar, and the element carries no `tabindex` either.",
+    "failure": "On a 1024x600 landscape tablet with an ad-blocker that blocks cdnjs, scroll to #work. The rail measures `scrollWidth 2817 / clientWidth 956`, box x=34..990. Card 1 (Sakhaa Program) and card 2 (SL Smarts) are visible; cards 3-8 sit at left=743, 1097, 1452, 1806, 2161 and 2515 — entirely outside the clip. A 600px horizontal `mouse.wheel` over the rail leaves `scrollLeft` at 0. Six of the eight portfolio pieces — Sharik, Dr Mohamed Osama, Laft, Dremora, Rehal, London Royal Academy — can never be seen or clicked. The identical page at 390x844 works (overflow-x:auto; the same wheel moves scrollLeft to 656).",
+    "fix": "Change line 899 from `overflow: hidden;` to `overflow-x: auto; overflow-y: hidden;` so the rail keeps a native scroll axis at every width, and let the pinned scrub write `scrollLeft` on a container that the visitor can also move by hand — the same contract css/sections/d.css already uses for `.flick-rail`.",
+    "evidence": "Runtime 1024x600: {\"ovf\":\"hidden\",\"tabindex\":null,\"scrollLeft\":0,\"scrollW\":2817,\"clientW\":956,\"railBox\":{\"l\":34,\"r\":990},\"trackTransform\":\"none\"} and cards 3-8 all `fullyVisible:false`; `after horizontal wheel scrollLeft = 0`. Same probe at 390x844: `ovfX:\"auto\"`, `after horizontal wheel scrollLeft = 656`.",
+    "corroborators": [
+      "runtime-mobile"
+    ]
+  },
+  {
+    "finder": "runtime-mobile",
+    "file": "css/components.css",
+    "line": 1329,
+    "severity": "high",
+    "category": "touch",
+    "title": "Menu close button collapses to 44x22px whenever the menu panel overflows",
+    "detail": ".premium-menu-close declares `inline-size: var(--size-touch); block-size: var(--size-touch);` (44px) but it is a flex item of `.premium-menu-content { display: flex; flex-direction: column; overflow-y: auto; }` (line 1272-1288) which sets no `align-items`/`flex-shrink`. As soon as the panel's content is taller than the viewport, the default `flex-shrink: 1` squashes the button: its computed `block-size` becomes `22px`, exactly half the declared 44px. The nav links and footer below it absorb the rest.",
+    "failure": "Open the menu on an iPhone SE (320x568): the panel's content is 735px against a 568px box, so the X button renders 44x22 CSS px. Same at 360x640 (735 vs 640), at 667x375 — any phone held in landscape (749 vs 375) — and at 1024x600 (766 vs 600). 22px is below the 24x24 CSS px floor of WCAG 2.5.8 Target Size (Minimum), and it is the primary close affordance. At 390x844 / 414x896 / 768x1024 / 1280x800 the content fits and the same button measures the correct 44x44 — so the control silently halves in height on exactly the smallest and shortest screens.",
+    "fix": "Add `flex-shrink: 0;` to the `.premium-menu-close` rule (alongside line 1329) so the declared 44x44 hit area survives an overflowing panel.",
+    "evidence": "Runtime measurement of `.premium-menu-close.getBoundingClientRect()` with the menu open: 320x568 -> {w:44,h:22,panelOverflows:true,sh:735,ch:568}; 360x640 -> {w:44,h:22,sh:735,ch:640}; 667x375 -> {w:44,h:22,sh:749,ch:375}; 1024x600 -> {w:44,h:22,sh:766,ch:600}; 390x844 -> {w:44,h:44,panelOverflows:false}; 1280x800 -> {w:44,h:44}. Computed `blockSize` reads \"22px\" and `flexShrink` reads \"1\".",
+    "corroborators": [
+      "runtime-mobile"
+    ]
+  },
+  {
+    "finder": "runtime-mobile",
+    "file": "css/sections/d.css",
+    "line": 166,
+    "severity": "high",
+    "category": "responsive",
+    "title": "Footer logo is stretched out of aspect ratio by flex align-items:stretch",
+    "detail": ".footer__logo { block-size: var(--size-tile-lg); inline-size: auto; } sits inside `.footer__col { display: flex; flex-direction: column; gap: var(--space-lg); }` (line 134-138), which declares no `align-items`. On a column flex container the cross axis is horizontal, so the default `stretch` resolves `inline-size: auto` to the full column width instead of to the intrinsic width. Combined with the fixed 56px `block-size`, the 512x135 PNG is rendered at a completely different ratio. The markup compounds it: `<img class=\"footer__logo\" ... width=\"160\" height=\"56\">` (index.html:2006-2007) declares a 160:56 ratio for a file whose real ratio is 512:135.",
+    "failure": "Open the footer on any device. The brand mark renders 280x56 at 320px wide (should be 212.4x56), 350x56 at 390px, and 462.5x56 at 1024px — horizontally stretched by 1.32x, 1.65x and 2.18x respectively, and getting worse the wider the screen. The distortion is visible against the identical logo in the navbar, which renders correctly at 121.4x32 (ratio 3.79 = 512/135) because it is not a stretched flex item.",
+    "fix": "Add `align-self: flex-start;` to the `.footer__logo` rule (beside line 166); verified at runtime to restore 212.4x56 at every width. Also correct the markup attributes at index.html:2007 to `width=\"212\" height=\"56\"` so the reserved box matches the real ratio.",
+    "evidence": "Runtime: parentDisplay \"flex\", parentFlexDir \"column\", parentAlignItems \"normal\"; computedWidth \"280px\"/\"350px\"/\"462.547px\" at 320/390/1024 against natural 512x135 (correctWidthForH56 = 212.4). Setting `img.style.alignSelf='flex-start'` changed the box to 212.4x56 at all three widths. Navbar copy of the same file: 121.4x32.",
+    "corroborators": [
+      "runtime-mobile"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/sections/c.css",
+    "line": 81,
+    "severity": "high",
+    "category": "correctness",
+    "title": "Project filter hides nothing — [hidden][hidden] loses the cascade to .project-card.rail__item",
+    "detail": "js/ui.js:316 filters with `card.hidden = !show`, relying on base.css:383 `[hidden][hidden] { display: none; }` (specificity 0-2-0). css/sections/c.css:80-84 declares `.project-card.rail__item { display: flex; flex-direction: column; block-size: auto; }` — also specificity 0-2-0, and sections/c.css is the 7th stylesheet while base.css is the 2nd (index.html:49 vs 54). Equal specificity, later source wins, so every filtered-out card keeps `display:flex`. base.css:377-382 even documents the intended mechanism (\"A single [hidden] ties on specificity with a class and loses on source order\") — the doubling was not enough once a two-class selector was added in c.css.",
+    "failure": "At 1440x900, click the \"Government\" filter pill. `aria-pressed` flips to \"true\" on Government and \"false\" on All, but all eight project cards stay on screen, keep `display:flex`, stay in the tab order and stay in the accessibility tree. A screen-reader or keyboard user is told the list is now filtered to one sector and then walks through all eight \"Visit the site\" / \"Project brief\" controls, seven of which belong to sectors they just filtered out. Identical at 390x844.",
+    "fix": "Change the selector at css/sections/c.css:80 from `.project-card.rail__item` to `.project-card.rail__item:not([hidden])`, so the rule stops matching hidden cards and base.css's `[hidden][hidden]{display:none}` is the only display declaration left for them.",
+    "evidence": "Runtime after programmatically clicking the government filter: every one of the eight `.project-card` elements reports `hidden=true` (except Sakhaa) yet `getComputedStyle().display === \"flex\"` and `getBoundingClientRect()` 336x546. `page.accessibility.snapshot()` still lists `link: Visit the site: SL Smarts`, `link: Visit the site: Sharik`, `heading: SL Smarts`. Focusing `.project-card[1] .project-link` succeeds and reports `card hidden=true`. Screenshot shows all four visible cards unchanged.",
+    "corroborators": [
+      "runtime-a11y"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "js/ui.js",
+    "line": 169,
+    "severity": "high",
+    "category": "a11y",
+    "title": "Skip link moves the scroll but never moves focus, so it skips nothing",
+    "detail": "The delegated anchor handler catches every `a[href^=\"#\"]` — including `<a class=\"skip-link\" href=\"#main\">` (index.html:103) — and calls `e.preventDefault();` at js/ui.js:169 before doing its own `goTo(target)` scroll. Cancelling the default fragment navigation also cancels the browser's update of the sequential focus navigation starting point, and the handler never calls `target.focus()`. `<main id=\"main\">` (index.html:186) carries no `tabindex=\"-1\"`, so it is not focusable either. WCAG 2.4.1 requires the bypass mechanism to actually move the point of regard.",
+    "failure": "A keyboard or screen-reader user presses Tab once, the skip link appears, they press Enter. Focus stays on the skip link (`document.activeElement` is still `A.skip-link`), the URL becomes `#main`, and the next Tab lands on `a.navbar__brand` — the navbar, i.e. exactly the chrome they asked to skip. They must then tab through the brand, the CTA and the menu trigger again on every page entry.",
+    "fix": "At js/ui.js:173, inside the existing `setTimeout(function () { goTo(target); }, ...)`, also move focus: `target.setAttribute('tabindex','-1'); target.focus({preventScroll:true});`",
+    "evidence": "Runtime with JS enabled: after Tab+Enter, `document.activeElement` = `A.skip-link`, `location.hash` = `#main`, next Tab → `A.navbar__brand` (outside #main). The same sequence in a `javaScriptEnabled:false` context lands on `A.btn btn--primary btn--lg` with `closest('#main')` truthy — proving the native behaviour works and that js/ui.js:169's preventDefault is what breaks it.",
+    "corroborators": [
+      "runtime-a11y",
+      "js-ui",
+      "cross-contract"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/components.css",
+    "line": 553,
+    "severity": "high",
+    "category": "a11y",
+    "title": "All 7 FAQ questions have no visible focus indicator — the ring is clipped away",
+    "detail": "`.faq-item { ... overflow: hidden; }` (line 553). The `.faq-question` button inside it is `inline-size: 100%` (line 566) with the item carrying no padding, so the button fills the item's padding box exactly. The global focus style is `:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }` (css/base.css:321-325) = a 2px teal outline drawn 3px OUTSIDE the button on all four sides — entirely outside `.faq-item`'s clip rectangle. `overflow:hidden` therefore erases the whole ring. Nothing else changes on focus: `.faq-question:hover` (line 578) only fires on hover.",
+    "failure": "At 1440x900, Tab from the \"Message on WhatsApp\" button into the FAQ. The button receives focus and matches `:focus-visible`, but the screen shows no change at all across all seven questions. A sighted keyboard user loses their place completely in a seven-item list and cannot tell which question Enter will open. WCAG 2.4.7 failure.",
+    "fix": "Delete `overflow: hidden;` at css/components.css:553 — the clipping the accordion actually needs is already on `.faq-answer-content` (line 605). If the rounded corner clip must stay, use `overflow: clip; overflow-clip-margin: 6px;` instead.",
+    "evidence": "Runtime, focus reached by real `page.keyboard.press('Tab')` from the preceding control: `activeElement.matches(':focus-visible') === true`, computed `outline = \"rgb(45, 212, 191) solid 2px\"`, `outline-offset = \"3px\"`; geometry `.faq-item` x=268..1172, `.faq-question` x=269..1171, `.faq-item` overflow=hidden. Clipped screenshot of the focused question shows no teal ring anywhere; the identical capture of a focused `.pill-filter` (not inside an overflow:hidden box) shows the ring clearly.",
+    "corroborators": [
+      "runtime-a11y",
+      "css-components"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/components.css",
+    "line": 899,
+    "severity": "high",
+    "category": "resilience",
+    "title": "Work rail is overflow:hidden from 900px, so half the projects are unreachable when the GSAP pin never builds",
+    "detail": "`@media (min-width: 900px) { .rail, .mk-rail { overflow: hidden; scroll-snap-type: none; } }` (css/components.css:895-901). Below 900px the rail is a real `overflow-x:auto` scroller (line 873); at desktop the only thing that moves the 2869px-wide `.rail__track` is `initRail()` in js/motion.js:1087-1120, which pins the section and scrubs `x` on the track. That function lives below the GSAP guard at js/motion.js:122, so when GSAP does not load the track never moves and the container cannot be scrolled by any means.",
+    "failure": "On a desktop browser where cdnjs is blocked, the Work section shows Sakhaa Program, SL Smarts, Sharik and a sliced Dr Mohamed Osama, and nothing else. Laft, Dremora, Rehal and London Royal Academy are rendered at x=1496–2917 with no scrollbar, no wheel response and no drag — four of the eight portfolio pieces the section's own heading promises (\"Eight builds across five sectors\") cannot be seen. The caption directly underneath reads \"The row scrolls sideways\", which is false in this state.",
+    "fix": "At css/components.css:899 change `overflow: hidden;` to `overflow-x: auto; overflow-y: hidden;` and add `scrollbar-width: none;` so the rail stays hand- and keyboard-scrollable when the pin is not built; motion.js's transform-based scrub continues to work over a scrollable container.",
+    "evidence": "Runtime at 1440x900: `.mk-rail` computed `overflowX=\"hidden\"`, `clientWidth=1344`, `.mk-rail-track.scrollWidth=2869`, `scrollLeft=0`, `tabindex=null`. Card bounding boxes: 48..384 | 410..746 | 772..1108 | 1134..1470 | 1496..1832 | 1857..2193 | 2219..2555 | 2581..2917 against a 1440px viewport. Screenshot of the section shows 3.5 cards and empty space to the right.",
+    "corroborators": [
+      "runtime-a11y",
+      "css-components"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "index.html",
+    "line": 1602,
+    "severity": "high",
+    "category": "resilience",
+    "title": "With JavaScript off the enquiry form is a dead end: steps 2 and 3 stay hidden and the form has no action",
+    "detail": "`<div class=\"form-step\" data-step=\"2\" hidden>` (line 1602) and `<div class=\"form-step\" data-step=\"3\" hidden>` (line 1644) ship the attribute in the markup, and only js/form.js:39 (`s.hidden = !on`) ever clears it. The only control left visible is `<button class=\"btn btn--primary next-step\" type=\"button\">Continue to scope</button>` (line 1597) — `type=\"button\"`, so it has no default behaviour and no handler. The submit control `<button class=\"btn btn--primary\" type=\"submit\">Continue on WhatsApp</button>` lives inside the hidden step 3 (line 1687), and `<form class=\"card card--static\" id=\"contactForm\" novalidate ...>` (line 1546) declares no `action` and no `method`. css/components.css:813-816 asserts the opposite: \"Without scripting all three steps stay readable.\"",
+    "failure": "A visitor with scripting disabled reaches the contact section, picks \"An online store\", presses \"Continue to scope\" and nothing happens — ever. The name, email and WhatsApp fields and the only submit button are all inside hidden steps, so there is no way to send an enquiry and no visible explanation. The page's primary conversion path is silently dead.",
+    "fix": "Add `.form-step[hidden]{display:flex}` to the `<noscript>` style block at index.html:68-82 (specificity 0-2-0, declared after the stylesheets, so it beats base.css:383's `[hidden][hidden]`), and give the form at index.html:1546 a real `action`/`method` so the submit button in step 3 degrades to something that works.",
+    "evidence": "Runtime with `javaScriptEnabled:false`: `.form-step[data-step=\"2\"]` `getAttribute('hidden')` = \"\" and `isVisible() === false`; `.form-step[data-step=\"3\"]` `isVisible() === false`; `#contactForm` `getAttribute('action')` = null and `getAttribute('method')` = null.",
+    "corroborators": [
+      "runtime-a11y",
+      "resilience"
+    ]
+  },
+  {
+    "finder": "html-structure",
+    "file": "index.html",
+    "line": 2090,
+    "severity": "high",
+    "category": "a11y",
+    "title": "</main> closes after </footer>, so the site footer exposes no contentinfo landmark",
+    "detail": "`<main id=\"main\">` opens at index.html:186. `<footer class=\"section section--ink site-footer\" id=\"footer\" aria-labelledby=\"footer-title\">` opens at line 1993 and closes at line 2088; `</main>` is only at line 2090. The whole page footer is therefore a descendant of `<main>`. Per HTML-AAM a `footer` nested inside `main` does not map to `contentinfo` — Chromium gives it the generic `sectionfooter` role — and the `aria-labelledby=\"footer-title\"` pointing at the visually-hidden `<h2 id=\"footer-title\">Site footer</h2>` (line 1994) is discarded with it. It also means the copyright line, the two footer `<nav>`s, the payment badges and the social links are all announced as part of the document's main content.",
+    "failure": "A screen-reader user on the page opens the landmarks rotor (VoiceOver VO+U → Landmarks, or NVDA's D key). They get \"banner\" and \"main\" but no \"content information\" landmark, so there is no way to jump to the footer; and skipping past `main` skips the entire page including its footer. Keyboard users relying on landmark navigation have to tab through all 8 project cards and the 3-step contact form to reach the footer links.",
+    "fix": "Move the `</main>` tag: delete it from line 2090 and insert `</main>` on its own line immediately before line 1993 (`<footer class=\"section section--ink site-footer\" id=\"footer\" ...>`), so the footer is a sibling of main, not a child.",
+    "evidence": "Playwright on the live page: `page.getByRole('contentinfo').count()` === 0 while `getByRole('banner')` === 1 and `getByRole('main')` === 1. Moving the node in the live DOM (`main.parentNode.insertBefore(footer, main.nextSibling)`) flips the count to 1. Control page `<main><footer id=a>in main</footer></main><footer id=b>outside</footer>` gives an accessibility snapshot of role `sectionfooter` for the nested one and role `contentinfo` for the sibling.",
+    "corroborators": [
+      "html-structure"
+    ]
+  },
+  {
+    "finder": "html-structure",
+    "file": "index.html",
+    "line": 2007,
+    "severity": "high",
+    "category": "correctness",
+    "title": "Footer logo declares width=160 height=56 for a 512x135 file and ships visibly stretched",
+    "detail": "Line 2006-2007: `<img class=\"footer__logo\" src=\"assets/images/logo-gradient.png\" alt=\"MK, the studio mark of Mohamed Khaled\" width=\"160\" height=\"56\">`. The file on disk is 512x135 (ratio 3.793); the declared 160/56 is ratio 2.857. The same file is declared correctly as 512x135 at line 121 (navbar) and line 1509 (signature). On top of that, css/sections/d.css:164-167 sets `.footer__logo { block-size: var(--size-tile-lg); inline-size: auto; }` and its parent `.footer__col` is `display:flex; flex-direction:column` with the initial `align-items: normal` (= stretch), so `inline-size:auto` is stretched to the whole column instead of resolving from the intrinsic ratio. With `object-fit: fill` (the default) the mark is drawn at 359.86x56 = ratio 6.426 against a true 3.793 — 69% too wide.",
+    "failure": "Every visitor who scrolls to the footer at a desktop width sees the brand mark horizontally squashed: the \"MK\" monogram and the \"wordpress developer\" wordmark are stretched to nearly double their correct width, while the identical logo in the navbar 2000px above renders correctly. Additionally, before the image bytes arrive the UA reserves a box from the attribute ratio (aspect-ratio computes to `auto 160 / 56`), so the footer column also reflows when the image lands.",
+    "fix": "Two one-line changes. index.html:2007 — replace `width=\"160\" height=\"56\"` with `width=\"512\" height=\"135\"` so the reserved box matches the file. css/sections/d.css:164-167 — add `align-self: flex-start;` to the `.footer__logo` rule so `inline-size: auto` resolves from the intrinsic ratio (212.4px) instead of being stretched by the flex column.",
+    "evidence": "PNG header read from disk: assets/images/logo-gradient.png = 512x135. In Chromium after load: `.footer__logo` naturalWidth 512, naturalHeight 135, getBoundingClientRect {w:359.859375, h:56} (ratio 6.426), computed width 359.859px === parent `.footer__col` width 359.859px, computed `aspect-ratio: auto 160 / 56`, `object-fit: fill`, parent computed `display:flex; flex-direction:column; align-items:normal`. Same measurement for `.navbar__logo` gives 121.4x32 (ratio 3.792) and `.signature__mark` 307.2x81 (ratio 3.793). Element screenshots of the footer and navbar logos side by side show the footer copy visibly wider per glyph.",
+    "corroborators": [
+      "html-structure",
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "css-components",
+    "file": "css/components.css",
+    "line": 1034,
+    "severity": "high",
+    "category": "a11y",
+    "title": "Marquee fade mask erases the pause button it contains, leaving the WCAG 2.2.2 control invisible",
+    "detail": "```\n.marquee-container {\n  ...\n  mask-image: var(--grad-fade-x);          /* line 1034 */\n  -webkit-mask-image: var(--grad-fade-x);  /* line 1035 */\n}\n```\nwith `--grad-fade-x: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent)` (tokens.css line 79).\n\nA mask applies to the element's entire rendered subtree, and .mk-marquee-pause (line 1100) is a child of that container, parked at `inset-inline-end: var(--space-sm)`. Measured at 1440px: container x=47.94 w=1344.13, button x=1336.06 w=44 — the button occupies 95.8%→99.1% of the mask's length. The gradient is already ramping to zero from 88%, so the mask alpha over the button runs 0.35 at its left edge down to 0.075 at its right edge. The 1px `--border-strong` ring (rgba(255,255,255,.18)) and the `rgba(var(--surface-2-rgb), .72)` plate are multiplied by that.",
+    "failure": "A visitor who wants to stop the perpetually scrolling promise strip (vestibular sensitivity, or simply trying to read it) sees no control at all — the button occupies 44x44px of apparently empty dark background at the right edge of the strip. It is reachable by Tab and announced as \"Pause the scrolling text\", but a sighted mouse or touch user has nothing to aim at. WCAG 2.2.2 (Pause, Stop, Hide) is satisfied on paper and defeated in rendering.",
+    "fix": "Move the control out from under the mask: the mask belongs on the tracks, not on the container. Delete lines 1034-1035 from `.marquee-container` and add `mask-image: var(--grad-fade-x); -webkit-mask-image: var(--grad-fade-x);` to `.marquee-content` (line 1041) instead — the two <ul> copies are the only things that need fading, and the absolutely-positioned button is then unmasked.",
+    "evidence": "Pixel-decoded 44x44 crops of the button's own bounding box at 1440x900, sampling the middle scanline. With the mask: left border pixel rgb(31,30,45), right border pixels rgb(21,19,35)/rgb(22,20,36) against a background of rgb(18,16,32) — about 1.05:1, indistinguishable. With `maskImage` set to `none` on the container and nothing else changed: left border rgb(57,55,69), right border rgb(66,64,77) — visibly drawn. Geometry: `leftPct 95.8, rightPct 99.1` of the container's width.",
+    "corroborators": [
+      "css-components"
+    ]
+  },
+  {
+    "finder": "css-foundation",
+    "file": "css/layout.css",
+    "line": 317,
+    "severity": "high",
+    "category": "z-index-stacking",
+    "title": ".layer-behind's negative z-index escapes .section and paints under the section background",
+    "detail": "`.layer-behind { position: absolute; inset: 0; z-index: var(--z-below); ... }` (layout.css:314-320, `--z-below: -1` from tokens.css:271) is the shared primitive for every decorative background layer. Its only intended parent, `.section`, is declared as `.section { position: relative; padding-block: var(--sec-pad); }` (layout.css:55-58) — positioned but with `z-index: auto`, so it does NOT establish a stacking context. A positioned child with a negative z-index therefore participates in the nearest ancestor stacking context, which here is the root element, and is painted at the \"negative z-index\" step of the ROOT context — before `.section`'s own opaque `background-color` (`.section--s1 { background-color: var(--surface-1) }`, layout.css:101-104; `.section--ink { background-color: var(--ink) }`, layout.css:97-99). The site's own code proves the authors knew: css/sections/a.css:73 adds `isolation: isolate` to `.hero` with the comment \"Without a stacking context here that negative layer resolves against the root and paints UNDER the hero's own background colour, so the grid, the two glows and the scanner all vanish.\" That fix was applied to the hero only. The other two `.layer-behind` instances — index.html:1933 (`#guarantee`, `.section--s1`) and index.html:1996 (`#footer`, `.section--ink`) — have no such ancestor.",
+    "failure": "Desktop Chromium 1440x900, scroll to the Guarantee section or the footer. `.guarantee__glow` (sections/d.css:82) and `.site-footer__glow` (sections/d.css:113) are never painted. Verified: I forced `.guarantee__glow` to `background-color:red; opacity:1; filter:none` — the full-viewport screenshot was byte-identical to the untouched page (the opaque 1000x384 red box does not render at all). Adding `#guarantee{isolation:isolate}` immediately made it render (screenshots differ, red arcs visible beside the card). Same result for `.site-footer__glow`: base vs opaque-red identical = true; red vs red+isolation identical = false. Runtime ancestor walk confirms the chain SECTION(position:relative, z-index:auto, iso:auto) -> MAIN -> BODY -> HTML contains no stacking context.",
+    "fix": "In layout.css add `isolation: isolate;` to the `.section` rule (inside the block at lines 55-58, next to `position: relative`). That gives every section a stacking context so `.layer-behind` resolves inside it — over the section background, under `.layer-front` — and makes the one-off `isolation: isolate` on `.hero` (sections/a.css:73) redundant rather than load-bearing.",
+    "evidence": "Playwright: `Buffer.compare(basePNG, redGlowPNG)===0` (glow absent) and `Buffer.compare(redGlowPNG, redGlowWithIsolationPNG)!==0` (glow present) for both #guarantee and #footer; screenshot h_red_iso.png shows the red arcs, h_base.png/h_red.png do not. getComputedStyle walk returned `{tag:'SECTION.section section--s1', position:'relative', zIndex:'auto', isolation:'auto', isSC:false}` up to HTML.",
+    "corroborators": [
+      "css-foundation"
+    ]
+  },
+  {
+    "finder": "css-foundation",
+    "file": "css/base.css",
+    "line": 383,
+    "severity": "high",
+    "category": "cascade",
+    "title": "[hidden][hidden] loses to .project-card.rail__item, so the project filter hides nothing",
+    "detail": "base.css:383-385 is `[hidden][hidden] { display: none; }` with the comment at lines 377-382 claiming \"[hidden][hidden] outranks any single class and needs no !important\". Specificity is (0,2,0) — it outranks a SINGLE class, but it ties with any two-class rule, and base.css is the second stylesheet loaded (index.html:48), so on a tie every later sheet wins. css/sections/c.css:80 declares `.project-card.rail__item { display: flex; flex-direction: column; block-size: auto; }` — also (0,2,0), loaded last. Those are exactly the elements js/ui.js:316 hides with `card.hidden = !show` in the project filter handler. Result: the `hidden` attribute is set, `display` stays `flex`.",
+    "failure": "Desktop 1440x900, scroll to the Work section and click any filter pill other than \"All\" (e.g. the second `.filter-btn`). js/ui.js sets `hidden` on the 5 non-matching `.project-card` elements, but all 5 keep `display: flex` and their full 546px height, so all 8 cards remain on screen. The filter appears completely broken while `aria-pressed` flips to true on the pill — a screen-reader user is told the filter applied, and the cards are still exposed (they are not `display:none`, so they stay in the accessibility tree despite `hidden`).",
+    "fix": "base.css:383 — change the selector from `[hidden][hidden]` to `[hidden][hidden][hidden]` (specificity (0,3,0)). Nothing in the codebase reaches three compound selectors on one element, so this wins over `.project-card.rail__item` without introducing !important.",
+    "evidence": "Playwright: after clicking `.filter-btn` index 1, `document.querySelectorAll('.project-card')` = 8, of which 5 have `.hidden === true`; all 5 return `getComputedStyle(c).display === 'flex'` and `getBoundingClientRect().height === 546.078125`. Element classList is `card card--flush project-card rail__item`.",
+    "corroborators": [
+      "css-foundation"
+    ]
+  },
+  {
+    "finder": "css-foundation",
+    "file": "css/base.css",
+    "line": 404,
+    "severity": "high",
+    "category": "resilience",
+    "title": "Flash guard is armed by an inline script but only ever disarmed by js/motion.js, with no CSS time limit",
+    "detail": "base.css:404-406 is `.js [data-anim] { visibility: hidden; }`. The `js` class is added unconditionally by the inline script at index.html:60 (`document.documentElement.classList.add('js')`). The only thing that removes it is js/motion.js:93 (`root.classList.remove('js')` inside `showAll()`), which requires js/motion.js to load AND parse. The `<noscript>` escape hatch at index.html:68-80 only fires when scripting is disabled entirely, so it cannot help when scripting is on but that one file does not arrive. base.css itself has no bounded-lifetime fallback: nothing in the stylesheet ever lifts `visibility: hidden` except the reduced-motion override at base.css:441-443.",
+    "failure": "Any visitor whose browser gets js/motion.js blocked or 404'd while scripting stays on — a content blocker with a broad `*/js/motion*` rule, a corporate proxy, a partial deploy that ships HTML+CSS before JS, or a cache-busted filename mismatch. Verified with Playwright by routing `**/js/motion.js` to abort: after 6 seconds `document.documentElement.className` is still `\"js\"` and 61 of 61 `[data-anim]` elements compute to `visibility: hidden` — every section heading, every card grid, the whole footer. The visitor gets a scrollable page of empty coloured bands.",
+    "fix": "Give the guard a CSS-only expiry in base.css at lines 404-406: `.js [data-anim] { visibility: hidden; animation: mk-flash-guard-expire 0s linear 4s forwards; }` plus `@keyframes mk-flash-guard-expire { to { visibility: visible; } }`. The guard then lifts itself after 4s whatever happens to the script; motion.js's `showAll()` still wins earlier on the normal path.",
+    "evidence": "Playwright with `page.route('**/js/motion.js', r=>r.abort())`, 6s settle: `{htmlClass:\"js\", total:61, hidden:61}`. On the unblocked run the same probe returns `{htmlClass:\"\", total:61, hidden:0}`.",
+    "corroborators": [
+      "css-foundation"
+    ]
+  },
+  {
+    "finder": "js-ui",
+    "file": "js/ui.js",
+    "line": 95,
+    "severity": "high",
+    "category": "a11y",
+    "title": "open() focuses the close button while the panel is still hidden, so focus never enters the menu",
+    "detail": "open() adds `.is-open` at line 86 and then calls `if (closeBtn) closeBtn.focus();` at line 95 in the same task. css/components.css:1247-1257 declares `.premium-menu { visibility: hidden; opacity: 0; transition: opacity …, visibility … }` and `.premium-menu.is-open { visibility: visible }`. At the instant line 95 runs the panel has not yet been rendered visible, so `focus()` is a no-op and document.activeElement stays on #navToggle — outside the menu. Because focus is never inside the panel, the focus trap at lines 122-128 (`if (e.shiftKey && document.activeElement === first)` / `else if (!e.shiftKey && document.activeElement === last)`) can never match, so it never engages either.",
+    "failure": "A keyboard or screen-reader user clicks/activates the 'Menu' button at 1440×900. The full-screen panel opens with an 82%-opaque overlay over the page, but focus stays on the Menu button behind it — the role=\"dialog\" aria-modal=\"true\" panel is never entered or announced. Pressing Shift+Tab then walks backwards through 'Start a project', the logo and the skip link, all of which are covered by the overlay and invisible, and one more Shift+Tab leaves the document entirely. No wrap ever happens.",
+    "fix": "Defer the focus one frame so the panel is rendered first: replace line 95 with `if (closeBtn) requestAnimationFrame(function () { closeBtn.focus(); });`. (Additionally, make the trap at line 126 pull focus back when `!menu.contains(document.activeElement)`.)",
+    "evidence": "Instrumented HTMLElement.prototype.focus on the live page, then a real `page.click('#navToggle')`: log = `focusin BUTTON#navToggle` / `focus(BUTTON#menuClose.premium-menu-close)` / `-> active=BUTTON#navToggle`; final activeElement = BUTTON#navToggle. Four subsequent Shift+Tab presses gave: 'Start a project' [BEHIND OVERLAY] → .navbar__brand [BEHIND OVERLAY] → .skip-link [BEHIND OVERLAY] → BODY. Calling `menuClose.focus()` a frame later does succeed, confirming the timing is the cause.",
+    "corroborators": [
+      "js-ui"
+    ]
+  },
+  {
+    "finder": "css-sections",
+    "file": "css/sections/a.css",
+    "line": 136,
+    "severity": "high",
+    "category": "reduced-motion",
+    "title": "Scroll-cue animation keeps running forever under prefers-reduced-motion",
+    "detail": "`.scroll-indicator__wheel { … animation: mk-scroll-cue var(--dur-slow) var(--ease-in-out) infinite alternate; }` is the only animation on the page with no reduced-motion stop. base.css's reduced-motion strategy is token redefinition (`--dur-slow: 0.01ms`) plus a specificity-0 net `*,*::before,*::after { animation-iteration-count: 1 }` (base.css:445-450). The `animation` shorthand here sets `animation-iteration-count: infinite` at specificity 0,1,0 in a LATER file, so it beats the universal net on specificity. Result: duration collapses to 1e-05s but the iteration count stays `infinite`, so the animation never ends — it just cycles thousands of times per frame. components.css:1122-1127 does it correctly for the marquee (`.marquee-content { animation-play-state: paused }`); a.css has no equivalent block.",
+    "failure": "A visitor with OS 'reduce motion' on loads the page. The mouse-wheel dot under the hero does not stop: its computed transform keeps flipping between translate(-50%,0.06px) and translate(-50%,6px) frame after frame, i.e. a permanently flickering 6-12px jump, and the page never reaches an idle frame (a running animation is scheduled forever, costing battery on a phone).",
+    "fix": "Add to a `@media (prefers-reduced-motion: reduce)` block at the end of a.css: `.scroll-indicator__wheel { animation-play-state: paused; }` — the same one-line treatment components.css:1124 already uses for `.marquee-content`. (Equivalently, split line 136 so the iteration count is not restated at class specificity.)",
+    "evidence": "Playwright with reducedMotion:'reduce' at 1280x800: getComputedStyle('.scroll-indicator__wheel') => animationName 'mk-scroll-cue', animationDuration '1e-05s', animationIterationCount 'infinite', animationPlayState 'running'; the Animation object's currentTime was 1283ms and still advancing. Sampling the computed transform every 120ms returned matrix(1,0,0,1,-1,0.0599944) / matrix(1,0,0,1,-1,6) alternating. `document.getAnimations().filter(a=>a.playState==='running')` returned exactly ['mk-scroll-cue'] — every other animation on the page (including the marquee) was correctly stopped.",
+    "corroborators": [
+      "css-sections"
+    ]
+  },
+  {
+    "finder": "js-motion-a",
+    "file": "js/motion.js",
+    "line": 167,
+    "severity": "high",
+    "category": "resilience",
+    "title": "4 s safety net only tests `visibility`, so clip-path-hidden and stagger-child content can never be rescued",
+    "detail": "The safety net gates every rescue on `isHidden()`:\n\n  112: function isHidden(el) {\n  113:     try { return window.getComputedStyle(el).visibility === 'hidden'; }\n  ...\n  166: each(qsa('[data-anim]'), function (el) {\n  167:     if (!isHidden(el)) return;\n\nBut the two signature effects do not hide with `visibility`. `mkCut` starts at `clipPath: cutFrom(t)` (a zero-area polygon, line 385) with `autoAlpha: 1` (line 400), and `mkMedia` does the same (lines 453–455). `initScrollReveals` then calls `tw.pause(0)` (line 865), which renders that from-state immediately, so the element ends up with computed `visibility: visible`, `opacity: 1` and a zero-area clip-path — invisible on screen, but `isHidden()` returns false and line 167 skips it. The same blind spot hits `data-anim=\"stagger\"`: `mkStagger` sets the container itself to `autoAlpha: 1` (line 483) and hides only `el.children` (lines 484–489), and those children carry no `[data-anim]`, so the `qsa('[data-anim]')` enumeration at line 166 never even visits them. Additionally the rescue at line 184 clears only `'transform,clipPath'` and never `webkitClipPath`, so on WebKit the inline `-webkit-clip-path` written at lines 399/454 would survive the rescue anyway. Net effect: the safety net covers only `up`/`fade`, which are exactly the cases that are already least likely to fail.",
+    "failure": "Load the page with gsap.min.js and ScrollTrigger.min.js served but SplitText.min.js (index.html:2110) blocked — the single-blocked-file case §1 lines 118–120 claims to survive. `HAS.SplitModern` is false (line 135), so `linesIn` returns `gsap.effects.mkCut(el, ...)` (line 501) for all 13 `data-anim=\"lines\"` headings (index.html:217, 334, 481, 520, 644, 815, 935, 1049, 1282, 1378, 1540, 1749, 1955). Every one of them is now a clip-path reveal. If any of those ScrollTriggers fails to fire (a refresh race around the 1.05 s preloader exit that calls ScrollTrigger.refresh() at line 684, a pin, a start position that never resolves), the heading sits at `visibility: visible; opacity: 1; clip-path: polygon(0% 0%, 0% 0%, -20% 100%, 0% 100%)` — blank — and the 4 s net at line 167 walks straight past it because getComputedStyle().visibility is 'visible'. Same for the two `data-anim=\"media\"` figures (index.html:365 the portrait, 465 the transformation visual) and for all 12 `data-anim=\"stagger\"` blocks (index.html:395, 528, 652, 824, 942, 1063, 1290, 1382, 1755, 1766, 1963, 2002), whose cards — the whole services grid, the work rail, the testimonials, the FAQ accordion and the footer grid — are hidden as unenumerated children.",
+    "fix": "Widen the test at line 167. Add next to isHidden (after line 115): `function isBlanked(el){ try { var cs = window.getComputedStyle(el); return cs.visibility === 'hidden' || (cs.clipPath && cs.clipPath !== 'none'); } catch (e) { return false; } }` and change line 167 to `if (!isBlanked(el)) return;`. Also change the clearProps on lines 171 and 184 from `'transform,clipPath'` to `'transform,clipPath,webkitClipPath'`, and in the rescue at line 184 add a pass over stagger children: `if (el.getAttribute('data-anim') === 'stagger') gsap.set(el.children, { autoAlpha: 1, y: 0, x: 0, clearProps: 'transform' });`.",
+    "evidence": "Read of lines 112–115 (`isHidden` tests only `visibility === 'hidden'`), 166–167 (`each(qsa('[data-anim]'), ...)` then `if (!isHidden(el)) return;`), 396–401 (`mkCut` from-vars = zero-area `clipPath`/`webkitClipPath` **plus** `autoAlpha: 1`), 451–456 (identical in `mkMedia`), 483–489 (`mkStagger` sets the container visible and hides `el.children`), 498–501 (`linesIn` falls back to `mkCut` whenever `HAS.SplitModern` is false), 865 (`tw.pause(0)` renders that from-state at boot), 171/184 (clearProps list omits `webkitClipPath`). Markup counts from `grep -n 'data-anim' index.html`: 13 `lines`, 2 `media`, 12 `stagger`.",
+    "corroborators": [
+      "js-motion-a"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1287,
+    "severity": "high",
+    "category": "a11y",
+    "title": "Marquee pause control is wired only inside start(), so a blocked CDN leaves an empty, dead WCAG 2.2.2 button",
+    "detail": "`marquee = module('marquee', initMarquee);` sits inside start(), behind the same GSAP guards (line 122 / 148) as everything else. The CSS-driven branch of initMarquee (lines 1202-1215) needs no GSAP at all — it only reads getComputedStyle and writes `c.style.animationPlayState`. The authored button at index.html:306 ships with an EMPTY body (`...aria-label=\"Pause the scrolling text\"></button>`) because paint() (line 1257) is what injects the play/pause glyph, so without motion.js it is an invisible 44x44 hit area that announces a promise it cannot keep. Meanwhile components.css:1050 `animation: mk-marquee var(--marquee-dur) linear infinite` keeps the strip moving forever.",
+    "failure": "A visitor with an ad blocker that blocks cdnjs reaches the promise strip (once finding #1 is fixed). The strip scrolls continuously with no way to stop it: the button renders no glyph, tabbing to it announces \"Pause the scrolling text, button\", and clicking or pressing Enter does nothing — verified, the animation stays running. WCAG 2.2.2 (Pause, Stop, Hide) fails for exactly the population the noscript block at index.html:70-82 was written to protect.",
+    "fix": "Hoist the marquee wiring above the plugin guard: move the initMarquee() call and its CSS-driven branch to just before line 122, leaving only the `gsap.to(contents, ...)` fallback at lines 1217-1222 behind a `typeof gsap !== 'undefined'` check (with the CSS animation present, which it is here, that branch is never taken).",
+    "evidence": "Live page with the CDN blocked: clicked [data-marquee-toggle] with force:true, then measured `getComputedStyle('.marquee-content').animationPlayState === \"running\"`, `el.style.animationPlayState === \"\"`, `btn.getAttribute('aria-pressed') === \"false\"`, `btn.innerHTML === \"\"`, `typeof window.MKMotion === \"undefined\"`.",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-signature",
+    "file": "js/signature.js",
+    "line": 503,
+    "severity": "high",
+    "category": "resilience",
+    "title": "settled is set unconditionally, so the safety net's final-state rescue is unreachable",
+    "detail": "run() ends with `unveil(); settled = true;` (lines 502-503) regardless of whether any branch actually finished. The net at 120-125 reads that flag:\n\n    window.setTimeout(function () {\n        module('safety net', function () {\n            if (!settled) module('net final state', showFinal);\n            unveil();\n        });\n    }, 4000);\n\nand its header (114-118) states its purpose: \"If run() threw halfway, the from-state is already painted and lifting the veil alone would not be enough, so the net lands the final state too.\" But every risky call inside run() is wrapped in `module()` (63-68), which catches the exception, warns, returns null, and lets run() carry on to line 503. The only statement in run() that can actually propagate a throw is line 461 `var mm = gsap.matchMedia();` — and at that point no from-state has been painted yet, so `showFinal` is not needed. The exact failure the net is written for — a builder that paints `opacity: 0` / a zero-area clip-path and then dies — always sets `settled = true` and is therefore never rescued.",
+    "failure": "Phone visitor (<900px, no reduced-motion request). `module('plain branch')` (489) runs `buildPlainReveal`, which paints every from-state first: line 360-370 sets the six word spans to `opacity: 0`, 372-381 sets `.signature__wipe` to the zero-area polygon from `cutFrom()`, 383-389 sets the mark to `scale(1.12)` and `grayscale(1) brightness(0.55)`. Only then, at line 402, does it call `ScrollTrigger.create({ start: 'clamp(top 80%)', ... })`. `clamp()` in a start string requires ScrollTrigger 3.12+, and this file explicitly supports older builds (the 3.13 feature-detect at 439-440 exists precisely to degrade on them). On such a build that create() call fails; `module('plain reveal', ...)` at 492 swallows it, run() reaches 502 and removes `.signature__veil` (so `visibility: hidden` is gone), then sets `settled = true` at 503. At 4 s the net sees `settled === true` and does nothing. The visitor is left with a section-height blank band forever: the heading is six spans at opacity 0 and the MK mark is clipped to a polygon with no interior. No scroll position recovers it, because there is no trigger and no timeline.",
+    "fix": "Make line 503 conditional on a branch having produced something. `buildScene` and `buildPlainReveal` already `return tl` (lines 343 and 410) and `module()` returns that value, so the returns just need to be kept: change line 480 to `if (module('pinned scene', buildScene)) settled = true;`, line 492 to `if (module('plain reveal', buildPlainReveal)) settled = true;`, set `settled = true` inside the reduce branch after `showFinal` and after the `!branched` fallback at 498, and delete the bare `settled = true;` at line 503. `unveil()` at 502 stays unconditional.",
+    "evidence": "Read lines 63-68 (module swallows and returns null), 114-125 (net and its stated contract), 355-411 (buildPlainReveal paints all from-states at 360-395 before ScrollTrigger.create at 402), 417-513 (run(): the only unguarded expression is `gsap.matchMedia()` at 461; everything else is inside `module()` or a try/catch'd `qs`/`qsa`). Both builders end with `return tl` (343, 410) and both return values are discarded at 480 and 492.",
+    "corroborators": [
+      "js-signature"
+    ]
+  },
+  {
+    "finder": "js-form",
+    "file": "js/form.js",
+    "line": 129,
+    "severity": "high",
+    "category": "correctness",
+    "title": "window.open(...,'noopener') always returns null, so the desktop path also navigates the page away",
+    "detail": "`var w = window.open(url, '_blank', 'noopener');` (line 128) followed by `if (!w) location.href = url;       /* popup blocked — go there directly */` (line 129). Per the HTML spec, when `noopener` is present in the features string `window.open` returns **null** even on complete success — that is the point of noopener. So `w` is null on every desktop submit and line 129 fires unconditionally, defeating the stated intent in the comment on lines 121-123 (\"On a desktop, open a new tab so the site stays where the visitor left it\").",
+    "failure": "Desktop visitor with no popup blocker completes all three steps and clicks \"Continue on WhatsApp\". A new tab opens on wa.me *and* the original tab also leaves the portfolio for wa.me. The portfolio page is destroyed; and because `form.hidden = true` (line 142) ran before the navigation, a bfcache restore via the browser Back button returns a page with the form hidden and the success panel showing, with no code path that ever un-hides the form.",
+    "fix": "Drop `noopener` from the features string so the return value is meaningful: line 128 becomes `var w = window.open(url, '_blank');` and line 129 becomes `if (!w) { location.href = url; } else if (w.opener) { w.opener = null; }`.",
+    "evidence": "Isolated Chromium check: `window.open('about:blank','_blank','noopener') === null` → **true**; `window.open('about:blank','_blank') === null` → **false**. In the live submit run, a single click produced both a `popup` event and a main-frame `framenavigated` to the same wa.me URL.",
+    "corroborators": [
+      "js-form"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 1072,
+    "severity": "high",
+    "category": "perf",
+    "title": "201 KB of below-the-fold project images load eagerly — two of eight cards are missing loading=\"lazy\"",
+    "detail": "The first two project cards omit the loading/decoding hints that the other six carry. index.html:1070-1072: `<img class=\"project-card__img\" src=\"assets/projects/sakhaa.jpg\" alt=\"...\" width=\"1100\" height=\"688\">` and index.html:1092-1094: `<img class=\"project-card__img\" src=\"assets/projects/slsmarts.jpg\" alt=\"...\" width=\"1100\" height=\"688\">` — no `loading` and no `decoding`. Cards 3-8 (index.html:1116, 1138, 1162, 1183, 1205, 1227) all end `width=\"1100\" height=\"688\" loading=\"lazy\" decoding=\"async\"`. sakhaa.jpg is 87,828 B and slsmarts.jpg is 113,235 B, and both sit 7,987 px down a 17,577 px page — roughly nine viewports below the fold.",
+    "failure": "Every first-time visitor on every device. Chromium's network log for a cold load at 1440x900 shows sakhaa.jpg (87,828 B) and slsmarts.jpg (113,235 B) fetched in the very first request burst, immediately after the eight stylesheets and *before* js/ui.js, js/form.js and js/motion.js. The other six rail images report naturalWidth 0 three seconds later — they were correctly deferred. So 201,063 B of images nobody will see for nine screens of scrolling compete for bandwidth and connections with the render-blocking CSS and the scripts that dismiss the preloader. On a 3G-class link that is roughly 1.3 s of extra contention on the critical path.",
+    "fix": "Append ` loading=\"lazy\" decoding=\"async\"` to index.html:1072 and index.html:1094, matching the six sibling cards.",
+    "evidence": "Playwright requestfinished log, cold load, 1440x900: order was index.html, 8 stylesheets, logo-gradient.png, assets/projects/sakhaa.jpg 87828, assets/projects/slsmarts.jpg 113235, then the local scripts. Post-load DOM probe: sakhaa/slsmarts naturalWidth 1100, sharikco/drmo/laft/dremora/rehal/londonra naturalWidth 0. Element top offset for all eight = 7987 px; document.scrollHeight = 17577 px.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "cross-contract",
+    "file": "index.html",
+    "line": 306,
+    "severity": "high",
+    "category": "resilience",
+    "title": "Marquee pause button renders empty and inert when GSAP is blocked, while the CSS marquee keeps running",
+    "detail": "index.html:306 ships `<button class=\"mk-marquee-pause\" type=\"button\" data-marquee-toggle aria-pressed=\"false\" aria-label=\"Pause the scrolling text\"></button>` — no text, no glyph, no inline SVG. The comment above it (index.html:302-305) claims \"the values here are the correct starting state if it never gets the chance\", but the button has no starting state to fall back on: js/motion.js:1188 initMarquee() is what paints the glyph (line 1257 `btn.innerHTML = …`) AND what attaches the only click listener (line 1262). initMarquee is called from start() (js/motion.js:1287), which js/motion.js:122 returns before when gsap is absent. Meanwhile components.css:1050 `animation: mk-marquee var(--marquee-dur) linear infinite` is pure CSS and runs regardless, and the <noscript> block that would have paused it and hidden the button (index.html:70-80) does not apply because scripting is on.",
+    "failure": "Any visitor with JS on and the CDN blocked. The promise strip scrolls forever with no way to stop it — a WCAG 2.2.2 failure — and the only control is a 44x44 empty circle sitting over the strip: it takes focus, announces \"Pause the scrolling text, not pressed\", and clicking it changes nothing. Verified: animation-play-state is \"running\" before and after a real click.",
+    "fix": "Put the pause glyph and label state in the markup instead of minting them in JS: give index.html:306 a static inline SVG (the two-bar pause glyph motion.js:1259 draws) as its child, and add a `<style>`-level fallback so the control is honest — or, minimally, move the marquee dismissal/wiring out of the gsap-gated start() so initMarquee (js/motion.js:1188) is called before the js/motion.js:122 bail-out.",
+    "evidence": "Playwright on the live page after 3s: `{\"html\":\"\",\"label\":\"Pause the scrolling text\",\"pressed\":\"false\",\"w\":44,\"h\":44}` — zero innerHTML at full touch-target size. animationName on .marquee-content = \"mk-marquee\"; animationPlayState before click = \"running\", after a real click = \"running\".",
+    "corroborators": [
+      "cross-contract",
+      "resilience"
+    ]
+  },
+  {
+    "finder": "runtime-desktop",
+    "file": "js/rails.js",
+    "line": 109,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "GSAP guard returns before syncReach(), leaving five dead tabindex=\"0\" stops on desktop when the CDN is blocked",
+    "detail": "js/rails.js:109-110:\n\n    if (typeof gsap === 'undefined' || !gsap || !gsap.core) return;\n    if (typeof ScrollTrigger === 'undefined' || !ScrollTrigger) return;\n\nThese sit above `boot()` (lines 311-319), which is the only caller of `syncReach()` (lines 127-136). `syncReach` is pure DOM work — it reads `track.scrollWidth - track.clientWidth` via `travelOf()` and adds or removes `tabindex=\"0\"` — and needs neither GSAP nor ScrollTrigger. The file's own comment at lines 118-124 states the contract it is failing to keep: \"At 900px the same element stops being a scroller, and a tab stop that scrolls nothing is just a dead stop in the tab order — so the attribute is taken off again whenever the element does not actually overflow.\" With the guards firing first, the attribute is never taken off.",
+    "failure": "A keyboard visitor on a desktop (1440x900) whose network blocks cdnjs hits five focus stops that do nothing at all. Measured: UL.grid--4.flick-rail (\"The numbers so far\"), DIV.grid--3.flick-rail (\"The stack\"), DIV.grid--3.flick-rail (\"Six kinds of site I build\"), OL.process__list.flick-rail (\"Four steps from brief to handover\") and DIV.grid--3.flick-rail (\"What clients said after launch\") — each with scrollWidth === clientWidth === 1304 and computed overflow-x \"visible\". The arrow keys, Home and End do nothing on them, and a screen reader announces a group label for a scroll region that is not a scroll region.",
+    "fix": "Run the DOM-only work before the GSAP guards. Move `module('sync reach', syncReach);` (and the syncReach function it calls) above line 109 — e.g. call `syncReach()` on DOMContentLoaded unconditionally, then keep lines 109-110 as guards only for `wire()` and the refresh hook.",
+    "evidence": "Playwright at 1440x900 with cdnjs blocked (window.gsap undefined): querying `[tabindex=\"0\"]` returned exactly those five elements, each reporting {scrollW:1304, clientW:1304, overflows:false, overflowX:\"visible\"}. A Tab sweep from the project dialog landed on `DIV.grid grid--3 flick-rail` as a real focus stop.",
+    "corroborators": [
+      "runtime-desktop",
+      "runtime-a11y",
+      "css-sections",
+      "js-rails",
+      "resilience"
+    ]
+  },
+  {
+    "finder": "runtime-mobile",
+    "file": "css/components.css",
+    "line": 643,
+    "severity": "medium",
+    "category": "touch",
+    "title": "Form inputs are 15px, below the 16px threshold that stops iOS Safari auto-zoom",
+    "detail": ".field__input { ... font-size: var(--fs-sm); ... } resolves to `clamp(0.9375rem, 0.894rem + 0.188vw, 1.0625rem)`, whose floor is 15px and which only reaches 16px at a ~901px viewport. The page ships `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">` (index.html:6) with no `maximum-scale`, so iOS Safari applies its auto-zoom whenever a focused form control is under 16px. base.css:28-31 states this was the exact regression being fixed (\"pushed body copy to 12.9px and triggered iOS input zoom\"), but the fields were left on --fs-sm.",
+    "failure": "On an iPhone, reach step 3 of the enquiry form and tap the Name field. Safari zooms the page in to enlarge the 15px text; it does not zoom back out on blur, so the rest of the form — Email, WhatsApp number, the Back / Continue on WhatsApp buttons — is now wider than the screen and has to be panned horizontally to finish. Measured computed font-size: 15px at 320 and 360, 15.04px at 390, 15.08px at 414, 15.75px at 768, 15.996px at 900. Every phone and every tablet in portrait is affected.",
+    "fix": "On line 643 raise the floor past the zoom threshold, e.g. `font-size: clamp(1rem, 0.894rem + 0.188vw, 1.0625rem);` — or add a `--fs-field` token pinned at 16px minimum and use it here and on `.option__card` (line 721).",
+    "evidence": "getComputedStyle('#f-name').fontSize across viewports: 320->15px, 360->15px, 390->15.0372px, 414->15.0823px, 768->15.7478px, 900->15.996px, 1024->16.2291px, 1280->16.7104px. Viewport meta confirmed at index.html:6 with no maximum-scale.",
+    "corroborators": [
+      "runtime-mobile"
+    ]
+  },
+  {
+    "finder": "runtime-mobile",
+    "file": "css/components.css",
+    "line": 759,
+    "severity": "medium",
+    "category": "responsive",
+    "title": "Form step indicator overflows the contact card at 320px",
+    "detail": ".form-progress { display: flex; align-items: center; gap: var(--space-sm); ... } is a nowrap flex row (no `flex-wrap`), and its `.progress-step` children keep the default `min-width: auto`, so they cannot compress below their text. The three steps plus two 12px gaps need 273px; at 320px the form card gives them 238px.",
+    "failure": "On a 320px-wide phone (iPhone SE / Galaxy Fold cover screen), scroll to the enquiry form. The row overflows its box by 35px: step 3 renders from x=225.2 to x=313.8 while `#contactForm.card` ends at x=300 and the container's inner edge is 300. The word \"Contact\" and its numbered circle sit 13.8px outside the card's rounded border, on the bare section background, 6.2px from the screen edge — the step marker looks detached from the form it belongs to. At 360px and above the row fits (scrollWidth == clientWidth) and the break disappears, so it is specific to the narrowest phones.",
+    "fix": "Add `flex-wrap: wrap;` to the `.form-progress` rule (beside line 759) so the third step drops to a second line instead of escaping the card; the existing `gap: var(--space-sm)` already supplies the row gap.",
+    "evidence": "Runtime at 320: {\"progBox\":{l:41,r:279,w:238},\"scrollW\":273,\"clientW\":238,\"overflowBy\":35,\"steps\":[...{n:\"3Contact\",l:225.2,r:313.8}],\"cardRight\":300,\"pastCard\":13.8}. At 360/375/390/414 overflowBy is 0 and pastCard is negative. Visible in scratchpad/shots/form1-320.png, where \"3 Contact\" crosses the card border.",
+    "corroborators": [
+      "runtime-mobile"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/components.css",
+    "line": 875,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "Mandatory scroll snap leaves every focused \"Visit the site\" link 81% off-screen on a phone",
+    "detail": "`.rail, .mk-rail { ... scroll-snap-type: x mandatory; }` (line 875) with `.rail__item { scroll-snap-align: start; }` (line 892). Below 900px the rail is a live scroller whose only resting positions are card starts (0, 328, 656, 984 …). When focus moves to a control near the right edge of the next card, the browser computes a small scroll to reveal it and mandatory snapping immediately pulls the container back to the nearest snap point — which is the one it started from.",
+    "failure": "At 390x844, tab through the Work section. After \"Project brief: Sakhaa Program\", Tab lands on \"Visit the site: SL Smarts\" at x=369 with width 110 on a 390px screen: only 21px (19%) of the link and none of its focus ring are on screen, and the rail's scrollLeft does not change. The same happens for Sharik, Dr Mohamed Osama and the remaining cards. Seven of the eight project links are focused essentially outside the viewport — WCAG 2.4.7 / 2.4.11.",
+    "fix": "Change css/components.css:875 from `scroll-snap-type: x mandatory;` to `scroll-snap-type: x proximity;` so the browser may rest between snap points when bringing a focused control into view.",
+    "evidence": "Runtime at 390x844, real Tab presses with a 900ms settle: {\"Visit the site: SL Smarts\", x:369, w:110, visW:21, pctVisible:19, railScrollLeft:0, snap:\"x mandatory\"} then {\"Project brief: SL Smarts\", x:167, visW:107, pctVisible:100, railScrollLeft:328}; identical pattern for Sharik (x:369, 19%, scrollLeft 328→656) and Dr Mohamed Osama (x:369, 19%, scrollLeft 656→984).",
+    "corroborators": [
+      "runtime-a11y"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/components.css",
+    "line": 596,
+    "severity": "medium",
+    "category": "resilience",
+    "title": "With JavaScript off, all seven FAQ answers collapse to zero height and cannot be opened",
+    "detail": "`.faq-answer { display: grid; grid-template-rows: 0fr; }` (line 596) with `.faq-answer-content { overflow: hidden; }` (line 605). The only rule that opens a panel is `.faq-item.is-open .faq-answer { grid-template-rows: 1fr; }` (line 600), and `.is-open` is written exclusively by js/ui.js:349. The `<noscript>` block at index.html:68-82 was written to cover the preloader and the marquee but says nothing about the accordion.",
+    "failure": "A visitor with scripting disabled (or with js/ui.js blocked) reaches the FAQ and sees seven clickable-looking headings — \"What is the 7-day money-back window?\", \"What does the 180-day support cover?\", \"How do I pay?\" — and pressing any of them does nothing, because `.faq-question` is `type=\"button\"` with no handler. Every answer, including the whole payment-methods list and both guarantee terms, is rendered at height 0 and unreadable.",
+    "fix": "Add `.faq-answer{grid-template-rows:1fr}` to the `<noscript>` style block at index.html:68-82 (it is declared after the stylesheets, so it wins on source order with no importance override, exactly as the two rules already there do).",
+    "evidence": "Runtime in a Playwright context with `javaScriptEnabled:false`: `.faq-answer .faq-answer-content` first() `isVisible() === false`; `.faq-answer` first() boundingBox = {\"x\":268.94,\"y\":15511.59,\"width\":902.13,\"height\":0}. In the same run the preloader correctly reported `isVisible() === false` and the marquee item did not move over 1.5s, so the noscript block itself is being applied.",
+    "corroborators": [
+      "runtime-a11y",
+      "resilience"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/tokens.css",
+    "line": 71,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "Control borders measure 1.16–1.60:1 against their backgrounds, far below the 3:1 required to perceive the control",
+    "detail": "`--rule: var(--white-a08);` (line 71) = rgba(255,255,255,.08) and `--rule-strong: var(--white-a18);` (line 73) = rgba(255,255,255,.18). These are the only boundary on several controls whose background is transparent, so nothing else marks where the control is. `.pill-filter, .filter-btn { border: var(--border); background-color: transparent; }` (css/components.css:501, 503); `.btn--outline { background-color: transparent; border-color: var(--rule-strong); }` (css/components.css:99-100); `.field__input { border: var(--border); background-color: var(--surface-2); }` (css/components.css:640-642) sitting inside a `--surface-4` card. WCAG 1.4.11 requires 3:1 for the visual boundary needed to identify a component.",
+    "failure": "On a laptop screen at typical brightness, or for anyone with reduced contrast sensitivity, the five unselected category filters above the project rail read as plain floating uppercase words rather than buttons — only the violet-filled \"All\" pill looks pressable, so the filter row does not communicate that it is a control group. Likewise \"See the work\", \"Email info@mk-wp.site\" and \"Message on WhatsApp\" (`.btn--outline`) show as bare text, and the Name / Email / WhatsApp text fields in step 3 have no perceivable edge at all.",
+    "fix": "Raise the two tokens at css/tokens.css:71 and 73 to at least rgba(255,255,255,.34) — e.g. `--rule: rgba(var(--white-rgb), .34);` and `--rule-strong: rgba(var(--white-rgb), .45);` — which puts the hairline at roughly 3.1:1 and 3.9:1 on --surface-2 while staying a hairline.",
+    "evidence": "Computed at runtime by compositing each border colour over its real painted background stack and applying the WCAG relative-luminance formula: `.pill-filter:not(.is-active)` border #252332 on #121020 = 1.22:1; `.btn--outline` border #333237 on #06050B = 1.60:1; `.field__input` border #252332 on #121020 = 1.22:1 (and its own fill #121020 against the enclosing card #221D3D is 1.16:1); `.menu-trigger` #1A191F on #06050B = 1.16:1; `.footer__social` 1.16:1; `.dialog__close` 1.25:1. All measured border widths are 1px.",
+    "corroborators": [
+      "runtime-a11y"
+    ]
+  },
+  {
+    "finder": "html-structure",
+    "file": "index.html",
+    "line": 87,
+    "severity": "medium",
+    "category": "seo",
+    "title": "JSON-LD declares ProfessionalService but omits address, a required LocalBusiness property",
+    "detail": "The ld+json block at lines 84-99 sets `\"@type\": \"ProfessionalService\"` (line 87). ProfessionalService is a subtype of LocalBusiness, and Google's LocalBusiness structured-data spec lists `@type`, `name` and `address` as required. The block supplies name, url, image, email, telephone, founder, foundingDate, description, areaServed and sameAs — every optional signal for a local-business rich result — but no `address` and no `PostalAddress` anywhere. `\"areaServed\": \"Worldwide\"` (line 96) also contradicts the local-business framing: nothing on the visible page names a premises, only \"clients across the Arab world, Europe and America\" (lines 224, 346, 1908-1910).",
+    "failure": "Submitting https://profile.mk-wp.site/ to Google's Rich Results Test reports the item under \"Local businesses\" as invalid with \"Missing field 'address'\", so the entity is ineligible for the local-business rich result and for a knowledge panel keyed off it. All the other correctly-supplied properties (telephone, email, sameAs, foundingDate) are wasted on an item Google will not index as a business.",
+    "fix": "Change line 87 to `\"@type\": \"Organization\",` — Organization has no required address and matches the worldwide-remote positioning the page actually makes — or, if a local listing is wanted, keep ProfessionalService and add an `\"address\": { \"@type\": \"PostalAddress\", \"addressLocality\": \"...\", \"addressCountry\": \"EG\" }` entry after line 92.",
+    "evidence": "Read lines 84-99 in full; the object has exactly ten keys and none is `address`, `location` or `PostalAddress`. Cross-checked every claim it does make against the page: telephone +201099576398 matches the wa.me links (177, 1706, 1714, 1965, 2064, 2095); email info@mk-wp.site matches lines 175, 1713, 2059; foundingDate 2020 matches the h2 at 481 and the timeline at 1386; url matches the canonical at line 13; the YouTube sameAs matches line 2071.",
+    "corroborators": [
+      "html-structure",
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "css-components",
+    "file": "css/components.css",
+    "line": 115,
+    "severity": "medium",
+    "category": "contrast",
+    "title": "violet-400 text on the --surface-4 card step measures 4.05:1, below the 4.5:1 minimum",
+    "detail": "`.btn--quiet { ... color: var(--violet-400); }` (line 115) is the skin on the project cards' two real actions — `<a class=\"btn btn--quiet project-link\">Visit the site</a>` and `<button class=\"btn btn--quiet project-details-btn\">Project brief</button>` (index.html lines 1079-1081 etc.). Those sit inside `.card`, whose background is `var(--surface-4)` (line 246). `--violet-400` is #A855F7 and `--surface-4` is #221D3D: the pair computes to 4.05:1. At `--fs-h5` (17px) / `--fw-semibold` this is normal text, not large text (large needs 18.66px bold or 24px), so the threshold is 4.5:1.\n\nThe same pairing fails twice more in this file on the same surface: `.field__required { color: var(--violet-400); }` (line 633, the `*` marking required fields, 14px/600) and `.progress-step.is-active { color: var(--violet-400); }` (line 779, the current-step label in the multi-step contact form, 14px/600). The token comment at tokens.css line 32 calls --violet-400 \"accent text, eyebrows, active state\" without noting it only clears 4.5:1 on the darker steps (5.00:1 on --surface-1, 4.75:1 on --surface-2).",
+    "failure": "A low-vision user on the Selected Work section cannot reliably read \"Visit the site\" / \"Project brief\" — the only two affordances on each project card — against the raised card surface. Same on the contact form, where the required-field asterisk and the \"which step am I on\" indicator both drop to 4.05:1. WCAG 1.4.3 (Contrast Minimum) failure.",
+    "fix": "Either raise the ink or lower the ground for the on-card case. Minimal ink change at line 115: `color: var(--violet-100);` (#E9D5FF on #221D3D = 12.6:1) — the token already exists and is described as \"hover text on violet\". Apply the same substitution at lines 633 and 779. Alternatively keep --violet-400 and set `.card { background-color: var(--surface-2); }`, but that collapses the depth ramp.",
+    "evidence": "Computed on the live page and scored with the WCAG relative-luminance formula against each element's first opaque ancestor background: `.btn--quiet 4.05 17px 600 | rgb(168, 85, 247) on rgb(34, 29, 61) | \"Visit the site\"`; `.field__required 4.05 14px 600 | rgb(168, 85, 247) on rgb(34, 29, 61) | \"*\"`; `.progress-step.is-active 4.05 14px 600 | rgb(168, 85, 247) on rgb(34, 29, 61) | \"1 Project\"`. The same colour on --surface-1 scored 5.00 and on --surface-2 scored 4.75.",
+    "corroborators": [
+      "css-components"
+    ]
+  },
+  {
+    "finder": "css-components",
+    "file": "css/components.css",
+    "line": 988,
+    "severity": "medium",
+    "category": "responsive",
+    "title": "Absolutely-positioned dialog close button overlaps the dialog title at narrow widths",
+    "detail": "```\n.dialog__close {\n  position: absolute;        /* line 988 */\n  inset-block-start: var(--space-md);\n  inset-inline-end: var(--space-md);\n  ...\n  inline-size: var(--size-touch);   /* 44px */\n  block-size: var(--size-touch);\n}\n```\n\nIt is taken out of flow over `.dialog__panel`, whose padding is `var(--card-pad-block) var(--card-pad-inline)` (line 980) — 24px/20px at phone width. Nothing reserves the 44px + 16px the button occupies at the panel's top-inline-end corner, and `.dialog__title` (index.html line 1259) is a flex child stretched to the panel's full content width, so its first line runs straight under the button.",
+    "failure": "On a 320px-wide viewport (iPhone SE 1st gen, Galaxy Fold cover screen), open any project card's \"Project brief\". For the longest title in the page, \"London Royal Academy\", the first text line measures x=37..273 while the close button occupies x=243..287, y=290..334 — a 30px horizontal collision on the same rows. The screenshot shows the circular close glyph drawn through the \"l\" of \"Royal\": the title is disfigured and the top-right quadrant of the 44px tap target is covered by title glyphs. At 375px the current longest title clears it by 25px, so any future title one word longer reintroduces the collision there too.",
+    "fix": "Reserve the gutter on the panel rather than hoping titles stay short. Line 980, change `padding: var(--card-pad-block) var(--card-pad-inline);` to `padding: var(--card-pad-block) var(--card-pad-inline); padding-inline-end: calc(var(--card-pad-inline) + var(--size-touch) + var(--space-md));`",
+    "evidence": "Playwright at 320x800, clicking the real .project-details-btn for London Royal Academy: title line rects `[{x:37,y:296,r:273,b:334},{x:37,y:332,r:197,b:370}]`, close button `{x:243,y:290,r:287,b:334}` — line 1 and the button share rows 296-334 and columns 243-273. Confirmed visually in the captured screenshot.",
+    "corroborators": [
+      "css-components"
+    ]
+  },
+  {
+    "finder": "css-foundation",
+    "file": "css/base.css",
+    "line": 361,
+    "severity": "medium",
+    "category": "a11y",
+    "title": ".skip-link shares --z-preloader with the full-screen preloader and loses the tie on source order",
+    "detail": ".skip-link is declared `position: absolute; ... z-index: var(--z-preloader);` (base.css:357-371, z-index at line 361). `--z-preloader: 1000` (tokens.css:281) is the top rung of the ladder and is also what `.mk-preloader` uses: `position: fixed; inset: 0; z-index: var(--z-preloader); ... background-color: var(--ink);` (components.css:1356-1367, z-index at 1359). Both resolve to 1000, both create stacking contexts, and the preloader is later in the DOM (index.html:108 vs the skip link at index.html:101), so the opaque full-screen overlay always paints on top. The skip link is the first tabbable element in <body> by design, so it is the one control guaranteed to be reached during the preloader window.",
+    "failure": "Keyboard user loads the page and presses Tab immediately. `document.activeElement` is `.skip-link`, its transform has already resolved to `matrix(1,0,0,1,0,0)` (revealed), yet `document.elementFromPoint()` at the link's own centre returns `mk-preloader` — the focused control is painted behind an opaque overlay and is not clickable. WCAG 2.4.7 Focus Visible fails for that window. It is permanent, not momentary, whenever the GSAP CDN is blocked: js/motion.js:122 takes the `typeof gsap === 'undefined'` branch, which calls showAll() and returns without ever dismissing the preloader, so the overlay — and the buried skip link — stay up for the life of the page.",
+    "fix": "tokens.css has no rung above `--z-preloader`. Minimal change: in base.css:361 replace `z-index: var(--z-preloader);` with `z-index: calc(var(--z-preloader) + 1);`, or add a `--z-skip: 1100;` rung to the ladder in tokens.css (after line 281) and reference it here.",
+    "evidence": "Playwright, 1440x900, one Tab press after load: `{active:'skip-link|A', slTransform:'matrix(1, 0, 0, 1, 0, 0)', slZ:'1000', plZ:'1000', plDisplay:'flex', topAtSkip:'mk-preloader'}`. Full-viewport screenshot at that moment shows only the preloader's \"0\" and bar on solid --ink.",
+    "corroborators": [
+      "css-foundation"
+    ]
+  },
+  {
+    "finder": "css-foundation",
+    "file": "css/tokens.css",
+    "line": 32,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "--violet-400, documented as the accent-text colour, is 4.05:1 on the --surface-4 card step",
+    "detail": "tokens.css:32 declares `--violet-400: #A855F7;` with the comment `/* accent text, eyebrows, active state */`, and tokens.css:27 declares `--surface-4: #221D3D;` with `/* raised: only cards sit on this step */`. The two are used together: `.btn--quiet { color: var(--violet-400); }` (components.css:115) renders on a `--surface-4` card. Measured contrast of #A855F7 on #221D3D is 4.05:1. The text is 17px at weight 600, which is not WCAG \"large text\" (that needs 18.66px bold or 24px), so the applicable threshold is 4.5:1. Every other documented pairing in the file carries a contrast note (e.g. --text-on-violet at line 54); this one does not, and it is the only palette pairing on the page that misses AA.",
+    "failure": "Low-vision visitor, or anyone on a phone in daylight, scrolls to the Work section. The seven \"Visit the site\" links on the project cards render #A855F7 on #221D3D at 4.05:1 — below AA for their size. They are the only affordance on the card that leads to the live project, so the least legible text on the card is the one carrying the action.",
+    "fix": "Add a card-safe accent rung to tokens.css next to line 32, e.g. `--violet-350: #C084FC;` (7.0:1 on --surface-4), and point components.css:115 (`.btn--quiet { color: ... }`) at it. Leave --violet-400 for use on the --ink/--surface-1 steps where it measures 5.00:1.",
+    "evidence": "Runtime audit over every `a:not(.link-plain)` computing the composited foreground against the nearest opaque ancestor background: 7 hits, all `btn btn--quiet project-link`, `color: rgb(168, 85, 247)` on `rgb(34,29,61)`, ratio 4.05, fontSize 17px, fontWeight 600. No other anchor on the page fell below 4.5:1.",
+    "corroborators": [
+      "css-foundation"
+    ]
+  },
+  {
+    "finder": "js-ui",
+    "file": "js/ui.js",
+    "line": 104,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "Menu close() clears body.style.overflow unconditionally, unlocking scroll under an open dialog",
+    "detail": "Both overlays own the same single inline property with no reference count. The dialog locks with `document.body.style.overflow = 'hidden';` (line 380) and the menu's close() unconditionally releases with `document.body.style.overflow = ''; document.body.style.paddingRight = '';` (lines 104-105). close() never checks whether #projectDialog is still open, and open() (line 92) never records a previous value.",
+    "failure": "Reproduced: open a project's 'Project brief' dialog (scroll locked), Tab out of the un-trapped dialog (see the dialog focus-trap finding) to reach the 'Menu' button, press Enter, then dismiss the menu with its own close button (not Escape). The menu closes, the project dialog is still open, and body overflow is back to `auto` — the mouse wheel now scrolls the whole page behind the modal, dragging the content out from under the fixed dialog.",
+    "fix": "Guard the release at lines 104-106 on no other overlay being open, e.g. `var dlg = document.getElementById('projectDialog'); if (!dlg || !dlg.classList.contains('is-open')) { document.body.style.overflow = ''; document.body.style.paddingRight = ''; }` — or better, replace both ad-hoc locks with a shared counter used by initMenu and initProjectDialog.",
+    "evidence": "Playwright, 1440×900: after `.project-details-btn[0].click()` → body `{inline:'hidden', computed:'hidden'}`; after `navToggle.click()` → both open, body still hidden; after `menuClose.click()` → `{menu:false, dlg:true}` and body `{inline:'', computed:'auto'}`; `mouse.wheel(0,700)` then moved the page from 9000 to 9700 with the dialog still open.",
+    "corroborators": [
+      "js-ui"
+    ]
+  },
+  {
+    "finder": "js-ui",
+    "file": "css/components.css",
+    "line": 594,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "Collapsed FAQ answers stay in the accessibility tree while aria-expanded says false",
+    "detail": ".faq-answer collapses purely geometrically — `.faq-answer { display: grid; grid-template-rows: 0fr; transition: grid-template-rows … }` (594-598) with `.faq-answer-content { overflow: hidden }` (604) — so a closed panel is 0px tall but still `visibility: visible`, with no `hidden` attribute and no `inert`. js/ui.js:337 writes `q.setAttribute('aria-expanded', 'false')` on every question and never hides the panel it points aria-controls at (line 338).",
+    "failure": "A screen-reader user (NVDA/VoiceOver) browsing the FAQ section with the virtual cursor reads all seven answers end to end — roughly 1,800 characters of body text — even though all seven buttons report aria-expanded=\"false\". The accordion offers no summarisation at all to AT, and the expanded/collapsed state is contradicted by what is actually announced.",
+    "fix": "Add `visibility: hidden;` to `.faq-answer` (line 594, it is transitionable alongside grid-template-rows) and `visibility: visible;` to `.faq-item.is-open .faq-answer` (line 600). That removes collapsed content from the accessibility tree and the tab order while keeping the grid-row transition.",
+    "evidence": "Playwright on the live page, collapsed answer #2: `{h: 0, vis: 'visible', disp: 'grid', hidden: false, textLen: 263}` — zero height, fully visible to AT, 263 characters of text. All seven questions report `exp=false ctl=faq-answer-N`.",
+    "corroborators": [
+      "js-ui",
+      "cross-contract"
+    ]
+  },
+  {
+    "finder": "js-ui",
+    "file": "js/ui.js",
+    "line": 170,
+    "severity": "medium",
+    "category": "dead-code",
+    "title": "The 260ms menu-close defer never runs — wasOpen is always false by the time it is read",
+    "detail": "initMenu registers a per-link close at line 115: `links.forEach(function (l) { l.addEventListener('click', close); });`. That listener is on the link itself (target phase) and is registered during initMenu, before the delegated handler at line 159 which listens on `document` (bubble phase). So by the time line 170 runs — `var wasOpen = menu && menu.isOpen && menu.isOpen();` — close() has already removed `.is-open` and isOpen() returns false. Line 173's `setTimeout(function () { goTo(target); }, wasOpen ? 260 : 0);` therefore always takes the 0 branch, and the comment above it ('Let the panel start fading before moving, or the scroll happens behind it') describes behaviour that never occurs. Line 171's `if (wasOpen) menu.close();` is likewise never reached.",
+    "failure": "On any viewport, open the menu and click '08 Contact'. The scroll starts immediately while the panel is still fading out (transition --dur-fast), so the visitor watches the page race past underneath a semi-transparent panel instead of the intended fade-then-scroll.",
+    "fix": "Read the state before the target-phase listener can clear it — capture it at the top of the delegated handler via the DOM rather than the module API: at line 170 use `var wasOpen = a.classList.contains('premium-menu-link') || (menu && menu.isOpen && menu.isOpen());` — or simply drop the per-link listener at line 115 and let line 171 do the closing.",
+    "evidence": "Patched `document.documentElement.scrollTo` to timestamp calls, then clicked `.premium-menu-link[href=\"#contact\"]` with the menu open: `[[\"scrollTo\",2]]` (2ms after the click) — identical to clicking `.navbar-contact-link` with the menu closed: `[[\"scrollTo\",1]]`. Sampling every 60ms showed the page at scroll 774 while #premiumMenu opacity was still 0.088.",
+    "corroborators": [
+      "js-ui"
+    ]
+  },
+  {
+    "finder": "js-ui",
+    "file": "js/ui.js",
+    "line": 380,
+    "severity": "medium",
+    "category": "layout-shift",
+    "title": "Dialog locks scroll without the scrollbar compensation the menu applies",
+    "detail": "The dialog's open() locks with a bare `document.body.style.overflow = 'hidden';` (line 380). The menu's open() deliberately does not: lines 90-93 read `/* Compensate for the scrollbar so the page does not jump on lock. */ var gap = window.innerWidth - document.documentElement.clientWidth; document.body.style.overflow = 'hidden'; if (gap > 0) document.body.style.paddingRight = gap + 'px';`. The dialog omits both the measurement and the padding, and its close() (line 386) only clears overflow.",
+    "failure": "A desktop visitor on a browser with classic (non-overlay) scrollbars — Chrome/Edge on Windows, Firefox on most platforms — clicks 'Project brief'. Removing the scrollbar widens the viewport by ~15px, so the entire page under the 82%-opaque backdrop, and the fixed .navbar and #scroll-progress on top of it, jump sideways by 15px as the modal appears, and jump back when it closes. Repeats on every open/close.",
+    "fix": "Mirror lines 91-93 in the dialog's open(): measure `var gap = window.innerWidth - document.documentElement.clientWidth;` before line 380 and `if (gap > 0) document.body.style.paddingRight = gap + 'px';` after it, then add `document.body.style.paddingRight = '';` alongside line 386.",
+    "evidence": "Direct comparison of the two open() bodies in js/ui.js: lines 90-93 (menu) measure and compensate; lines 379-381 (dialog) do not, and close() at 385-386 clears only `overflow`. The menu's own inline comment documents that the jump is real. Not reproducible in this sandbox because headless Chromium uses overlay scrollbars (`window.innerWidth - document.documentElement.clientWidth` measured 0 with and without --disable-features=OverlayScrollbar).",
+    "corroborators": [
+      "js-ui"
+    ]
+  },
+  {
+    "finder": "css-sections",
+    "file": "css/sections/d.css",
+    "line": 82,
+    "severity": "medium",
+    "category": "stacking-context",
+    "title": ".guarantee__glow never paints — its section has no stacking context",
+    "detail": "`.guarantee__glow { position:absolute; … background-image: radial-gradient(circle, var(--violet-600) 0%, transparent 65%); filter: blur(var(--blur-glow)); opacity: 0.18; }` lives inside `<div class=\"layer-behind\">` (index.html:1933) whose layout.css rule is `position:absolute; inset:0; z-index: var(--z-below) /* -1 */`. Its section is `<section class=\"section section--s1\" id=\"guarantee\">`: computed `position: relative`, `z-index: auto`, `isolation: auto`, no transform/filter/opacity/contain — so the section does NOT establish a stacking context. The z-index:-1 layer therefore resolves against the root and is painted before the section's own opaque `--surface-1` background, which covers it completely. a.css:69-74 documents this exact trap and fixes it for `.hero` with `isolation: isolate`; a.css:160-162 does the same for `.about__media`. Neither the guarantee section nor the footer got the same treatment.",
+    "failure": "On any browser, at any width, scroll to section 15 (Guarantee). The violet wash behind the card is simply not there — the section renders as flat --surface-1. The whole 12-line rule at d.css:82-93 is dead code.",
+    "fix": "Give the section a stacking context. Minimal: add `isolation: isolate;` to a rule for the guarantee section (the markup at index.html:1931 carries no class hook, so either add one, or promote the single line `isolation: isolate;` onto `.section` in layout.css:55-58, which is what `.hero` and `.about__media` each do by hand).",
+    "evidence": "Confirmed two ways. (1) Minimal repro (scratchpad/repro.html, screenshot repro.png): two identical `.section{position:relative;background:#0B0912}` blocks each containing `.layer-behind{position:absolute;inset:0;z-index:-1}` with a violet glow — the one without `isolation:isolate` renders nothing, the one with it renders the glow. (2) On the live page at 1000x700 (preloader hidden so the compositor updates): setting `.guarantee__glow` to `position:absolute;inset:0;background:#00ff00;opacity:1;filter:none` produced NO lime pixels (scratchpad/LIME2_noiso.png); after `document.querySelector('#guarantee').style.isolation='isolate'` the lime layer appeared (scratchpad/LIME2_iso.png). Computed style dump of #guarantee: {position:'relative', zIndex:'auto', isolation:'auto', transform:'none', filter:'none', backdropFilter:'none', willChange:'auto', contain:'none', perspective:'none', opacity:'1', mixBlendMode:'normal', background:'rgb(11, 9, 18)'}.",
+    "corroborators": [
+      "css-sections"
+    ]
+  },
+  {
+    "finder": "css-sections",
+    "file": "css/sections/d.css",
+    "line": 113,
+    "severity": "medium",
+    "category": "stacking-context",
+    "title": ".site-footer__glow never paints — overflow:hidden is not a stacking context",
+    "detail": "`.site-footer__glow { position:absolute; inset-block-start: calc(var(--space-4xl) * -1); … opacity: 0.16; }` sits in the footer's `<div class=\"layer-behind\">` (index.html:1996) at `z-index: -1`. The comment at d.css:106-107 says \"overflow clips the wash below\" and `.site-footer` at line 108-111 sets `overflow: hidden` — but `overflow: hidden` does not create a stacking context. The footer computes `position: relative; z-index: auto; isolation: auto`, so the negative layer escapes to the root and paints under the footer's own opaque `--ink` background.",
+    "failure": "Scroll to the footer on any browser/width. The violet wash that is supposed to bleed down from above the top rule is absent; the footer is flat --ink. d.css:113-123 is dead code.",
+    "fix": "Add `isolation: isolate;` to the `.site-footer` block at d.css:108-111 (one line, alongside the existing `overflow: hidden`).",
+    "evidence": "Live page at 1000x700 with the preloader hidden: setting `.site-footer__glow` to `position:absolute;inset:0;background:#00ff00;opacity:1;filter:none` rendered nothing (scratchpad/F_noiso.png); after `document.querySelector('#footer').style.isolation='isolate'` the lime block appeared over the footer brand column (scratchpad/F_iso.png). Computed style of #footer: {position:'relative', zIndex:'auto', isolation:'auto', overflow:'hidden', transform:'none', filter:'none', opacity:'1', background:'rgb(6, 5, 11)'}. Same mechanism proved in the isolated repro (scratchpad/repro.png).",
+    "corroborators": [
+      "css-sections"
+    ]
+  },
+  {
+    "finder": "css-sections",
+    "file": "css/sections/a.css",
+    "line": 66,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "svh/vh fallback pair does not work through var() — hero loses its min-height entirely",
+    "detail": "Lines 65-66 read `min-block-size: var(--hero-min-h-fallback);` then `min-block-size: var(--hero-min-h);` (100vh then 100svh). The two-declaration fallback only works when the second declaration is invalid AT PARSE TIME. A `var()` reference always parses, so the first declaration is discarded immediately; the substitution of `100svh` is then invalid AT COMPUTED-VALUE TIME, and per CSS Variables §3 such a property computes to its INITIAL value — `min-block-size: auto` — not to the 100vh declared above it. The comment at c.css:400-403 (\"svh first fails on older engines, so the vh fallback is declared ahead of it\") states an intent this pattern does not deliver.",
+    "failure": "On any engine without `svh` support (iOS Safari < 15.4, Chrome < 108, Firefox < 101 — i.e. any iPhone still on iOS 15.3 or older), `.hero` gets `min-block-size: auto`. The hero no longer fills the viewport: it collapses to the height of the title + lede + buttons, the '02 PROMISE STRIP' section is pulled up into the first screen, and `.scroll-indicator` (absolutely positioned at `inset-block-end: var(--space-lg)`) lands directly under the buttons instead of at the foot of the screen.",
+    "fix": "Delete line 66 and add the svh value behind a feature query after the `.hero` block: `@supports (height: 100svh) { .hero { min-block-size: var(--hero-min-h); } }` — keeping line 65 as the unconditional value. (Or move the branch into tokens.css so `--hero-min-h` itself resolves to 100vh when svh is unsupported.)",
+    "evidence": "Verified in Chromium: a page with `:root{--ok:300px;--bad:100zzz} .a{min-height:var(--ok);min-height:var(--bad)} .b{min-height:300px;min-height:100zzz}` computes `.a` min-height = '0px' with a rendered height of 18px, while the literal-value pair `.b` correctly keeps min-height '300px' / height 300. The var() form drops to the initial value; the literal form falls back.",
+    "corroborators": [
+      "css-sections"
+    ]
+  },
+  {
+    "finder": "css-sections",
+    "file": "css/sections/c.css",
+    "line": 408,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "Same broken svh fallback on the pinned signature stage",
+    "detail": "Inside `@media (min-width: 900px)`, `.signature` declares `min-block-size: var(--hero-min-h-fallback);` (line 407) then `min-block-size: var(--hero-min-h);` (line 408). Identical defect to a.css:66 — line 407 is discarded at parse time, and on an engine that does not understand `svh` line 408 is invalid at computed-value time, so `min-block-size` computes to `auto`, not to 100vh. This one is worse than the hero's, because the comment on lines 400-403 explains the section must be \"Exactly one viewport tall, which is what a pinned scene needs\", and js/signature.js pins this element with `start:'top top', end:'+=140%'` (js/signature.js:263-271).",
+    "failure": "On iOS 15.3 or any pre-svh engine at >=900px, `.signature` shrinks to the height of the sentence + logo (a few hundred px). ScrollTrigger then pins a short section at `top top`: the sections above and below it stay visible on screen for the whole pin, and the scene's `end: '+=140%'` is computed off a much smaller element, so the entire assemble/hold/disperse/build sequence is compressed into a fraction of the scroll distance it was designed for.",
+    "fix": "Delete line 408 and guard the svh value: `@supports (height: 100svh) { @media (min-width: 900px) { .signature { min-block-size: var(--hero-min-h); } } }`, leaving line 407 as the unconditional value.",
+    "evidence": "Same Chromium test as a.css:66 — `.a{min-height:var(--ok);min-height:var(--bad)}` computes to '0px' (initial `auto`), not to the preceding var() value, while the literal-value pair keeps '300px'. Measured on the live page (svh supported here) `#signature` is exactly 900px tall in a 900px viewport, confirming that the svh declaration is the one doing the work and that nothing else supplies the height if it drops out.",
+    "corroborators": [
+      "css-sections"
+    ]
+  },
+  {
+    "finder": "js-motion-a",
+    "file": "js/motion.js",
+    "line": 859,
+    "severity": "medium",
+    "category": "contract",
+    "title": "`data-delay` is documented but honoured for zero of the 13 elements that carry it",
+    "detail": "The vocabulary comment at line 40 advertises `Optional: data-delay=\"0.2\"`, and `initScrollReveals` does read it — but only after the batch path has already returned:\n\n  853: if (BATCHABLE[key]) {\n  856:     if (key === 'up') gsap.set(el, { y: MOTION.y, autoAlpha: 0 });\n  857:     else gsap.set(el, { autoAlpha: 0 });\n  858:     (buckets[key] || (buckets[key] = [])).push(el);\n  859:     return;                      // <- data-delay never read\n  860: }\n  ...\n  866: var d = parseFloat(el.getAttribute('data-delay'));\n  867: if (!isNaN(d) && d > 0) tw.delay(d);\n\n`BATCHABLE = { up: 1, fade: 1 }` (line 543), so every `up`/`fade` element bypasses lines 866–867 and instead gets a flat `stagger: MOTION.stagger` (0.055 s) inside the batch `onEnter` (lines 903 and 909). The remaining three delay-carrying elements are inside `.hero` and are dropped even earlier, by `if (closest(el, '.hero')) return;` at line 845 — `heroIn` positions them at hardcoded timeline offsets (0.42 at line 794, 0.32 at line 807, 0.9 at line 816) and never looks at the attribute. Every single `data-delay` in the document is on an `up` or `fade` element, so the attribute is inert page-wide.",
+    "failure": "The About block is authored as a four-beat cascade — index.html:337 `data-delay=\"0.06\"`, 345 `\"0.12\"`, 351 `\"0.18\"`, 357 `\"0.24\"` — but all four land in the same `up`/`fade` buckets and are replaced by a uniform 55 ms batch stagger, so a visitor scrolling the About section sees a flat even ripple instead of the widening 60→240 ms cascade the markup asks for. Identically for index.html:483/487/500 (Story), 1003, 1546 (contact form), 1710, 1957, and for the three hero attributes 222 `\"0.08\"`, 228 `\"0.16\"`, 238 `\"0.45\"` — the scroll indicator in particular is authored to arrive 450 ms after the CTAs and instead arrives at the hardcoded 0.9 s slot. An author editing `data-delay` to retime the page gets no effect at all and no warning.",
+    "fix": "Route delay-carrying elements down the individual-trigger path that already honours the attribute. Change line 853 from `if (BATCHABLE[key]) {` to `if (BATCHABLE[key] && !(parseFloat(el.getAttribute('data-delay')) > 0)) {` — elements with a positive `data-delay` then fall through to lines 862–880 and pick up `tw.delay(d)` at line 867 unchanged. For the hero, read the attribute inside `heroIn` (e.g. at line 793 use `0.42 + (parseFloat(p.getAttribute('data-delay')) || 0)`), or drop the attributes from index.html:222/228/238 so the markup stops promising behaviour the code does not implement.",
+    "evidence": "Read of lines 40 (the documented attribute), 543 (`BATCHABLE = { up: 1, fade: 1 }`), 853–860 (batch path `return`s before the delay is read), 866–867 (the only `data-delay` read), 845 (hero elements skipped before either). `grep -n 'data-anim=\"\\(up\\|fade\\)\"[^>]*data-delay' index.html | wc -l` = 13, and `grep -n 'data-delay' index.html` returns exactly those 13 lines — i.e. no `cut`/`lines`/`media`/`stagger` element carries the attribute, so the honouring branch at line 867 is dead on this page.",
+    "corroborators": [
+      "js-motion-a"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1031,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "pointerleave bound on window never fires — the custom cursor never hides, and cursorVisible is never reset",
+    "detail": "`window.addEventListener('pointerleave', function () { gsap.to(dot, { autoAlpha: 0, duration: MOTION.dur.fast }); }, { passive: true });` — pointerleave has bubbles:false, so when the pointer leaves the document the browser dispatches it AT_TARGET on <body>, <html> and document, and a bubble-phase listener on window is never reached. The handler is dead code. It also carries a latent second bug: it never sets `cursorVisible = false`, and line 1026 `if (!cursorVisible) { cursorVisible = true; gsap.to(dot, { autoAlpha: 1, ... }); }` is the only thing that fades the ring back in — so the moment the listener is fixed, the cursor would hide on leave and stay hidden for the rest of the session.",
+    "failure": "Desktop visitor (>=900px, fine pointer) moves the mouse off the page — to a second monitor, the OS dock, the browser tab bar or another window. The violet ring stays frozen where it was last seen, painted over the content at z-index 900 with mix-blend-mode:screen, until the pointer returns. The intended fade-out never happens anywhere on the site.",
+    "fix": "Change line 1031 to `document.addEventListener('pointerleave', ...)` and add `cursorVisible = false;` inside the handler body at line 1032 so the fade-in at line 1026 runs again when the pointer re-enters.",
+    "evidence": "Instrumented Chromium (Playwright): listeners for pointerleave/mouseleave were bound on window, document, documentElement and body; moving the pointer out of the content area logged `BODY:pointerleave target=BODY phase=2`, `HTML:pointerleave target=HTML phase=2`, `DOC:pointerleave target=document phase=2` and NO `WIN:pointerleave` entry (window received only the bubbling pointerout). A synthetic `documentElement.dispatchEvent(new PointerEvent('pointerleave',{bubbles:false}))` fired only the window CAPTURE listener, never the bubble one.",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1363,
+    "severity": "medium",
+    "category": "memory-leak",
+    "title": "Desktop teardown deletes the authored .mk-cursor node and leaks ~190 listeners on every breakpoint crossing",
+    "detail": "`if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);` destroys the node authored at index.html:2122 (`<div class=\"mk-cursor mk-cursor-ring\" aria-hidden=\"true\"><i class=\"mk-cursor-dot\"></i></div>`), which initCursor adopted at line 1006 `var dot = qs('.mk-cursor');`. Nothing else in the cleanup (lines 1353-1364) removes any listener: the window pointermove (1025) and pointerleave (1031) stay, and so do the two listeners initCursor attaches per element at lines 1036-1043 `each(qsa('a, button, .btn, .filter-btn, [role=\"button\"]'), ...)` — 86 matching elements on this page — plus the three per magnetic target at 1060-1067. Re-entering the desktop context re-runs initCursor, which now finds `qs('.mk-cursor') === null` and builds the inline-styled fallback at 1008-1018 (28x28, margin -14px, no `.mk-cursor-dot` child).",
+    "failure": "A desktop user drags the browser window narrower than 900px and back (or docks/undocks devtools, or rotates a 1024px tablet with a mouse). After the first crossing the ring is gone; after the second it returns 28px instead of the CSS's 24px, 2px off the true pointer position (-14px vs -12px margin), and permanently missing its inner violet dot. Each crossing also strands ~190 listeners that keep calling gsap.to()/quickTo on the previous, detached node on every pointermove and every hover of any of the 86 links and buttons.",
+    "fix": "At line 1363 do not delete the node — replace the removeChild with `gsap.set(cursor, { autoAlpha: 0, clearProps: 'transform' });` — and have initCursor return a disposer that removes the window listeners and the per-element pointerenter/pointerleave pairs, calling it from the same cleanup function.",
+    "evidence": "Runtime at 1440x900: `.mk-cursor` exists in the markup as a child of BODY with className \"mk-cursor mk-cursor-ring\", innerHTML `<i class=\"mk-cursor-dot\"></i>`, computed 24x24 display:grid opacity:0 z-index 900; `document.querySelectorAll('a, button, .btn, .filter-btn, [role=\"button\"]').length === 86`; `document.querySelectorAll('.hero-actions .btn, .navbar-contact-link, .menu-trigger').length === 4` (the magnetic fallback, since the [data-magnetic] count is 0).",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1256,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "paint() overwrites the authored aria-label with \"the technology marquee\", naming content the strip does not contain",
+    "detail": "`btn.setAttribute('aria-label', isPaused ? 'Play the technology marquee' : 'Pause the technology marquee');` runs on every paint(), including the unconditional call at line 1269, so the authored label at index.html:307 (`aria-label=\"Pause the scrolling text\"`) never survives a single frame. The strip holds no technology at all — its items (index.html:274-299) are delivery promises: \"210+ sites delivered since 2020\", \"180 days of support after launch\", \"You own the files, the hosting and the admin\". The button has no visible text, so aria-label IS the entire accessible name. Line 1255 compounds it by flipping aria-pressed in the same breath as the label: when paused a screen reader announces \"Play the technology marquee, toggle button, pressed\", which reads as \"play is on\" — a changing name and a changing pressed state must not both carry the state.",
+    "failure": "A screen-reader user tabs to the control in the promise strip and hears \"Pause the technology marquee\" over a strip that is reading out delivery promises; after activating it they hear \"Play the technology marquee, pressed\", i.e. the state is announced backwards. Correcting the label in the HTML has no effect, because the JS rewrites it on load.",
+    "fix": "At line 1256 use the strip's real subject and keep the authored wording: `btn.setAttribute('aria-label', isPaused ? 'Play the scrolling text' : 'Pause the scrolling text');` and drop the aria-pressed write at line 1255 (a toggle whose name changes should not also flip pressed).",
+    "evidence": "index.html:306-307 authors `<button class=\"mk-marquee-pause\" type=\"button\" data-marquee-toggle aria-pressed=\"false\" aria-label=\"Pause the scrolling text\"></button>` with an empty body, and the runtime DOM confirms `btn.innerHTML === \"\"` (so aria-label is the whole accessible name). The strip's own list items were read from the live DOM and contain no product or technology names; the HTML comment at index.html:249-252 states the tool logos were deliberately replaced by promises. motion.js:1235 resolves `qs('[data-marquee-toggle]')` to this exact button, and paint() at line 1269 runs before the function returns, so the JS label always wins.",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-signature",
+    "file": "js/signature.js",
+    "line": 256,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "scene overlap class is applied before the timeline is built and is never taken back if the build fails",
+    "detail": "`buildScene` sets the overlap class as its first statement, before anything that can fail:\n\n    253  function buildScene() {\n    254      if (!root || !frame || !parts || !parts.length || !wipe || !mark) return null;\n    256      frame.classList.add('signature__frame--scene');\n    ...\n    261      var tl = gsap.timeline({ defaults: ..., scrollTrigger: { trigger: root, pin: true, ... } });\n\nc.css 347-350 makes that class collapse the two halves into one cell:\n\n    .signature__frame--scene .signature__words,\n    .signature__frame--scene .signature__logo { grid-area: 1 / 1; }\n\nThe class is only ever removed in two places: the matchMedia cleanup at line 482, which runs only when `(min-width: 900px) and (prefers-reduced-motion: no-preference)` stops matching, and `showFinal()` at line 143, which the previous finding shows is unreachable once `settled` is true. So if `gsap.timeline(...)` at 261 throws, `module('pinned scene', buildScene)` at 480 swallows it and the class stays on the frame for the life of the page with nothing driving it.",
+    "failure": "Desktop visitor at >=900px with no reduced-motion request. ScrollTrigger's create() inside the `gsap.timeline({ scrollTrigger: {...} })` call at line 261 runs a full refresh pass across every trigger already registered by js/motion.js — including the pinned horizontal rail at js/motion.js:1115 — so an exception raised anywhere in that pass propagates out of this constructor. `module()` catches it, so no timeline and no from-state are ever applied and the words and the mark both stay fully opaque; but `.signature__frame--scene` was already added one line earlier, so `.signature__words` and `.signature__logo` are both forced into `grid-area: 1 / 1` and the sentence \"Nothing starts from a purchased theme.\" prints directly on top of the MK logo image, permanently, at every desktop width. The overlap is the documents's layout now, which is exactly what the c.css comment at 311-314 says must never happen without the scene.",
+    "fix": "Move line 256 to the end of buildScene, immediately before `return tl;` at line 343, so the overlap is only committed once the timeline and its ScrollTrigger exist. The matchMedia cleanup at 482 already removes it on the way out and needs no change.",
+    "evidence": "Verified lines 253-272 and 343 in js/signature.js (the classList.add at 256 precedes the timeline constructor at 261; `return tl` is at 343), the cleanup at 481-483, `showFinal`'s removal at 143, and css/sections/c.css 347-350 which defines the grid-area collapse the class triggers.",
+    "corroborators": [
+      "js-signature"
+    ]
+  },
+  {
+    "finder": "js-rails",
+    "file": "js/rails.js",
+    "line": 231,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "A layout-clamped scrollLeft is read as a hand swipe, killing the scrub for good",
+    "detail": "onScroll credits ANY unexplained scrollLeft delta to the visitor: `if (Math.abs(track.scrollLeft - written) > HAND_TOLERANCE) handOver();` (line 231, HAND_TOLERANCE = 8, line 81). The constant's own comment (lines 78-81) asserts the tolerance \"covers sub-pixel rounding on scrollLeft read-back, and nothing else: snap is off while the scrub is running, so there is no other machine moving this element.\" That is false — the layout engine moves it. `--flick-item-w: min(var(--rail-card-w), calc(100vw - var(--container-pad) * 3))` (css/sections/d.css:337) makes every card's width and therefore every card's offset a function of the viewport width, and the browser additionally clamps scrollLeft whenever the scroll range shrinks. Neither event is guarded: `grace` is only ever armed inside setScrubbing(false) (line 159), which a resize never calls, and the ScrollTrigger config (lines 192-199) has no onRefresh hook that re-syncs `written`.",
+    "failure": "Phone at 390x844 (viewport width < 900, so the PHONE matchMedia context is NOT reverted and the rails stay built). Visitor scrubs/flicks the 'The stack' rail part-way along, then rotates to landscape 844x390 — still under 900. The card width goes 330px -> 336px, the row re-lays out, and scrollLeft moves from 1062 to 1084 with no touch at all. One scroll event fires, |1084 - 1062| = 22 > 8, handOver() runs: the ScrollTrigger and timeline are killed permanently and that rail never scrubs again for the rest of the session. Every rail the visitor had already moved off zero dies at the same instant.",
+    "fix": "Re-sync the baseline on every refresh instead of reading the reflow as a swipe: add `onRefresh: function () { written = track.scrollLeft; grace = Date.now() + SNAP_GRACE; }` to the ScrollTrigger config object at js/rails.js:192-199 (next to the existing onToggle on line 198). ScrollTrigger refreshes after the resize has settled, so `written` is re-read against the already-clamped value and the trailing snap-settle scrolls fall inside the grace window.",
+    "evidence": "Playwright, Chromium, http://localhost:8099/index.html: set `.flick-rail`[1].scrollLeft at viewport 390x844 (it settled to 1062 on the snap port), then setViewportSize(844x390) and re-read -> {\"written\":1062,\"now\":1084,\"delta\":22,\"travelNow\":1355,\"scrollEvents\":1,\"phoneMQ\":true}. phoneMQ true confirms matchMedia('(max-width: 899.98px)') still matches, so no teardown happened; delta 22 > HAND_TOLERANCE 8.",
+    "corroborators": [
+      "js-rails"
+    ]
+  },
+  {
+    "finder": "js-rails",
+    "file": "js/rails.js",
+    "line": 337,
+    "severity": "medium",
+    "category": "race",
+    "title": "The \"did motion.js change the scroller?\" guard always runs before motion.js changes it",
+    "detail": "Line 334 `window.addEventListener('load', function () { … if (currentScroller() !== wiredScroller) module('scroller changed', wire); })` is registered at script-evaluation time (it is top-level in the IIFE). motion.js registers its own load-time re-wire at js/motion.js:1380-1381 (`window.addEventListener('load', function () { module('load re-wire', wireScroller); … })`) from inside start(), which is only reached via boot() bound to DOMContentLoaded at js/motion.js:1464. Deferred-script evaluation strictly precedes DOMContentLoaded, so rails.js's listener is always registered first and always fires first. The comparison on line 337 therefore reads the scroller motion.js decided at boot, never the one it is about to re-decide two listeners later. motion.js has two further re-wires rails.js watches not at all: the post-preloader one at js/motion.js:1374 and the `document.fonts.ready` one at js/motion.js:1386. wireScroller (js/motion.js:285-287) reassigns scrollerEl on every call and explicitly supports the body->html switch, so the change this guard exists for is a real one.",
+    "failure": "Slow connection: at DOMContentLoaded the images have no intrinsic height, detectScroller() answers <body>, motion.js installs the body scrollerProxy, and rails.js builds all five rails with `config.scroller = document.body` (line 200). The images land; on 'load' rails.js's handler runs first, sees currentScroller() === document.body, and skips wire(); motion.js's handler then runs, detectScroller() now answers <html>, and unwireScroller() (js/motion.js:277-283) tears the proxy out and resets ScrollTrigger.defaults to window. Nothing ever re-runs wire(), so the five rail triggers keep the scroller argument they were given under the old regime. The same applies unconditionally to the fonts.ready re-wire, which typically resolves after 'load' and has no rails.js counterpart at all.",
+    "fix": "Defer rails.js's check past motion.js's own load handler and add the missing font hook: replace line 337 with `window.setTimeout(function () { if (currentScroller() !== wiredScroller) module('scroller changed', wire); }, 0);` and add, after line 338, `if (document.fonts && document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(function () { if (currentScroller() !== wiredScroller) module('scroller changed', wire); });`",
+    "evidence": "Registration order read directly: rails.js:334 is top-level in the IIFE; motion.js:1380 sits inside start(), called from boot() (motion.js:1455-1458) which is bound at motion.js:1464 to DOMContentLoaded. index.html:2115 loads motion.js before index.html:2119 loads rails.js, both `defer`. motion.js:270-287 documents the body->html switch as something that has actually happened on this page.",
+    "corroborators": [
+      "js-rails"
+    ]
+  },
+  {
+    "finder": "js-form",
+    "file": "js/form.js",
+    "line": 46,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "Back button drops focus to <body>, restarting the keyboard tab order at the top of the page",
+    "detail": "`if (first && i > 0) first.focus({ preventScroll: true });` — the focus call is gated on the raw argument `i > 0`, a guard meant to stop the initial `show(0)` on line 151 from stealing focus. But `show(current - 1)` on line 87 (the `.prev-step` handler) passes `i = 0` when moving from step 2 back to step 1, so no focus is set. Meanwhile line 39 (`s.hidden = !on`) hides the step containing the \"Back\" button the user just activated, and base.css:383 `[hidden][hidden]{display:none}` makes it non-rendered, so the browser resets `document.activeElement` to `<body>`.",
+    "failure": "Keyboard visitor on step 2 tabs to \"Back\" and presses Enter. Step 1 appears but focus is on `<body>`. The next Tab does not land on the project-type radios — it lands on the first focusable element of the whole document, forcing the user to tab through the entire site to get back into the form they were mid-way through.",
+    "fix": "Distinguish initial render from navigation: change line 34 to `function show(i, move)`, line 46 to `if (first && move) first.focus({ preventScroll: true });`, lines 86-87 to `show(current + 1, true)` / `show(current - 1, true)`, and leave line 151 as `show(0)`.",
+    "evidence": "Playwright: after `click('.form-step[data-step=\"2\"] .prev-step')`, `document.activeElement` was `BODY` (logged as `BODY#.[]`), and the next `keyboard.press('Tab')` landed on `A.btn.btn--outline` at the top of the page, not on any form control.",
+    "corroborators": [
+      "js-form"
+    ]
+  },
+  {
+    "finder": "js-form",
+    "file": "js/form.js",
+    "line": 45,
+    "severity": "medium",
+    "category": "a11y",
+    "title": "Focus entering step 2 lands on the textarea, skipping the required radio group above it",
+    "detail": "`var first = steps[current] && steps[current].querySelector('input:not([type=\"radio\"]), textarea');` — the selector deliberately excludes radios, so on step 2 it matches `#f-details` (index.html:1630), the *optional* free-text field, instead of the `name=\"budget\"` radio group (index.html:1611-1619), which is the required question and sits above it in the DOM.",
+    "failure": "Keyboard or screen-reader visitor clicks \"Continue to scope\". Focus jumps past the \"How much site is there?\" fieldset straight into the textarea. Tabbing forward from there reaches only \"Back\" and \"Continue to contact\", so the required scope question is never encountered. Pressing Continue then fails with \"Pick one to continue.\" and `validate` (lines 77-78) yanks focus *backwards* to a radio the user never saw.",
+    "fix": "Widen line 45 so it takes the first control in DOM order: `var first = steps[current] && steps[current].querySelector('input, textarea, select');`. Radios were excluded only to avoid selecting one, but `.focus()` on an unchecked radio does not check it in any current browser.",
+    "evidence": "Playwright: immediately after advancing from step 1 to step 2, `document.activeElement` was `TEXTAREA#f-details.field__input field__textarea[details]`, while `document.querySelector('.form-step.is-active').dataset.step` was `2`.",
+    "corroborators": [
+      "js-form"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 1070,
+    "severity": "medium",
+    "category": "perf",
+    "title": "Project thumbnails ship at 1100x688 for a 334x209 box — 574 KB of images, no srcset anywhere",
+    "detail": "All eight rail images declare `width=\"1100\" height=\"688\"` and the files really are 1100x688 (verified with `file`). Their rendered box never exceeds 334x209 CSS px. There is no `srcset`/`sizes` attribute anywhere in index.html (grep for `srcset` returns nothing), so every device — including the majority at DPR 1 — downloads the full-resolution file. Bytes: sakhaa 87,828, slsmarts 113,235, sharikco 48,601, drmo 88,999, laft 39,951, dremora 64,490, rehal 63,592, londonra 67,618 = 574,314 B. Total referenced image payload for the page is 961,534 B.",
+    "failure": "A desktop visitor at DPR 1 who scrolls through the work rail downloads 574 KB of JPEG to paint eight 334x209 boxes: 3.3x linear oversample, 10.8x the pixels actually displayed. Even a DPR 2 phone (measured render box 310x194, so 620x388 needed) gets 1.65x linear / 2.7x the pixels. On a 1.6 Mbps connection that is ~2.9 s of transfer where ~1.1 s would do.",
+    "fix": "Re-export each file in assets/projects/ at 700x438 (covers 334 CSS px at DPR 2 with headroom) and add `srcset=\"…-700.jpg 700w, …-1100.jpg 1100w\" sizes=\"(max-width: 700px) 310px, 334px\"` to the eight `<img>` tags at index.html:1070, 1092, 1114, 1136, 1160, 1181, 1203, 1225. Keep the existing width/height attributes — the ratio is correct.",
+    "evidence": "`file assets/projects/*.jpg` -> all \"1100x688\". Rendered getBoundingClientRect per viewport: 390px -> 310x194; 768px -> 334x209; 1440px -> 334x209; 1920px -> 334x209. `grep -c srcset index.html` -> 0. Byte sizes from `ls -la assets/projects/`, summed to 574,314 B; full referenced-image total 961,534 B.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "assets/assets/images/kd-international-preview.png",
+    "line": 1,
+    "severity": "medium",
+    "category": "perf",
+    "title": "2.42 MB of unreferenced duplicate assets are deployed and publicly served",
+    "detail": "There is a nested `assets/assets/images/` directory containing 13 files totalling 2,533,768 B. Six are byte-identical duplicates of files in `assets/images/` (favicon-512.png 140,358, favicon-64.png 2,013, logo-gradient.png 39,353, mohamed-khaled-portrait.png 89,895, og-card.png 331,710, transformation-visual.png 257,972) and seven are stale project previews from a previous build that the page no longer uses at all: adel-law-preview.png 225,496, ibrahim-preview.png 264,861, kd-international-preview.png 420,948, mk-academy-preview.png 237,434, nqend-preview.png 185,408, slsmarts-preview.png 338,320. `grep -c 'assets/assets'` returns 0 for index.html and for all nine CSS files and all five JS files — nothing on the site links to any of them.",
+    "failure": "The deployed site is 4.3 MB, of which 2.42 MB (56%) is never requested by any page. Concretely: every deploy, CDN purge and cold-cache fill moves 2.4 MB of dead weight; the files are publicly reachable (curl http://localhost:8099/assets/assets/images/kd-international-preview.png returns 200, 420,948 B), so search engines that discover them via a directory listing or an old link will index orphan images of projects the site no longer claims, and any image-sitemap or crawl budget is spent on them.",
+    "fix": "Delete the `assets/assets/` directory from the deployment (`rm -rf site/assets/assets`). Nothing references it; verify with `grep -rn 'assets/assets' site/` returning nothing first.",
+    "evidence": "`du -sh /home/user/mkss/site` = 4.3M. `sum(os.path.getsize(...))` over assets/assets/images = 2,533,768 B. `grep -c 'assets/assets'` across index.html + css/*.css + css/sections/*.css + js/*.js = 0 on every file. `curl -o /dev/null -w '%{http_code} %{size_download}'` on assets/assets/images/kd-international-preview.png = `200 420948`.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 11,
+    "severity": "medium",
+    "category": "seo",
+    "title": "Meta description is 216 characters — Google truncates it at ~160, cutting the closing offer",
+    "detail": "index.html:10-11: `<meta name=\"description\" content=\"Mohamed Khaled designs WordPress sites in Figma and builds them in Elementor Pro with custom CSS. Online stores, course platforms and business sites. 210+ projects delivered since 2020, each with 180 days of support.\">`. Measured length is 216 characters. Google renders roughly 920 px on desktop and ~680 px on mobile, which is about 155-160 and about 110-120 characters respectively.",
+    "failure": "In desktop search results the snippet is cut mid-sentence after \"…210+ projects delivered since 2020,\" and on mobile after \"…business sites.\" — the two strongest differentiators in the sentence, \"210+ projects\" and \"180 days of support\", are the parts that disappear on the surface where most of the traffic is. Google is also more likely to discard an over-long description entirely and synthesise a snippet from body copy instead, at which point the author controls none of it.",
+    "fix": "Rewrite index.html:11 to ~155 characters with the proof up front, e.g. `content=\"Custom WordPress sites designed in Figma and built in Elementor Pro. 210+ projects since 2020, each with 180 days of support after handover.\"` (148 chars).",
+    "evidence": "Python measurement of the parsed attribute: TITLE 49 chars (fine), DESC 216 chars. og:description 143, twitter:description 84 — both within limits, so only the meta description is over.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 467,
+    "severity": "medium",
+    "category": "correctness",
+    "title": "Two images named .png are actually JPEG bytes and are served as Content-Type: image/png",
+    "detail": "`assets/images/transformation-visual.png` (referenced at index.html:467) and `assets/images/mohamed-khaled-portrait.png` (referenced at index.html:367 and cited as the `image` of the JSON-LD entity at index.html:90) are JPEG files wearing a .png extension. `file` reports \"JPEG image data, Exif standard, baseline, precision 8, 1024x1024\" for both. A naive PNG header parse on them returns garbage dimensions (134217728 x 100667905) because there is no IHDR chunk. The server derives the MIME type from the extension and sends `Content-type: image/png`. The duplicates in assets/assets/images/ have the same problem.",
+    "failure": "Browsers sniff and render them, so the page looks right — but anything that trusts the declared type or the extension does not. A CDN image pipeline (Cloudflare Polish, Fastly IO, an imgix/Netlify image transform) keyed on `image/png` will run PNG-specific handling and either bail or skip optimisation on the two largest images on the site (257,972 B and 89,895 B). A CI asset step globbing `assets/**/*.png` through a PNG-only optimiser (pngquant, oxipng, imagemin-pngquant) fails or silently passes them through. And index.html:90 hands a mislabelled URL to Google as the structured-data `image`.",
+    "fix": "Rename both files to `.jpg` and update the three references: index.html:367 (`src`), index.html:467 (`src`) and index.html:90 (the JSON-LD `image` URL). If the .png names must be kept for existing inbound links, re-encode the two files as real PNGs instead — but that will make them larger, so renaming is the right move.",
+    "evidence": "`file assets/images/*.png` -> `mohamed-khaled-portrait.png: JPEG image data, Exif standard ... 1024x1024` and `transformation-visual.png: JPEG image data, Exif standard ... 1024x1024`, while favicon-64/favicon-512/logo-gradient/og-card correctly report \"PNG image data\". `curl -sI http://localhost:8099/assets/images/transformation-visual.png` -> `Content-type: image/png`.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 48,
+    "severity": "medium",
+    "category": "perf",
+    "title": "Eight separate render-blocking stylesheets, 139 KB, of which only 48% is ever used",
+    "detail": "index.html:48-55 loads css/tokens.css, base.css, layout.css, components.css and sections/a.css, b.css, c.css, d.css as eight individual render-blocking `<link rel=\"stylesheet\">` elements. Measured transfer sizes: 17,755 + 14,943 + 10,576 + 51,998 + 8,085 + 4,569 + 16,054 + 14,769 = 138,749 B raw (34,273 B if each is gzipped independently). Chromium CSS coverage after scrolling the entire 17,577 px page reports 55,016 of 115,517 parsed bytes exercised — 47.6%. Per file: sections/b.css 19.8%, layout.css 26.9%, base.css 28.3%, sections/c.css 31.4%, sections/a.css 38.9%, sections/d.css 45.2%, components.css 50.8%, tokens.css 94.6%.",
+    "failure": "Nine render-blocking requests (the eight local sheets plus the Google Fonts sheet) must all complete before a single pixel paints. On HTTP/1.1 or any connection where per-request overhead dominates — a mobile visitor on high-latency LTE, or any host without HTTP/2 — that is eight serialised round trips of ~130 ms each on the critical path before FCP. And roughly 60 KB of the delivered CSS (52% of 115 KB parsed) is never matched: a dead-selector sweep against the live DOM at 1440px confirms genuinely unused utilities including `.section--flush-end`, `.list-flow`, `.cluster--lg`, `.cluster--between`, `.grid--gap-lg`, `.grid--auto`, `.grid--auto-wide`, `.split--top`, `.split--swap > .split__a`, `.center-block`, `.icon--lg`, `.btn--block`, `.btn--icon`, `.form-grid`, `.dialog__meta`, `.quote__avatar` and `.signature__word`.",
+    "fix": "Concatenate the eight files into one `css/site.css` in exactly the declared order (tokens, base, layout, components, a, b, c, d) and replace index.html:48-55 with a single `<link rel=\"stylesheet\" href=\"css/site.css\">`. Then delete the dead utility rules listed above from layout.css and components.css.",
+    "evidence": "Playwright requestfinished content-length per sheet: tokens 17755, base 14943, layout 10576, components 51998, a 8085, b 4569, c 16054, d 14769 (sum 138,749). page.coverage.startCSSCoverage over a full-page scroll: TOTAL 115517 parsed, 55016 used, 47.6%. Dead-selector sweep: 68 selectors returned null from document.querySelector after stripping pseudo-classes; the 17 quoted above are plain static class selectors with no JS that ever adds them.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 2108,
+    "severity": "medium",
+    "category": "perf",
+    "title": "Five scripts from two third-party origins with no preconnect, while the font origins get one",
+    "detail": "index.html:2108-2112 pulls five deferred scripts from two origins that the page has never contacted: `https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/{gsap,ScrollTrigger,SplitText,ScrollToPlugin}.min.js` and `https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js`. The head has `preconnect` for fonts.googleapis.com and fonts.gstatic.com (index.html:41-42) and nothing for either script origin — grep for `preconnect|dns-prefetch|rel=\"preload\"` across index.html returns exactly those two lines.",
+    "failure": "Every first-time visitor pays two cold connection setups (DNS + TCP + TLS, typically 300-600 ms combined on mobile) that only begin once the parser reaches line 2108 — i.e. after the whole 115 KB document has been parsed. Because these five files gate the entire motion system, and because motion.js is the only thing that removes the preloader (see the critical finding above), those two handshakes sit directly in front of the page becoming visible. The font origins, which gate only a font swap, got the hint the script origins needed.",
+    "fix": "Add `<link rel=\"preconnect\" href=\"https://cdnjs.cloudflare.com\" crossorigin>` and `<link rel=\"preconnect\" href=\"https://cdn.jsdelivr.net\" crossorigin>` immediately after index.html:42. Better still, self-host the five files under js/vendor/ so the page depends on one origin instead of three.",
+    "evidence": "`grep -n 'preconnect|dns-prefetch|rel=\"preload\"' index.html` -> only lines 41 and 42. Script tags read at index.html:2108-2112; network log confirms five separate third-party script requests, all of which fail here with ERR_TUNNEL_CONNECTION_FAILED.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "css/tokens.css",
+    "line": 126,
+    "severity": "medium",
+    "category": "perf",
+    "title": "font-display:swap with no metric-matched fallback face — guaranteed layout shift on the LCP block",
+    "detail": "The font request at index.html:44 ends in `&display=swap`, which guarantees the fallback face paints first and is then replaced. The fallback stacks are css/tokens.css:126 `--font-display: \"Space Grotesk\", \"Segoe UI\", system-ui, -apple-system, sans-serif;` and css/tokens.css:127 `--font-body: \"Inter\", \"Segoe UI\", system-ui, -apple-system, sans-serif;`. There is no `@font-face` anywhere in the project to give the fallback matched metrics: `grep -rc '@font-face' css/` returns 0 for all nine files, so no `size-adjust`, `ascent-override` or `descent-override` exists. Space Grotesk and Inter have materially different advance widths and cap/x-heights from Segoe UI and from the system-ui of any given platform.",
+    "failure": "A first-time visitor sees the hero paint in the system font and then reflow when the webfont arrives. The LCP element is `SPAN.hero-title__line` (measured), and immediately under it `.hero-description` (index.html:222-226) is a ~45-word paragraph constrained by `max-width: var(--measure)` — a change in advance width changes where it wraps, changes the paragraph's height by one line, and pushes `.hero-actions` and everything below it down. That shift lands after FCP and inside the CLS window, and it happens on every uncached load. CLS measured 0 only because fonts.googleapis.com is unreachable in this sandbox and the swap never occurs.",
+    "fix": "Add a metric-matched local fallback so the two phases occupy the same space. In css/tokens.css above line 126 declare `@font-face { font-family: \"Inter Fallback\"; src: local(\"Segoe UI\"), local(\"Helvetica Neue\"), local(\"Arial\"); size-adjust: 107%; ascent-override: 90%; descent-override: 22%; line-gap-override: 0%; }` (and the equivalent for Space Grotesk), then use `\"Inter\", \"Inter Fallback\", system-ui, sans-serif` on line 127 and the matching pair on line 126.",
+    "evidence": "`grep -rc '@font-face' css/` -> no file has any. index.html:44 href ends `&display=swap`. LCP element measured as SPAN.hero-title__line via PerformanceObserver. css/base.css:45 applies var(--font-body) to body and css/base.css:74 applies var(--font-display) to headings, so both stacks are on the critical text.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "cross-contract",
+    "file": "js/motion.js",
+    "line": 1363,
+    "severity": "medium",
+    "category": "contract",
+    "title": "matchMedia cleanup deletes the authored .mk-cursor node and rebuilds a degraded one",
+    "detail": "index.html:2122 authors the cursor as `<div class=\"mk-cursor mk-cursor-ring\" aria-hidden=\"true\"><i class=\"mk-cursor-dot\"></i></div>`, and components.css:1395-1422 documents that contract (\".mk-cursor-ring is the same element; .mk-cursor-dot rides inside it\"), sizing it from tokens: `inline-size: var(--size-icon-lg)` and `border: var(--border-w) solid var(--violet-400)`. js/motion.js:1006 correctly adopts that node (`var dot = qs('.mk-cursor')`). But the desktop matchMedia cleanup at js/motion.js:1363 does `if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);` — it destroys markup it did not create. On the next match, js/motion.js:1007-1019 finds nothing and builds a replacement that is only `class=\"mk-cursor\"`, has no `.mk-cursor-dot` child, and carries a hardcoded inline `cssText` (`width:28px;height:28px;margin:-14px 0 0 -14px;border:1px solid …`). The comment on line 1011 claims \"every value here is overridable by a real rule\" — inline styles are not overridable by the non-!important rules in components.css.",
+    "failure": "A desktop visitor drags the window narrower than 900px (or flips the OS \"reduce motion\" switch) and back. First crossing: the authored cursor element is deleted. Second crossing: the custom cursor returns as a bare ring — the violet dot inside it is gone for good, and the ring is locked at 28px/1px border from the inline style instead of the token sizes, so it no longer matches the design at any zoom or token change.",
+    "fix": "js/motion.js:1363 — only remove a node this function created. Have initCursor return `{ el: dot, owned: !qs('.mk-cursor') }` (captured before creation) and change the cleanup to remove the node only when `owned` is true; otherwise reset it with `gsap.set(dot, { autoAlpha: 0, clearProps: 'transform,scale' })`.",
+    "evidence": "Static read of the two sites of the contract: index.html:2122 authors `.mk-cursor.mk-cursor-ring > .mk-cursor-dot`; js/motion.js:1006 adopts it; js/motion.js:1363 removeChild()s it; js/motion.js:1008-1018 rebuilds `document.createElement('div'); dot.className = 'mk-cursor';` with inline cssText and no child. Runtime confirmation that the adopted node is the authored one: querySelectorAll('.mk-cursor') = 1 in the raw markup with JS disabled.",
+    "corroborators": [
+      "cross-contract"
+    ]
+  },
+  {
+    "finder": "cross-contract",
+    "file": "js/motion.js",
+    "line": 1036,
+    "severity": "medium",
+    "category": "memory-leak",
+    "title": "Cursor and magnetic pointer listeners are never removed when the desktop matchMedia context reverts",
+    "detail": "initCursor attaches two listeners per interactive element at js/motion.js:1036-1043 — `each(qsa('a, button, .btn, .filter-btn, [role=\"button\"]'), …)` binds `pointerenter` and `pointerleave` to 86 elements on this page. initMagnetic (js/motion.js:1055-1069) binds `pointermove`, `pointerleave` and `blur` to 4 more. Both run inside `mm.add('(min-width: 900px) and (prefers-reduced-motion: no-preference)', …)` (js/motion.js:1343-1346). The cleanup returned at js/motion.js:1353-1364 removes the Lenis ticker callback, destroys Lenis and removes the cursor node — and its own comment (lines 1350-1352) enumerates exactly those three as \"ours to take down by hand\" — but never calls removeEventListener for any of the 176 handlers. gsap.matchMedia reverts tweens and ScrollTriggers created in a context, not DOM listeners, and it re-invokes the function on every re-match.",
+    "failure": "A desktop visitor resizes the window back and forth across 900px, or a laptop user docks/undocks an external display. Each crossing adds another 172 cursor listeners plus 12 magnetic listeners and another pair of gsap.quickTo tweens per magnetic target, none released. After five crossings a single hover over the \"Start a project\" button fires six stacked gsap.to() calls, five of them animating detached .mk-cursor nodes that js/motion.js:1363 already removed from the document — wasted per-frame work on every hover, growing without bound for the life of the page.",
+    "fix": "js/motion.js:1036 and :1060 — keep the bound handlers and their elements in an array inside each init function, return it, and in the cleanup at js/motion.js:1353 loop that array calling `el.removeEventListener(type, handler)` before the existing cursor teardown.",
+    "evidence": "Static read of the three sites: listeners added at js/motion.js:1037 and :1040 (86 elements, confirmed by querySelectorAll('a, button, .btn, .filter-btn, [role=\"button\"]').length = 86 on the raw page) and js/motion.js:1060/:1066/:1067 (4 elements, from the fallback selector at line 1052 which matches 4); the cleanup at js/motion.js:1353-1364 contains only gsap.ticker.remove, lenis.destroy, gsap.ticker.lagSmoothing and removeChild — no removeEventListener anywhere in js/motion.js.",
+    "corroborators": [
+      "cross-contract"
+    ]
+  },
+  {
+    "finder": "resilience",
+    "file": "js/motion.js",
+    "line": 1025,
+    "severity": "medium",
+    "category": "memory-leak",
+    "title": "Cursor and magnetic pointer listeners are never removed when the 900px matchMedia context reverts",
+    "detail": "initCursor() and initMagnetic() run inside the desktop context `mm.add('(min-width: 900px) and (prefers-reduced-motion: no-preference)', ...)` at js/motion.js:1343-1346. They register listeners that the context's cleanup never undoes:\n\n  js/motion.js:1025 `window.addEventListener('pointermove', function (e) { ... xTo(e.clientX); yTo(e.clientY); }, { passive: true });`\n  js/motion.js:1031 `window.addEventListener('pointerleave', ...)`\n  js/motion.js:1036-1043 a pointerenter + pointerleave pair on every `a, button, .btn, .filter-btn, [role=\"button\"]`\n  js/motion.js:1060-1067 pointermove + pointerleave + blur per magnetic target\n\nThe returned teardown (js/motion.js:1353-1364) removes only the Lenis ticker, the Lenis instance and the cursor NODE: `if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);`. No removeEventListener anywhere. Because the node is gone, the next time the context re-matches `qs('.mk-cursor')` at js/motion.js:1006 returns null and a brand-new node plus a brand-new full listener set is created.",
+    "failure": "A desktop user who drags or snaps the browser window narrower than 900px and back — or an iPad rotating between 834px portrait and 1194px landscape — crosses the breakpoint repeatedly. Each crossing adds one more window pointermove handler and 86 more per-element pointerenter/pointerleave handlers that are never released. After four crossings every single mousemove runs 5 pointermove handlers driving 10 gsap.quickTo updates, 8 of them on .mk-cursor nodes that are no longer in the document; the elements holding the 430 accumulated pointerenter/pointerleave closures are live DOM nodes, so nothing is collectable. The cost grows without bound for the life of the page.",
+    "fix": "Have initCursor() and initMagnetic() collect their bindings and return a disposer, then call it from the context cleanup at js/motion.js:1353. Minimally: name the handlers, and in the returned function add `window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerleave', onLeave);` plus the same for each element pair recorded during setup — instead of only removing the cursor node at js/motion.js:1363.",
+    "evidence": "Playwright 1440x840 with all libraries served, instrumenting addEventListener before navigation. Immediately after load: {pm:1, ptEnter:86, cursors:1}. After four setViewportSize cycles 1440→800→1440: {pm:5, ptEnter:430, cursors:1} — five window pointermove handlers and 430 pointerenter handlers alive, but only one .mk-cursor element left in the document.",
+    "corroborators": [
+      "resilience"
+    ]
+  },
+  {
+    "finder": "runtime-a11y",
+    "file": "css/components.css",
+    "line": 779,
+    "severity": "low",
+    "category": "a11y",
+    "title": "Active form-progress step text measures 4.05:1, below the 4.5:1 needed for 14px copy",
+    "detail": "`.progress-step.is-active { color: var(--violet-400); }` (line 779) paints the reached step markers `#A855F7`. `.progress-step` is `font-size: var(--fs-xs)` (14px at 1440) and `font-weight: var(--fw-semibold)` (600) — normal text by WCAG's definition, so it needs 4.5:1. The markers sit inside `#contactForm`, a `.card` on `--surface-4` `#221D3D`.",
+    "failure": "On the contact form, the words \"Project\", \"Scope\" and \"Contact\" that mark which of the three steps the visitor has reached are the one cue to progress through the form, and at 4.05:1 they are below the threshold for 14px text. A low-vision user cannot reliably tell reached steps from unreached ones — the unreached state, `--text-3` on the same card, measures 5.00:1 and is actually more legible than the highlighted one.",
+    "fix": "Change css/components.css:779 to `color: var(--violet-100);` (#E9D5FF on #221D3D = 11.8:1), which also matches `.field__error`'s existing use of the same token on the same surface.",
+    "evidence": "Measured at runtime at 1440x900 by compositing the computed colour over the real background stack: fg #A855F7, bg #221D3D, ratio 4.05:1 at 14px/600 (need 4.5). Hand-checked: L(#A855F7)=0.21546, L(#221D3D)=0.015246, (0.21546+0.05)/(0.015246+0.05)=4.07. The same violet passes elsewhere only because it sits on darker surfaces (`.btn--quiet` on --surface-1 = 5.00:1, `.badge--brand` = 4.96:1).",
+    "corroborators": [
+      "runtime-a11y"
+    ]
+  },
+  {
+    "finder": "html-structure",
+    "file": "index.html",
+    "line": 2048,
+    "severity": "low",
+    "category": "a11y",
+    "title": "footer-contact-title id is never referenced; the contact column is the one unlabelled footer column",
+    "detail": "Line 2048: `<p class=\"footer__title\" id=\"footer-contact-title\">Get in touch</p>`, inside a plain `<div class=\"footer__col\">` at line 2047. No element anywhere in the document carries `aria-labelledby=\"footer-contact-title\"` — the only aria-labelledby values in the footer are `footer-title` (1993), `footer-nav-title` (2021) and `footer-services-title` (2034). The id is dead. The block comment at lines 1985-1986 states the design intent outright: \"Each column is a named landmark instead — aria-labelledby points at the visible title.\" Columns 2 and 3 are `<nav aria-labelledby=...>`; the contact column got the id but never the landmark, and the brand column (2005) got neither.",
+    "failure": "A screen-reader user listing landmarks in the footer hears \"Navigation\" and \"Services\" as two named navigation regions but the email address, WhatsApp link and YouTube link are in an unnamed generic div with no way to target them; the visible heading \"Get in touch\" is never associated with the group it heads.",
+    "fix": "On line 2047 change `<div class=\"footer__col\">` to `<div class=\"footer__col\" role=\"group\" aria-labelledby=\"footer-contact-title\">` so the existing id at 2048 is actually used (or, if the landmark is not wanted, delete `id=\"footer-contact-title\"` from line 2048).",
+    "evidence": "`grep -o 'id=\"[^\"]*\"' index.html` lists footer-contact-title once at line 2048; `grep -oE 'aria-labelledby=\"[^\"]*\"' index.html` returns 20 values, none of them footer-contact-title. Verified by reading lines 2046-2049 and 2021/2034.",
+    "corroborators": [
+      "html-structure"
+    ]
+  },
+  {
+    "finder": "css-components",
+    "file": "css/components.css",
+    "line": 852,
+    "severity": "low",
+    "category": "dead-code",
+    "title": "Six rule blocks style classes that appear nowhere in the site, including a whole media query",
+    "detail": "Cross-checking every class this file styles against index.html and against js/*.js (in case a script writes them) leaves six that exist only here. None is a JS state class — `.is-open`, `.is-done`, `.has-error`, `.menu-open` and `.scrolled` all check out as script-applied, these six do not:\n\n· line 852-859 — the entire `@media (min-width: 640px) { .form-grid { display:grid; grid-template-columns: repeat(2,1fr); gap: var(--space-md); } }`. This was clearly meant to two-column the contact form, but the markup uses layout.css's `.grid.grid--2` instead (index.html lines 1565 and 1649), so the media query never matches anything.\n· line 134-145 — `.btn--icon` plus its `:hover`, 12 lines. The comment above it (\"Icon-only control. The accessible name lives on aria-label\") describes a control the page does not have; the dialog and menu close buttons use `.dialog__close` / `.premium-menu-close` instead.\n· line 128-131 — `.btn--block`.\n· line 1011-1017 — `.dialog__meta`.\n· line 1528-1533 — `.quote__avatar` (the testimonials ship without portraits).\n· line 35-38 — `.icon--lg`.",
+    "failure": "Not a runtime failure — it is maintenance debt that actively misleads. A developer adding a two-column row to the contact form reads `.form-grid` at line 854, applies it, and gets a single column, because the working mechanism is `.grid--2` in a different file. Likewise anyone reaching for `.btn--icon` for a new icon button inherits a skin no existing control uses and that has therefore never been visually checked.",
+    "fix": "Delete lines 852-859, 134-145, 128-131, 1011-1017, 1528-1533 and 35-38. If the two-column form row is meant to be a component concern rather than a layout one, instead keep line 852-859 and change index.html lines 1565 and 1649 from `class=\"grid grid--2\"` to `class=\"form-grid\"` — but pick one, not both.",
+    "evidence": "`grep -c` for each of the six names across index.html, js/*.js, css/base.css, css/layout.css and css/sections/*.css returns 0 matches in every file; the only occurrences in the repository are the definitions in css/components.css. Contrast with the state classes, which do appear in js/ui.js and js/form.js.",
+    "corroborators": [
+      "css-components"
+    ]
+  },
+  {
+    "finder": "css-components",
+    "file": "css/components.css",
+    "line": 347,
+    "severity": "low",
+    "category": "a11y",
+    "title": "Icon tile reacts to .card:hover but not .card:focus-within, contradicting the file's own stated contract",
+    "detail": "The section-5 header at lines 234-237 sets the rule for the whole library: \"Hover and keyboard focus do exactly the same thing, everywhere\". `.card` honours it — line 256-257 pairs `.card:hover, .card:focus-within`. The icon tile does not:\n\n```\n.card:hover .icon-tile {       /* line 347 */\n  background-color: var(--violet-a28);\n  border-color: var(--teal-a50);\n  color: var(--violet-100);\n}\n```\n\nThere is no `.card:focus-within .icon-tile` anywhere in the file, and `.icon-tile` carries a `transition` for exactly these three properties (lines 334-337) that therefore only ever fires for a mouse.",
+    "failure": "A keyboard user tabs to the link inside any of the 22 icon-tile cards (the six service cards, the expertise cards, the process steps). The card border ignites to teal and it lifts 2px, but the violet glyph tile alone stays in its resting state — the focused card renders differently from the hovered card, so the one visual language the file promises to hold is broken for keyboard users only.",
+    "fix": "Line 347: change the selector to `.card:hover .icon-tile,\\n.card:focus-within .icon-tile {`.",
+    "evidence": "Read of css/components.css lines 234-270 and 324-351; `grep -n 'focus-within' css/components.css` returns only lines 257 and 266 (`.card` and `.card--static`), never `.icon-tile`.",
+    "corroborators": [
+      "css-components"
+    ]
+  },
+  {
+    "finder": "css-foundation",
+    "file": "css/tokens.css",
+    "line": 88,
+    "severity": "low",
+    "category": "dead-code",
+    "title": "The 16 --depth-* section tokens are defined but never referenced anywhere",
+    "detail": "tokens.css:88-103 defines `--depth-hero` through `--depth-footer` — sixteen tokens — under a header comment at lines 83-85 that states \"The classes that apply these live in layout.css (.section--ink / --s1 / --s2 / --s3).\" Those classes do not use them: layout.css:97-114 reads the raw surface tokens directly (`.section--ink { background-color: var(--ink) }`, `.section--s1 { background-color: var(--surface-1) }`, `.section--s2 { background-color: var(--surface-2) }`, `.section--s3 { background-color: var(--surface-3) }`). A grep of every `var(--…)` across css/, js/ and index.html returns zero references to any `--depth-*` name.",
+    "failure": "A maintainer told by tokens.css:83-85 that the depth ramp is per-section edits `--depth-work: var(--surface-3)` to lift the Work section off its neighbour. Nothing changes on the page — the rendered background still comes from `.section--s2 { background-color: var(--surface-2) }` in layout.css:106. The named indirection layer the comment promises does not exist, so the edit silently no-ops and the author has to go find the real rule.",
+    "fix": "Either delete tokens.css:88-103 and the header comment at 82-86, or make the comment true by changing layout.css:97-114 to consume the tokens the ramp is indexed by. The one-line-per-section form is the point of the block, so wiring it up is the smaller change; deleting it is the honest one if per-section names are not wanted.",
+    "evidence": "`grep -rhoE 'var\\(--[a-zA-Z0-9_-]+' css/ js/ index.html | sort -u` vs the set of `--…:` definitions in tokens.css yields 34 never-referenced tokens, of which the --depth-* block is 16: --depth-hero, -marquee, -about, -stats, -story, -expertise, -services, -comparison, -process, -work, -testimonials, -timeline, -contact, -faq, -guarantee, -footer.",
+    "corroborators": [
+      "css-foundation"
+    ]
+  },
+  {
+    "finder": "css-sections",
+    "file": "css/sections/c.css",
+    "line": 50,
+    "severity": "low",
+    "category": "responsive",
+    "title": "Process sequence thread points at nothing between 900px and 1199px",
+    "detail": "`.process__thread { flex: 1; block-size: var(--border-w); background-image: linear-gradient(to right, var(--violet-a45), transparent); }` is described at c.css:29-31 as \"the sequence made visible: a one-pixel rule running out of each tile towards the next step\", and only the fourth step gets `.process__thread--end` (c.css:58-60, index.html:993). The list is `<ol class=\"grid grid--4 … flick-rail\">`, and `.grid--4` is `repeat(2, 1fr)` from 640px (layout.css:219-226) and only becomes `repeat(4, 1fr)` at 1200px (layout.css:235-240). Below 900px d.css turns it into a one-row flick rail, so the two-column case is real for exactly the 900-1199px band, where step 02 is the last card in its row and still draws a full-width thread.",
+    "failure": "On a 1024px laptop or an iPad in landscape, section 09 renders the four steps as a 2x2 grid. Step 02 (top right) draws a 351px violet-to-transparent rule running off toward the right edge of the section, pointing at empty space, while step 04 (bottom right, the actual last step) correctly draws none. The decoration contradicts the reading order it is meant to illustrate.",
+    "fix": "Add an end-of-row case for the two-column band: `@media (min-width: 900px) and (max-width: 1199.98px) { .process__step:nth-child(even) .process__thread { background-image: none; } }` — matching what `.process__thread--end` already does at lines 58-60.",
+    "evidence": "Live page at 1024x900 (preloader hidden): `getComputedStyle('.process__list').gridTemplateColumns` = '468.688px 468.703px' (two columns), and the four `.process__thread` rects were [{end:false,x:125,y:75,w:351},{end:false,x:612,y:75,w:351},{end:false,x:125,y:350,w:351},{end:true,x:612,y:350,w:351}] — thread #2 is a full 351px rule at the end of row 1. Visible in scratchpad/PROC1024.png: a rule trails to the right of the '02' tile into empty space.",
+    "corroborators": [
+      "css-sections"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1125,
+    "severity": "low",
+    "category": "perf",
+    "title": "initRail adds a second refresh listener to every filter button, unremoved and re-added on each desktop-context entry",
+    "detail": "`each(qsa('.filter-btn'), function (btn) { btn.addEventListener('click', function () { window.setTimeout(function () { module('rail refresh', function () { ScrollTrigger.refresh(); }); }, 60); }, { passive: true }); });` (lines 1125-1131). js/ui.js:320 already does exactly this — `if (window.ScrollTrigger) requestAnimationFrame(function () { ScrollTrigger.refresh(); });` — so every filter click costs two full refreshes from the first load. initRail is called from the desktop matchMedia context at line 1347, and the cleanup at 1353-1364 removes only the Lenis ticker, the Lenis instance and the cursor node, so these six click listeners are never unbound and a fresh set of six is attached on every re-entry.",
+    "failure": "A user who has crossed the 900px breakpoint four times (window dragging, devtools docking) then clicks a filter pill: ui.js fires one ScrollTrigger.refresh() in a rAF and motion.js fires five more 60ms later. Each refresh re-measures every trigger on the page and rebuilds the rail's pin-spacer, producing a visible stall on the click.",
+    "fix": "Delete the block at lines 1125-1131 — ui.js:320 already refreshes on the same event — or, if the 60ms delay is wanted, bind it once outside initRail (next to the load/fonts refreshes at lines 1380-1389) so the desktop context cannot duplicate it.",
+    "evidence": "Both call sites read and confirmed: js/motion.js:1125-1131 and js/ui.js:320 (`grep -n \"ScrollTrigger.refresh\" js/ui.js` → line 320, inside the same filter-button click handler that runs at line 316). The page has 6 `.filter-btn` elements (index.html:1054-1059). The matchMedia cleanup returned at lines 1353-1364 contains no removeEventListener for them.",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-motion-b",
+    "file": "js/motion.js",
+    "line": 1213,
+    "severity": "low",
+    "category": "correctness",
+    "title": "Marquee play() writes an inline animation-play-state, permanently defeating the CSS hover-pause",
+    "detail": "`each(contents, function (c) { c.style.animationPlayState = 'running'; });` sets an inline declaration, which outranks the authored rule at css/components.css:1063-1065 `.marquee-container:hover .marquee-content { animation-play-state: paused; }`. Before the button is ever used there is no inline value and the hover rule works; after one pause/play cycle the inline 'running' wins forever.",
+    "failure": "A visitor pauses the strip to read a promise, then presses play again. From that point on, hovering the strip no longer pauses it — the authored reading affordance is gone for the rest of the session, and the only way to stop it is the button.",
+    "fix": "At line 1213 clear the property instead of forcing it: `c.style.removeProperty('animation-play-state');` — the stylesheet's default (running) and the :hover rule both take effect again.",
+    "evidence": "css/components.css:1063-1065 carries the hover rule and 1041-1051 gives `.marquee-content` the `animation: mk-marquee var(--marquee-dur) linear infinite` it pauses; runtime confirms `getComputedStyle('.marquee-content').animationName === \"mk-marquee\"` and `el.style.animationPlayState === \"\"` on a fresh load (so the hover rule is unopposed until play() runs). Inline style declarations outrank any non-!important stylesheet rule by the cascade's origin/importance order.",
+    "corroborators": [
+      "js-motion-b"
+    ]
+  },
+  {
+    "finder": "js-rails",
+    "file": "js/rails.js",
+    "line": 133,
+    "severity": "low",
+    "category": "a11y",
+    "title": "removeAttribute('tabindex') on the focused rail dumps focus to <body>",
+    "detail": "syncReach ends with `} else if (track.getAttribute('tabindex') === '0') { track.removeAttribute('tabindex'); }` (lines 132-133). It is re-run on every ScrollTrigger refresh (line 317, `ScrollTrigger.addEventListener('refresh', syncReach)`), i.e. on every resize and on the explicit refreshes motion.js fires after 'load' (js/motion.js:1382) and after document.fonts.ready (js/motion.js:1387). Nothing checks whether the element it is stripping is the one that currently holds focus, and removing tabindex from a focused non-interactive element makes it unfocusable immediately, so the browser resets document.activeElement to <body>.",
+    "failure": "Keyboard visitor on a 1280px desktop starts tabbing as soon as the page paints and reaches the 'The stack' rail (tab stop 11). The webfonts then resolve, motion.js calls ScrollTrigger.refresh(), syncReach runs, travel is 0 at this width and the attribute is removed — focus silently drops to <body> and the next Tab restarts from the top of the document, sending the visitor back through the skip link, the nav and the hero. The same happens to anyone who resizes the window across 900px while the rail has focus.",
+    "fix": "At line 133, keep the element focusable-by-script but out of the tab order when it is the active element: `if (document.activeElement === track) track.setAttribute('tabindex', '-1'); else track.removeAttribute('tabindex');`",
+    "evidence": "Playwright, Chromium 1280x900: `const t=document.querySelector('.flick-rail'); t.focus(); t.removeAttribute('tabindex');` returned {\"before\":true,\"afterIsBody\":true,\"after\":\"BODY\"} — focus was on the track and landed on <body> the moment the attribute went.",
+    "corroborators": [
+      "js-rails"
+    ]
+  },
+  {
+    "finder": "js-rails",
+    "file": "js/rails.js",
+    "line": 230,
+    "severity": "low",
+    "category": "correctness",
+    "title": "SNAP_GRACE swallows a real swipe for 600ms after every trigger toggle",
+    "detail": "`if (Date.now() < grace) { written = track.scrollLeft; return; }` (line 230) treats EVERY scroll event inside the 600ms window as the browser settling onto a snap port and re-baselines instead of handing over. `grace` is armed by setScrubbing(false) (line 159), which onToggle calls on every transition to inactive (line 198) — that includes the start edge (`start: 'top 90%'`, line 194), i.e. the moment the row is first appearing at the bottom of the screen, which is exactly when a thumb reaches for it. The comment at lines 83-87 justifies the window as covering only the post-hand-back snap, but the test is purely temporal: magnitude is never checked, and there is no pointer signal that could distinguish a 300px swipe from a 40px snap settle.",
+    "failure": "Phone, 390px. The visitor scrolls until the testimonials rail is just peeking at the bottom of the viewport, crossing the 'top 90%' line so onToggle fires inactive and grace = now + 600. Within that 600ms they swipe the rail sideways to card 2. onScroll takes the early return on line 230, live stays true and the listeners stay attached, so no hand-over is recorded. They then nudge the page down a few pixels, the trigger goes active, apply() (line 176) writes `Math.round(progress.p * travel)` and drags the row back to card 1 — the swipe is silently undone and the scrub keeps ownership of a row the visitor has already claimed.",
+    "fix": "Let a pointer landing on the track cancel the grace, since a snap settle never has a finger on it. Inside attach() (js/rails.js:234-237) add `track.addEventListener('pointerdown', function () { grace = 0; }, { passive: true });` and mirror the removeEventListener in detach() (lines 239-242). pointerdown is used only to end the grace, never to hand over, so the vertical-swipe false positive the comment at lines 206-212 warns about is not reintroduced.",
+    "evidence": "Read directly: grace is written only at line 159 inside setScrubbing(false); setScrubbing(false) is called from onToggle on line 198 for every inactive transition, including the start edge; line 230 returns on time alone with no magnitude test and without clearing `live`, and attach() (lines 234-237) binds no pointer event of any kind.",
+    "corroborators": [
+      "js-rails"
+    ]
+  },
+  {
+    "finder": "js-form",
+    "file": "index.html",
+    "line": 1549,
+    "severity": "low",
+    "category": "a11y",
+    "title": "Progress steps convey the current step only through CSS classes; no aria-current is ever set",
+    "detail": "The progress list is three plain `<li class=\"progress-step\" data-step=\"n\">` items (index.html:1549-1551) with no `aria-current`, and js/form.js lines 41-44 only toggle presentation classes: `d.classList.toggle('is-active', n <= current); d.classList.toggle('is-done', n < current);`. Nothing in the accessibility tree changes when the visitor advances. The `<ol>` also has no accessible name, and unlike the process section (index.html:922-923, which carries a visually-hidden \"Step n of 4\") there is no text equivalent here.",
+    "failure": "A screen-reader visitor hears \"list, 3 items, 1 Project, 2 Scope, 3 Contact\" once on arrival; after clicking \"Continue to scope\" focus is moved into a textarea with no announcement of progress. At no point can they tell whether they are on step 1, 2 or 3 — the only cue is the `is-active` styling.",
+    "fix": "In js/form.js line 42, alongside the class toggle, set the state: `d.setAttribute('aria-current', n === current ? 'step' : 'false');` and give the `<ol>` on index.html:1548 an `aria-label=\"Form progress\"`.",
+    "evidence": "Playwright dump of `[...document.querySelectorAll('.progress-step')]` after advancing to step 2: `progress-step is-active is-done|aria-current=null`, `progress-step is-active|aria-current=null`, `progress-step|aria-current=null`.",
+    "corroborators": [
+      "js-form"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 38,
+    "severity": "low",
+    "category": "perf",
+    "title": "apple-touch-icon is a 140 KB 512x512 PNG where Apple specifies 180x180",
+    "detail": "index.html:36-38 declares the icon set: a 64x64 PNG (2,013 B), a 512x512 PNG (140,358 B) as `rel=\"icon\" sizes=\"512x512\"`, and the same 512x512 file again as `rel=\"apple-touch-icon\"`. The 512 file is 8-bit RGB (no alpha), 140,358 B — 70x the bytes of the 64px variant for an asset that is only ever drawn at 180 px or smaller. There is no 180x180 variant and no `/favicon.ico` (a request to http://localhost:8099/favicon.ico returns 404).",
+    "failure": "An iOS visitor who adds the site to the Home Screen, and Safari when it speculatively fetches the touch icon for bookmarks and the Start Page, downloads 140,358 B to draw a 180x180 tile — Apple's documented size for a modern iPhone. Any user agent that picks the largest declared `rel=\"icon\"` (some feed readers, link-preview services and PWA installers do) pays the same 140 KB for a tab-sized glyph. Separately, user agents that fall back to the well-known /favicon.ico path get a 404 on every visit.",
+    "fix": "Export a 180x180 PNG (roughly 8-12 KB) as assets/images/apple-touch-icon.png and point index.html:38 at it; drop line 37 or re-point it at a 192x192 file. Add a /favicon.ico at the site root so the well-known path stops 404ing.",
+    "evidence": "`ls -la assets/images/` -> favicon-512.png 140358 B, favicon-64.png 2013 B. `file` -> \"PNG image data, 512 x 512, 8-bit/color RGB, non-interlaced\". `curl -o /dev/null -w '%{http_code}' http://localhost:8099/favicon.ico` -> 404.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "perf-seo",
+    "file": "index.html",
+    "line": 1,
+    "severity": "low",
+    "category": "perf",
+    "title": "20.7 KB of developer comments — 17.9% of the HTML — is shipped to every visitor",
+    "detail": "index.html is 115,491 B, of which 61 HTML comments account for 20,730 B (17.9%). They are design-document prose, not markup aids — for example index.html:46-47 explaining stylesheet load order, index.html:57-60 explaining the flash guard, index.html:63-67 explaining the noscript escape hatch, index.html:105-106 describing the preloader (a description that is factually wrong, see the critical finding), index.html:138-141, 195-202, 246-256, 1491-1493, 2004. They are served verbatim: the parsed document still carries them (documentElement.outerHTML = 111,056 B).",
+    "failure": "Every uncached page view transfers 20,730 B of comments. Stripping them takes the document from 115,491 to 94,761 B raw, and from 21,559 to 15,504 B gzipped — about 6 KB of real transfer per visit even with compression on, on the single most latency-critical resource on the page. The local server here sends no `Content-Encoding` at all, so the full 20.7 KB is paid as-is. The comments are also permanently public: the build notes name internal file:line references such as \"animations.css:122-178\" (index.html:1317).",
+    "fix": "Strip comments at deploy time (`html-minifier-terser --remove-comments`, or any static-host build step) and keep the annotated source in the repository. If there is no build step, move the long explanatory blocks into a README and leave only short structural markers such as `<!-- HERO -->`.",
+    "evidence": "Python: len(index.html) = 115,491 B; 61 matches of /<!--.*?-->/s totalling 20,730 B (17.9%); gzip(level 9) of the file = 21,559 B, gzip of the comment-stripped file = 15,504 B. Runtime documentElement.outerHTML.length = 111,056. `curl -sI -H 'Accept-Encoding: gzip'` returns Content-Length 115491 and no Content-Encoding header.",
+    "corroborators": [
+      "perf-seo"
+    ]
+  },
+  {
+    "finder": "cross-contract",
+    "file": "js/motion.js",
+    "line": 771,
+    "severity": "low",
+    "category": "contract",
+    "title": "Hero badge selector .premium-badge/.hero-badge-animated matches nothing; the badge is .badge.badge--brand",
+    "detail": "js/motion.js:770-776 is a whole named module dedicated to the hero badge: `var badge = qs('.premium-badge, .hero-badge-animated', hero); if (!badge) return;` followed by a `fromTo(badge, {y: 24, autoAlpha: 0}, …, 0.04)` beat placed at an absolute 0.04s on the hero timeline. Neither class exists anywhere on the page — the hero badge is authored at index.html:215 as `<p class=\"badge badge--brand\" data-anim=\"fade\">WordPress design and build · since 2020</p>`. The module returns on the first line every single load, so the choreographed y:24 rise at 0.04s never happens; the badge is instead swept up by the generic \"hero tagged extras\" loop at js/motion.js:821-829, which gives it a plain fade at 0.1 + i*0.055s.",
+    "failure": "Every visitor on every load with GSAP present. The hero's opening sequence is off its designed script: the badge fades rather than rising, and it lands at whatever slot the extras loop assigns instead of the 0.04s beat the timeline was tuned for. The bug is silent — the module is wrapped in module() and returns null, so nothing is logged.",
+    "fix": "js/motion.js:771 — change the selector to the classes actually in the markup: `var badge = qs('.badge--brand, .premium-badge, .hero-badge-animated', hero);`",
+    "evidence": "querySelectorAll('.premium-badge') = 0 and querySelectorAll('.hero-badge-animated') = 0 against the raw markup (Playwright, JS disabled); grep for either string in index.html returns nothing. The hero badge markup at index.html:215 reads `class=\"badge badge--brand\"`.",
+    "corroborators": [
+      "cross-contract"
+    ]
+  },
+  {
+    "finder": "cross-contract",
+    "file": "js/rails.js",
+    "line": 110,
+    "severity": "low",
+    "category": "a11y",
+    "title": "rails.js returns before syncReach when GSAP is absent, leaving five dead tab stops on non-scrolling grids",
+    "detail": "index.html:392-393 documents the contract: \"tabindex makes the scroller keyboard-operable, since its scrollbar is hidden; js/rails.js takes the attribute off again\", and five containers ship `tabindex=\"0\"` in the markup (index.html:395, 528, 652, 942, 1290). js/rails.js:127-136 syncReach() is what honours the second half of that promise — it strips tabindex whenever `travelOf(track) === 0`. But js/rails.js:109-110 (`if (typeof gsap === 'undefined' …) return; if (typeof ScrollTrigger === 'undefined' …) return;`) sit at IIFE top level, above the declaration of boot(), so when GSAP is missing the file exits before syncReach is ever scheduled. From 900px up, d.css:404-413 turns every .flick-rail into `display: grid; overflow: visible` — definitively unscrollable — while the attribute stays.",
+    "failure": "A keyboard visitor on a ≥900px viewport whose browser blocked the GSAP CDN. Tabbing down the page stops five extra times on bare `<ul>`, `<ol>` and `<div>` grid containers (Stats, The stack, Six kinds of site, Process, Testimonials) that scroll nothing and expose no control. There is no .flick-rail:focus-visible rule in d.css, so the stop is also invisible: the focus ring vanishes off any default outline the container gets, and the user cannot tell where they are.",
+    "fix": "js/rails.js — move the unconditional `module('sync reach', syncReach)` out of boot() and above the guards, or replace lines 109-110 with a flag (`var HAS_GSAP = …`) and gate only wire()/the refresh hook on it, so syncReach still runs and strips the dead attributes when GSAP never arrives.",
+    "evidence": "Playwright on the live page (GSAP blocked, the real degraded state) after 5s: all five .flick-rail elements report `{\"tab\":\"0\",\"sw\":1195,\"cw\":1195}` — tabindex still 0 with scrollWidth identical to clientWidth, i.e. zero scrollable travel. js/rails.js:109-110 confirmed to be top-level statements preceding `function boot()` at line 311.",
+    "corroborators": [
+      "cross-contract"
+    ]
+  }
+]
+
+const TIER_A = FINDINGS.filter(f => f.severity === 'critical' || f.severity === 'high')
+const TIER_B = FINDINGS.filter(f => f.severity !== 'critical' && f.severity !== 'high')
+
+phase('Verify')
+log(`Verifying ${FINDINGS.length} unique findings — ${TIER_A.length} at two lenses, ${TIER_B.length} at one`)
+
+// One flat job list so every free slot is used; regrouped by finding afterwards.
+const JOBS = []
+TIER_A.forEach((f, i) => {
+  JOBS.push({ i, lens: 'refute', f, ask: REFUTE })
+  JOBS.push({ i, lens: 'reproduce', f, ask: REPRODUCE })
+})
+TIER_B.forEach((f, i) => {
+  JOBS.push({ i: TIER_A.length + i, lens: 'refute', f, ask: REFUTE })
+})
+
+const results = await parallel(JOBS.map(j => () =>
+  agent(
+    ENV + `\n\nVERIFY THIS FINDING — lens: ${j.lens}\n\n` + card(j.f) + `\n\n` + j.ask,
+    { label: `verify:${j.lens}:${j.f.file}:${j.f.line}`, phase: 'Verify', schema: VERDICT_SCHEMA }
+  ).then(v => ({ i: j.i, lens: j.lens, v }))
+))
+
+const ALL = TIER_A.concat(TIER_B)
+const byFinding = ALL.map((f, i) => {
+  const votes = results.filter(Boolean).filter(r => r.i === i && r.v)
+  return { ...f, votes: votes.map(x => ({ lens: x.lens, ...x.v })) }
+})
+
+const unjudged = byFinding.filter(f => f.votes.length === 0)
+if (unjudged.length) log(`WARNING: ${unjudged.length} finding(s) got no verdict back and are NOT confirmed`)
+
+const confirmed = byFinding.filter(f => f.votes.length > 0 && f.votes.every(v => !v.refuted))
+const contested = byFinding.filter(f => f.votes.length > 1 && f.votes.some(v => v.refuted) && f.votes.some(v => !v.refuted))
+const killed = byFinding.filter(f => f.votes.length > 0 && f.votes.every(v => v.refuted))
+log(`${confirmed.length} confirmed · ${contested.length} contested · ${killed.length} refuted · ${unjudged.length} unjudged`)
+
+phase('Critic')
+
+const brief = confirmed.map(f => `- [${f.severity}/${f.category}] ${f.file}:${f.line} — ${f.title}`).join('\n')
+const critique = await agent(
+  ENV +
+  `\n\nYou are the COMPLETENESS CRITIC for an audit that has just finished. Sixteen finders swept ~8,900 lines of this site and, after adversarial verification, these ${confirmed.length} findings survived:\n\n${brief || '(none)'}\n\n` +
+  `Your job: find what this audit MISSED. Not a summary — NEW defects.\n` +
+  `Ask yourself: which files or line ranges got the least attention? Which failure modes were never exercised — a second visit with a hash in the URL, resizing mid-scroll, rotating a phone, opening two overlays at once, filtering while the rail is pinned, a very long form input, browser back/forward, printing the page, zooming to 200% or 400%, a slow connection where scripts land after the visitor has scrolled? Which of the site's own extensive markup comments make claims nobody checked? Are there whole categories untouched — print styles, RTL (the comments say Arabic may be added later), i18n, the safety of how the WhatsApp URL is built from visitor input, the noscript path, the favicon set, text zoom, forced-colors/high-contrast mode?\n` +
+  `Go and actually look, run what you can in Playwright, and report NEW findings in the schema. Report nothing rather than padding.`,
+  { label: 'critic:completeness', phase: 'Critic', schema: FINDINGS_SCHEMA }
+)
+
+const extra = (critique && critique.findings ? critique.findings : []).map(f => ({ ...f, corroborators: ['critic'] }))
+log(`critic surfaced ${extra.length} additional candidates`)
+
+const extraJudged = await parallel(extra.map(f => () =>
+  agent(ENV + `\n\nVERIFY THIS FINDING — lens: refute\n\n` + card(f) + `\n\n` + REFUTE,
+    { label: `verify:critic:${f.file}:${f.line}`, phase: 'Critic', schema: VERDICT_SCHEMA })
+    .then(v => (v && !v.refuted) ? { ...f, votes: [{ lens: 'refute', ...v }] } : null)
+))
+
+const extraConfirmed = extraJudged.filter(Boolean)
+log(`${extraConfirmed.length} of the critic's findings survived`)
+
+return {
+  confirmed: confirmed.concat(extraConfirmed),
+  contested,
+  killed: killed.map(f => ({ file: f.file, line: f.line, title: f.title, why: f.votes.map(v => v.reason) })),
+  unjudged: unjudged.map(f => ({ file: f.file, line: f.line, title: f.title })),
+  counts: {
+    input: FINDINGS.length,
+    confirmed: confirmed.length + extraConfirmed.length,
+    contested: contested.length,
+    killed: killed.length,
+    unjudged: unjudged.length,
+    criticFound: extra.length,
+    criticConfirmed: extraConfirmed.length,
+  },
+}
