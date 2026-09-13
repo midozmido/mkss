@@ -136,6 +136,17 @@
   animation: mk-scroll-cue var(--dur-slow) var(--ease-in-out) infinite alternate;
 }
 
+/* base.css clamps animation-iteration-count on the universal selector, which
+   loses to the class above — so under reduced motion this kept looping forever
+   at a 0.01ms duration: invisible, but still a timer the compositor services
+   for the life of the page. Stop it outright. */
+@media (prefers-reduced-motion: reduce) {
+
+  .scroll-indicator__wheel {
+    animation: none;
+  }
+}
+
 /* Both ends restate the -50% centring, or the keyframe would drop it and the
    wheel would jump to the right edge of the mouse for the whole tween. */
 @keyframes mk-scroll-cue {

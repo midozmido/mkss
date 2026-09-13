@@ -413,6 +413,22 @@ th {
 
 .js [data-anim] {
   visibility: hidden;
+  /* DEAD-MAN'S SWITCH. The `js` class is added by an inline script that always
+     runs, but only js/motion.js ever removes it. If that one file is blocked,
+     404s, or is stripped by a content blocker while scripting stays ON, the
+     <noscript> escape hatch does not apply and every [data-anim] element stays
+     hidden forever — measured: 61 of 61, a scrollable page of empty bands.
+
+     So the guard expires on its own. motion.js reveals within its own 4s
+     safety net on any working path, so 5s only ever fires when the script
+     genuinely never arrived. */
+  animation: mk-flash-guard-expire 1ms linear 5s forwards;
+}
+
+@keyframes mk-flash-guard-expire {
+  to {
+    visibility: visible;
+  }
 }
 
 

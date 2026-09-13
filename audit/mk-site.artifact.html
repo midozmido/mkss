@@ -1,4 +1,5 @@
 <script>document.documentElement.lang="en";document.documentElement.classList.add("js")</script>
+
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#06050B">
@@ -37,8 +38,26 @@
   <!-- ONE font request. Space Grotesk 500/700 display, Inter 400/500/600 body. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
+  <!-- Loaded non-blocking. A stylesheet in <head> gates first paint, and this
+       one is on a third-party host: measured here, the page painted at 176ms
+       when this request failed fast and at 8144ms when it merely hung for 8s —
+       nothing at all on screen in between. fonts.googleapis.com is slow on poor
+       connections and blocked outright in some regions, so a visitor there sat
+       in front of a blank page.
+
+       media="print" makes it non-render-blocking; onload flips it to all once
+       it has arrived. tokens.css:126-127 ends both stacks in system-ui, so the
+       text is readable in a real font the whole time, and display=swap keeps
+       the upgrade from hiding anything when it lands.
+
+       The <noscript> copy keeps the webfonts for a visitor with scripting off,
+       who cannot run the onload and is not waiting on any of this page's JS. -->
+  <link rel="stylesheet" media="print" onload="this.media='all'"
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+  </noscript>
 
   <!-- Load order is fixed: tokens must be first, and nothing may load after the
        section sheets. Four section files, one per build group, in page order. -->
@@ -94,6 +113,7 @@
     "sameAs": ["https://www.youtube.com/@mk-pro1996", "https://mk-wp.site"]
   }
   </script>
+
   <a class="skip-link" href="#main">Skip to content</a>
 
   <!-- ═══ PRELOADER ═══
@@ -1063,7 +1083,8 @@
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/sakhaa.jpg"
                  alt="The Sakhaa Program home page, showing the Arabic navigation bar above a full-width carousel slide"
-                 width="1100" height="688">
+                 width="1100" height="688"
+                 loading="lazy" decoding="async">
           </div>
           <div class="card__body">
             <p class="card__meta">Government</p>
@@ -1085,7 +1106,8 @@
           <div class="project-card__media media-cut">
             <img class="project-card__img" src="assets/projects/slsmarts.jpg"
                  alt="The SL Smarts home page, showing the listing search bar with fields for what and where, above a row of category shortcuts"
-                 width="1100" height="688">
+                 width="1100" height="688"
+                 loading="lazy" decoding="async">
           </div>
           <div class="card__body">
             <p class="card__meta">Marketplace</p>
@@ -1984,6 +2006,8 @@
      hole fills and the mark renders as a solid blob. That bug is live on the
      current site.
      ========================================================================== -->
+  </main>
+
 <footer class="section section--ink site-footer" id="footer" aria-labelledby="footer-title">
   <h2 class="visually-hidden" id="footer-title">Site footer</h2>
 
@@ -1998,7 +2022,7 @@
       <!-- ── Brand ────────────────────────────────────────────────────────── -->
       <div class="footer__col">
         <img class="footer__logo" src="assets/images/logo-gradient.png"
-          alt="MK, the studio mark of Mohamed Khaled" width="160" height="56">
+          alt="MK, the studio mark of Mohamed Khaled" width="160" height="42">
         <p class="footer__blurb">
           WordPress sites designed in Figma, then built in Elementor Pro with custom CSS so you can edit them after
           handover. 210+ projects delivered since 2020 for clients across the Arab world, Europe and America.
@@ -2080,8 +2104,6 @@
 
   </div>
 </footer>
-
-  </main>
 
   <!-- ═══ PERSISTENT ACTION ═══
        The visible word is the accessible name, so nothing here depends on the

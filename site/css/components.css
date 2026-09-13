@@ -550,7 +550,14 @@
   border: var(--border);
   border-radius: var(--radius-lg);
   background-color: var(--surface-3);
-  overflow: hidden;
+  /* clip, not hidden. `overflow: hidden` was here to keep the answer's height
+     animation inside the rounded corner, but it also clipped the focus ring of
+     the .faq-question button that fills this box — an outline draws OUTSIDE the
+     border edge, so all seven questions had an invisible focus indicator.
+     `overflow: clip` does the same clipping and honours overflow-clip-margin,
+     which lets the ring through. */
+  overflow: clip;
+  overflow-clip-margin: 5px; /* --focus-w 2px + --focus-offset 3px; calc() with var() is not honoured here */
   transition: border-color var(--dur-fast) var(--ease-out);
 }
 
@@ -894,9 +901,16 @@
 
 @media (min-width: 900px) {
 
+  /* auto, not hidden. From 900px the rail is normally driven by a pinned
+     ScrollTrigger, and `hidden` was fine while that was guaranteed. It is not:
+     with GSAP blocked the pin never builds and the track keeps its full width
+     — measured 2869px of cards inside a 1344px rail, so six of eight projects
+     became unreachable by any means. `auto` shows a scrollbar only when the
+     pin is absent, and costs nothing when it is there. */
   .rail,
   .mk-rail {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     scroll-snap-type: none;
   }
 
@@ -1250,14 +1264,27 @@
   z-index: var(--z-menu);
   visibility: hidden;
   opacity: 0;
+  /* visibility is a discrete property: transitioning it over a duration keeps
+     the panel `hidden` for that whole duration. js/ui.js calls
+     closeBtn.focus() immediately after adding .is-open, and focus() is a
+     silent no-op on a hidden element — so focus never entered a panel that
+     declares role="dialog" aria-modal="true", and the keyboard user was left
+     on the burger behind it. Measured: activeElement stayed .menu-trigger.
+
+     Stepped instead: the close state delays the flip until after the fade so
+     the panel does not vanish mid-fade, and .is-open flips it at 0s so the
+     panel is focusable the instant the class lands. */
   transition:
     opacity var(--dur-fast) var(--ease-out),
-    visibility var(--dur-fast) var(--ease-out);
+    visibility 0s linear var(--dur-fast);
 }
 
 .premium-menu.is-open {
   visibility: visible;
   opacity: 1;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    visibility 0s linear 0s;
 }
 
 .premium-menu-overlay {

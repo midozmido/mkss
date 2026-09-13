@@ -92,7 +92,11 @@
       document.body.style.overflow = 'hidden';
       if (gap > 0) document.body.style.paddingRight = gap + 'px';
       document.body.classList.add('menu-open');
-      if (closeBtn) closeBtn.focus();
+      /* Next frame, so the style change above has been applied. components.css
+         now flips visibility at 0s on .is-open, but focusing on the same tick
+         as the class still races the style recalc in some engines, and a
+         focus() that lands on a hidden element fails silently. */
+      if (closeBtn) requestAnimationFrame(function () { closeBtn.focus(); });
     }
 
     function close() {
@@ -394,9 +398,69 @@
     if (closeEl) closeEl.addEventListener('click', close);
     dialog.addEventListener('click', function (e) { if (e.target === dialog) close(); });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && dialog.classList.contains('is-open')) close();
+      if (!dialog.classList.contains('is-open')) return;
+      if (e.key === 'Escape') { close(); return; }
+      /* The panel declares aria-modal="true", which promises the rest of the
+         page is inert — but nothing enforced it, so Tab walked straight out
+         into the page behind. Measured: of seven tabs from the open dialog,
+         six landed outside it. Same trap the menu already uses. */
+      if (e.key !== 'Tab') return;
+      var f = $$('a[href], button:not([disabled])', dialog).filter(function (el) {
+        return (el.offsetWidth || el.offsetHeight) && !el.hidden;
+      });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!dialog.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
     });
     dialog.setAttribute('aria-hidden', 'true');
+  }
+
+  /* ── 8. Marquee pause — fallback only ────────────────────────
+     The strip is a CSS animation, but its WCAG 2.2.2 pause control is wired in
+     js/motion.js inside start(), which both plugin guards return before. With
+     GSAP blocked the button rendered as a visible, EMPTY 44x44 circle with a
+     stuck aria-pressed="false" while the text kept scrolling — a control that
+     announces itself and does nothing.
+
+     motion.js paints a glyph into the button as its last step, so an empty
+     button one tick after load means motion.js never got there. Only then does
+     this take over, which keeps the two from double-toggling on the happy path.
+     Scripting off entirely is already handled: the <noscript> block in
+     index.html hides this button and pauses the strip outright. */
+  function initMarqueeFallback() {
+    var btn = $('[data-marquee-toggle]');
+    var lists = $$('.marquee-content');
+    if (!btn || !lists.length) return;
+
+    var PLAY = '<svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><path d="M0 0l10 6-10 6z"/></svg>';
+    var PAUSE = '<svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>';
+    var paused = false;
+
+    function paint() {
+      btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+      /* Matches the markup's own wording, not motion.js's "technology marquee" —
+         the strip has carried promises, not logos, since the rebuild. */
+      btn.setAttribute('aria-label', paused ? 'Play the scrolling text' : 'Pause the scrolling text');
+      btn.innerHTML = paused ? PLAY : PAUSE;
+    }
+
+    function adopt() {
+      if (btn.innerHTML.trim()) return;          /* motion.js got here first */
+      lists.forEach(function (l) { l.style.animationPlayState = 'running'; });
+      btn.addEventListener('click', function () {
+        paused = !paused;
+        lists.forEach(function (l) {
+          l.style.animationPlayState = paused ? 'paused' : 'running';
+        });
+        paint();
+      });
+      paint();
+    }
+
+    if (document.readyState === 'complete') window.setTimeout(adopt, 0);
+    else window.addEventListener('load', function () { window.setTimeout(adopt, 0); });
   }
 
   /* ── boot ────────────────────────────────────────────────── */
@@ -408,6 +472,7 @@
     module('filter', initFilter);
     module('faq', initFaq);
     module('project dialog', initProjectDialog);
+    module('marquee fallback', initMarqueeFallback);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

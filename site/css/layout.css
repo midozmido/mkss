@@ -54,6 +54,13 @@
 
 .section {
   position: relative;
+  /* .layer-behind (below) is position:absolute with z-index:-1. `position:
+     relative` alone does NOT open a stacking context, so that negative layer
+     resolved against the ROOT and painted BENEATH the section's own opaque
+     background-color — the decorative glows in #guarantee and #footer never
+     appeared at all. sections/a.css already carries this on .hero for exactly
+     this reason; it belongs on every section, not just that one. */
+  isolation: isolate;
   padding-block: var(--sec-pad);
 }
 
