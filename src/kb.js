@@ -195,6 +195,10 @@ export const listArticles = ({ activeOnly = true } = {}) =>
       ORDER BY category, sort_order, title`
   );
 
+/** الأكثر قراءة — نقطة بداية لمن لا يعرف بمَ يبدأ */
+export const popular = (limit = 4) =>
+  all('SELECT id, slug, title FROM kb_articles WHERE active = 1 ORDER BY views DESC, sort_order LIMIT ?', limit);
+
 export const categories = () =>
   all(
     `SELECT category, COUNT(*) AS n FROM kb_articles WHERE active = 1

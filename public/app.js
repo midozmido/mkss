@@ -88,7 +88,7 @@
   var status = document.getElementById('chat-status');
   var typing = document.getElementById('typing');
   var viewer = chat.getAttribute('data-viewer');        // client | admin
-  var chatUser = chat.getAttribute('data-chat-user');
+  var convId = chat.getAttribute('data-chat-conv');
   var lastId = lastSeenId();
 
   scrollToEnd();
@@ -140,7 +140,7 @@
 
   // مزامنة ما فات أثناء الانقطاع — SSE وحده لا يضمن ما حدث ونحن مفصولون
   function syncMissed() {
-    var url = (viewer === 'admin' ? '/admin/chat/' + chatUser + '/since' : '/chat/since') + '?after=' + lastId;
+    var url = (viewer === 'admin' ? '/admin/chat/' + convId + '/since' : '/chat/' + convId + '/since') + '?after=' + lastId;
     fetch(url, { headers: { Accept: 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) { if (data && data.messages) data.messages.forEach(render); })
@@ -160,7 +160,7 @@
       try {
         var m = JSON.parse(ev.data);
         // لوحة الأدمن تستقبل رسائل كل العملاء — نعرض من نحن فاتحون محادثته فقط
-        if (viewer === 'admin' && String(m.user_id) !== String(chatUser)) return;
+        if (String(m.conversation_id) !== String(convId)) return;
         // العميل لا يرى الملاحظات الداخلية — حارس ثانٍ بعد فلترة السيرفر
         if (viewer === 'client' && m.visibility === 'internal') return;
         // رسائل المساعد تحمل أزرارًا (تقييم/اقتراحات) يبنيها السيرفر،

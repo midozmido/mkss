@@ -46,55 +46,21 @@ test('رد محفوظ بلا عنوان أو نص مرفوض', () => {
   assert.throws(() => support.saveReply({ title: 'عنوان', body: '   ' }), /مطلوبان/);
 });
 
-// ——————————————————— التقييم ———————————————————
+// ——————————————————— إحصاءات الدعم ———————————————————
+// لا تقييم للمحادثات بطلب المستخدم — نقيس زمن الاستجابة وحده.
 
-test('التقييم يُطلب بعد إغلاق المحادثة لا أثناءها', () => {
+test('الإحصاءات تحسب التحويلات وزمن أول رد', () => {
   const u = mkClient();
-  bot.escalate(u, { reason: 'اختبار' });
-  assert.equal(support.askForRating(u), null, 'طلب التقييم والمحادثة ما زالت مفتوحة');
-
-  bot.backToBot(u);
-  const pending = support.askForRating(u);
-  assert.ok(pending, 'لم يُطلب التقييم بعد الإغلاق');
-  assert.equal(pending.rating, null);
-});
-
-test('التقييم يُسجَّل مرة واحدة ولا يُعاد', () => {
-  const u = mkClient();
-  bot.escalate(u, { reason: 'اختبار' });
-  bot.backToBot(u);
-  const esc = support.askForRating(u);
-
-  const first = support.rateEscalation(u, esc.id, true, 'خدمة ممتازة');
-  assert.equal(first.already, false);
-  assert.equal(get('SELECT rating FROM escalations WHERE id = ?', esc.id).rating, 1);
-
-  const second = support.rateEscalation(u, esc.id, false);
-  assert.equal(second.already, true, 'قَبِل تقييمًا ثانيًا');
-  assert.equal(get('SELECT rating FROM escalations WHERE id = ?', esc.id).rating, 1, 'تغيّر التقييم');
-  assert.equal(support.askForRating(u), null, 'ظل يطلب التقييم بعد استلامه');
-});
-
-test('عميل لا يقيّم محادثة عميل آخر', () => {
-  const a = mkClient(), b = mkClient();
-  bot.escalate(b, { reason: 'اختبار' });
-  bot.backToBot(b);
-  const escB = support.askForRating(b);
-  assert.throws(() => support.rateEscalation(a, escB.id, true), /غير موجودة/);
-});
-
-test('إحصاءات الدعم تحسب الرضا وزمن أول رد', () => {
-  const u = mkClient();
-  bot.escalate(u, { reason: 'اختبار' });
-  bot.markFirstReply(u);
-  bot.backToBot(u);
-  support.rateEscalation(u, support.askForRating(u).id, true);
+  const c = chat.openConversation(u);
+  bot.escalate(c, { reason: 'اختبار' });
+  bot.markFirstReply(c.id);
 
   const s = support.supportStats(30);
   assert.ok(s.escalations >= 1);
-  assert.ok(s.rated >= 1);
-  assert.ok(s.satisfaction >= 0 && s.satisfaction <= 100, `نسبة رضا غير منطقية: ${s.satisfaction}`);
+  assert.ok(s.replied >= 1, 'لم يُحسب التحويل المردود عليه');
   assert.ok(s.avgFirstReplyMinutes != null, 'لم يُحسب زمن أول رد');
+  assert.equal(typeof s.openLive, 'number');
+  assert.equal('satisfaction' in s, false, 'ما زال التقييم محسوبًا رغم إزالته');
 });
 
 // ——————————————————— التأجيل ———————————————————
@@ -119,10 +85,13 @@ test('تأجيل منتهٍ لا يُعتبر تأجيلًا', () => {
 
 test('البحث في المحادثات يجد الرسالة ويذكر صاحبها', () => {
   const u = mkClient();
-  chat.sendMessage(u, { body: 'عندي مشكلة في بوابة الدفع الجديدة', role: 'client' });
+  const c = chat.openConversation(u);
+  chat.sendMessage(c.id, { body: 'عندي مشكلة في بوابة الدفع الجديدة', role: 'client' });
   const hits = support.searchConversations('بوابة الدفع');
-  assert.ok(hits.some((h) => h.user_id === u), 'لم يجد الرسالة');
-  assert.ok(hits[0].client_name, 'النتيجة بلا اسم العميل');
+  const hit = hits.find((h) => h.user_id === u);
+  assert.ok(hit, 'لم يجد الرسالة');
+  assert.ok(hit.client_name, 'النتيجة بلا اسم العميل');
+  assert.equal(hit.conversation_id, c.id, 'النتيجة بلا معرّف المحادثة — لا يمكن الانتقال إليها');
 });
 
 test('البحث بكلمة غير موجودة يرجع فارغًا لا كل شيء', () => {
@@ -143,7 +112,9 @@ test('سامي ينبّه قبل انتهاء الشهادة مرة واحدة �
   const second = support.proactiveForCheck(site, result);
   assert.equal(second.length, 0, 'كرّر التنبيه في الفحص التالي');
 
-  const msg = chat.history(u).at(-1);
+  const conv = chat.currentConversation(u);
+  assert.ok(conv, 'لم تُفتح محادثة للتنبيه');
+  const msg = chat.history(conv.id).at(-1);
   assert.equal(msg.author_role, 'bot');
   assert.match(msg.body, /متجر/, 'لم يذكر اسم الموقع');
   assert.match(msg.body, /شهادة الأمان/);
@@ -154,10 +125,11 @@ test('ينبّه عند التوقف وعند العودة', () => {
   const site = mkSite(u, 'المدونة');
 
   support.proactiveForCheck(site, { ok: false, blocked: false, responseMs: null, tls: {} });
-  assert.match(chat.history(u).at(-1).body, /لا يستجيب/, 'لم ينبّه بالتوقف');
+  const conv = chat.currentConversation(u);
+  assert.match(chat.history(conv.id).at(-1).body, /لا يستجيب/, 'لم ينبّه بالتوقف');
 
   assert.equal(support.proactiveRecovered(site), true);
-  assert.match(chat.history(u).at(-1).body, /عاد للعمل/, 'لم ينبّه بالعودة');
+  assert.match(chat.history(conv.id).at(-1).body, /عاد للعمل/, 'لم ينبّه بالعودة');
   assert.equal(support.proactiveRecovered(site), false, 'كرّر تنبيه العودة');
 });
 
@@ -177,22 +149,32 @@ test('التنبيه الاستباقي لا يُفشل الفحص إذا تعذ
 
 test('المحادثة المؤجَّلة تُعلَّم وتنزل لأسفل القائمة', () => {
   const a = mkClient(), b = mkClient();
-  chat.sendMessage(a, { body: 'رسالة أ', role: 'client' });
-  chat.sendMessage(b, { body: 'رسالة ب', role: 'client' });
-  chat.markRead(a, 'admin');
-  chat.markRead(b, 'admin');
+  const ca = chat.openConversation(a), cb = chat.openConversation(b);
+  chat.sendMessage(ca.id, { body: 'رسالة أ', role: 'client' });
+  chat.sendMessage(cb.id, { body: 'رسالة ب', role: 'client' });
+  chat.markRead(ca.id, 'admin');
+  chat.markRead(cb.id, 'admin');
 
   support.snooze(a, 24);
   const threads = chat.adminThreads();
-  const ta = threads.find((t) => t.user_id === a);
-  const tb = threads.find((t) => t.user_id === b);
+  const ta = threads.findIndex((t) => t.conversation_id === ca.id);
+  const tb = threads.findIndex((t) => t.conversation_id === cb.id);
 
-  assert.ok(ta.snooze_until, 'حقل التأجيل غير مُعاد من الاستعلام — الشارة لن تظهر أبدًا');
-  assert.ok(
-    threads.indexOf(ta) > threads.indexOf(tb),
-    'المحادثة المؤجَّلة لم تنزل أسفل غير المؤجَّلة'
-  );
+  assert.ok(threads[ta].snooze_until, 'حقل التأجيل غير مُعاد — الشارة لن تظهر أبدًا');
+  assert.ok(ta > tb, 'المحادثة المؤجَّلة لم تنزل أسفل غير المؤجَّلة');
 
   support.unsnooze(a);
-  assert.equal(chat.adminThreads().find((t) => t.user_id === a).snooze_until, null);
+  assert.equal(chat.adminThreads().find((t) => t.conversation_id === ca.id).snooze_until, null);
+});
+
+test('رد في أقل من دقيقة يُحتسب ولا يمحو المقياس', () => {
+  // الانحدار: كان `avg_min ? … : null` يمحو المتوسط عند صفر — أي كلما كان
+  // الفريق أسرع اختفى الرقم الذي يثبت سرعته.
+  const u = mkClient();
+  const c = chat.openConversation(u);
+  bot.escalate(c, { reason: 'رد فوري' });
+  bot.markFirstReply(c.id);
+  const s = support.supportStats(30);
+  assert.equal(typeof s.avgFirstReplyMinutes, 'number', 'مُحي المقياس لأن المتوسط صفر');
+  assert.ok(s.avgFirstReplyMinutes >= 0);
 });

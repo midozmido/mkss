@@ -26,7 +26,7 @@ function rich(text) {
     .replace(/^• /gm, '<span class="bullet">•</span> ');
 }
 
-export function bubble(m, viewerRole, { csrf = '', group = 'only' } = {}) {
+export function bubble(m, viewerRole, { csrf = '', group = 'only', convId = null } = {}) {
   const mine = m.author_role === viewerRole;
   const isInternal = m.visibility === 'internal';
   const isBot = m.author_role === 'bot';
@@ -38,14 +38,14 @@ export function bubble(m, viewerRole, { csrf = '', group = 'only' } = {}) {
   let actions = '';
   if (viewerRole === 'client' && isBot && meta?.kind === 'answer' && meta.articleId) {
     actions = `<div class="msg-actions">
-      <form method="POST" action="/chat/feedback" class="row" style="gap:var(--s-1)">
+      <form method="POST" action="/chat/${convId}/feedback" class="row" style="gap:var(--s-1)">
         <input type="hidden" name="_csrf" value="${esc(csrf)}">
         <input type="hidden" name="articleId" value="${esc(meta.articleId)}">
         <input type="hidden" name="question" value="${esc(meta.question || '')}">
         <button class="chip" name="helpful" value="1" type="submit">👍 أفادني</button>
         <button class="chip" name="helpful" value="0" type="submit">👎 لم يفدني</button>
       </form>
-      <form method="POST" action="/chat/escalate">
+      <form method="POST" action="/chat/${convId}/escalate">
         <input type="hidden" name="_csrf" value="${esc(csrf)}">
         <input type="hidden" name="reason" value="بعد قراءة مقال">
         <button class="chip chip-strong" type="submit">${icon('chat')} تحدّث إلى الدعم الفني</button>
@@ -53,14 +53,14 @@ export function bubble(m, viewerRole, { csrf = '', group = 'only' } = {}) {
     </div>`;
   } else if (viewerRole === 'client' && isBot && (meta?.kind === 'no_answer' || meta?.kind === 'suggest')) {
     const sugg = (meta.suggestions || [])
-      .map((s) => `<form method="POST" action="/chat/article" style="display:inline">
+      .map((s) => `<form method="POST" action="/chat/${convId}/article" style="display:inline">
           <input type="hidden" name="_csrf" value="${esc(csrf)}">
           <input type="hidden" name="articleId" value="${esc(s.id)}">
           <button class="chip" type="submit">${esc(s.title)}</button>
         </form>`)
       .join('');
     actions = `<div class="msg-actions">${sugg}
-      <form method="POST" action="/chat/escalate">
+      <form method="POST" action="/chat/${convId}/escalate">
         <input type="hidden" name="_csrf" value="${esc(csrf)}">
         <input type="hidden" name="reason" value="${esc(meta.kind === 'no_answer' ? 'المساعد لم يجد إجابة' : 'الاقتراحات لم تكفِ')}">
         <button class="chip chip-strong" type="submit">${icon('chat')} تحدّث إلى الدعم الفني</button>
@@ -114,9 +114,9 @@ function groupOf(list, i) {
   return 'only';
 }
 
-function log(messages, viewerRole, csrf) {
+function log(messages, viewerRole, csrf, convId = null) {
   if (!messages.length) return '';
-  return messages.map((m, i) => bubble(m, viewerRole, { csrf, group: groupOf(messages, i) })).join('');
+  return messages.map((m, i) => bubble(m, viewerRole, { csrf, convId, group: groupOf(messages, i) })).join('');
 }
 
 const SEND_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.2 20.6 21.4 12 3.2 3.4l.1 6.7 12.6 1.9-12.6 1.9z"/></svg>';
@@ -141,22 +141,95 @@ function colorBar(current, csrf) {
   </form>`;
 }
 
-// ——————————————————— شات العميل ———————————————————
+// ——————————————————— مركز المحادثات (العميل) ———————————————————
 
-export function clientChatPage({ user, messages, mode, topics, greeting, hours, botName = 'سامي', color, pendingRating = null, flash, locked = false }) {
-  setBotName(botName);
-  const isLive = mode === 'live';
+const STATUS_BADGE = {
+  open: `<span class="badge badge-ok">مفتوحة</span>`,
+  closed: `<span class="badge">منتهية</span>`,
+};
+
+/** الصفحة الرئيسية للدعم: بحث ثم محادثة جديدة ثم سجل المحادثات */
+export function supportHome({ user, conversations, botName = 'سامي', color, hours, popular = [], flash }) {
   const accent = color || '#0d7a6f';
+  return layout({
+    title: 'الدعم',
+    user,
+    active: '/chat',
+    flash,
+    body: `<div class="stack support-home" style="--chat-accent:${esc(accent)}">
+  <section class="card hero-support">
+    ${sami(64)}
+    <div class="grow">
+      <h1>كيف نساعدك؟</h1>
+      <p class="muted" style="margin:0">
+        ابحث في مكتبة المساعدة، أو ابدأ محادثة مع ${esc(botName)} —
+        ${hours.open ? 'وفريق الدعم متاح الآن إن احتجته.' : `وفريق الدعم يرد من ${esc(hours.label)}.`}
+      </p>
+    </div>
+  </section>
 
-  const header = isLive
-    ? `<span class="badge badge-ok">${icon('chat')} فريق الدعم${hours.open ? ' — متاح الآن' : ''}</span>`
-    : `<span class="badge badge-brand">${icon('grid')} ${esc(botName)}</span>`;
+  <form class="card search-card" method="GET" action="/help">
+    <label class="sr-only" for="kbq">ابحث في المساعدة</label>
+    <div class="row" style="gap:var(--s-2)">
+      <input id="kbq" name="q" class="grow" placeholder="اكتب سؤالك… مثال: الموقع بطيء" autocomplete="off">
+      <button class="btn btn-primary" type="submit">${icon('grid')} بحث</button>
+    </div>
+    ${popular.length
+      ? `<div class="row" style="margin-block-start:var(--s-3);gap:var(--s-2)">
+          <span class="faint">الأكثر بحثًا:</span>
+          ${popular.map((a) => `<a class="chip" href="/help/${esc(a.slug)}">${esc(a.title)}</a>`).join('')}
+        </div>`
+      : ''}
+  </form>
 
-  const chips = !isLive && topics.length
+  <form method="POST" action="/chat/new">
+    <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+    <button class="btn btn-primary btn-block new-conv" type="submit">
+      ${icon('chat')} ابدأ محادثة جديدة
+    </button>
+  </form>
+
+  ${conversations.length
+    ? `<section class="stack">
+        <h2>محادثاتك</h2>
+        <div class="card card-flush">${conversations
+          .map(
+            (c) => `<a class="thread" href="/chat/${c.id}">
+          <span class="msg-ava">${sami(34, { floating: false })}</span>
+          <div class="grow">
+            <div class="row-between">
+              <b>${esc(c.title || 'محادثة جديدة')}</b>
+              <span class="faint small">${esc(ago(c.last_at))}</span>
+            </div>
+            <div class="thread-last faint">${c.last_role === 'client' ? 'أنت: ' : c.last_role === 'bot' ? esc(botName) + ': ' : ''}${esc(String(c.last_body || '').replace(/\n/g, ' ').slice(0, 80))}</div>
+            <div class="row" style="margin-block-start:var(--s-2)">
+              ${STATUS_BADGE[c.status] || ''}
+              ${c.mode === 'live' && c.status === 'open' ? `<span class="badge badge-info">${icon('chat')} مع فريق الدعم</span>` : ''}
+            </div>
+          </div>
+          ${c.unread ? `<span class="badge badge-danger">${c.unread}</span>` : ''}
+        </a>`
+          )
+          .join('')}</div>
+      </section>`
+    : `<div class="card empty">${icon('chat')}<p>لا محادثات بعد.</p>
+        <p class="small">ابدأ واحدة وسأجيبك فورًا.</p></div>`}
+</div>`,
+  });
+}
+
+/** محادثة واحدة */
+export function conversationPage({ user, conv, messages, topics, greeting, hours, botName = 'سامي', color, flash, locked = false }) {
+  setBotName(botName);
+  const accent = color || '#0d7a6f';
+  const isLive = conv.mode === 'live';
+  const closed = conv.status === 'closed';
+
+  const chips = !isLive && !closed && topics.length
     ? `<div class="topics" aria-label="مواضيع سريعة">
         ${topics
           .map(
-            (t) => `<form method="POST" action="${t.articleId ? '/chat/article' : '/chat'}" style="display:inline">
+            (t) => `<form method="POST" action="${t.articleId ? `/chat/${conv.id}/article` : `/chat/${conv.id}`}" style="display:inline">
           <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
           ${t.articleId
             ? `<input type="hidden" name="articleId" value="${esc(t.articleId)}">`
@@ -169,68 +242,71 @@ export function clientChatPage({ user, messages, mode, topics, greeting, hours, 
     : '';
 
   return layout({
-    title: 'المحادثة',
+    title: conv.title || 'محادثة',
     user,
     active: '/chat',
     flash,
     body: `<div class="stack">
   <div class="row-between">
-    <div>
-      <h1>المحادثة</h1>
-      <p class="muted small" style="margin:0">${isLive ? 'أنت الآن مع فريق الدعم مباشرة' : `${esc(botName)} يجيبك فورًا — ويمكنك طلب زميل من الفريق في أي وقت`}</p>
+    <a class="btn btn-sm" href="/chat">${icon('arrow')} كل المحادثات</a>
+    <div class="row">
+      ${isLive
+        ? `<span class="badge badge-ok">${icon('chat')} فريق الدعم${hours.open ? ' — متاح الآن' : ''}</span>`
+        : `<span class="badge badge-brand">${icon('grid')} ${esc(botName)}</span>`}
+      ${closed ? STATUS_BADGE.closed : `<span class="badge" id="chat-status">${icon('clock')} جارٍ الاتصال…</span>`}
     </div>
-    <div class="row">${header}<span class="badge" id="chat-status">${icon('clock')} جارٍ الاتصال…</span></div>
   </div>
 
   ${locked ? `<div class="alert alert-warn">${icon('alert')}<div>
     مزايا لوحتك متوقفة، لكن المحادثة تظل مفتوحة دائمًا. <a href="/billing">تفعيل الاشتراك</a>
   </div></div>` : ''}
 
-  ${pendingRating
-    ? `<section class="card rating-card" style="--chat-accent:${esc(accent)}">
-        <p style="margin:0"><b>كيف كانت محادثتك مع فريق الدعم؟</b></p>
-        <form method="POST" action="/chat/rate" class="row" style="justify-content:center;margin-block-start:var(--s-3)">
-          <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
-          <input type="hidden" name="escalationId" value="${pendingRating.id}">
-          <button class="chip chip-strong" name="score" value="1" type="submit">👍 راضٍ</button>
-          <button class="chip" name="score" value="0" type="submit">👎 غير راضٍ</button>
-        </form>
-        <p class="faint" style="margin-block-start:var(--s-2);margin-block-end:0">تقييمك يساعدنا على التحسّن.</p>
-      </section>`
-    : ''}
-
-  ${!isLive && !messages.length
+  ${!messages.length
     ? `<div class="card bot-intro" style="--chat-accent:${esc(accent)}">
         ${sami(56)}
         <p>${esc(greeting)}</p>
       </div>`
     : ''}
 
-  <section class="chat" data-chat-user="${user.id}" data-viewer="client" data-mode="${esc(mode)}"
+  <section class="chat" data-chat-conv="${conv.id}" data-viewer="client" data-mode="${esc(conv.mode)}"
            style="--chat-accent:${esc(accent)}">
     <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="سجل المحادثة">
-      ${log(messages, 'client', user.csrf)}
+      ${log(messages, 'client', user.csrf, conv.id)}
     </div>
-    ${typingBar()}
+    ${closed ? '' : typingBar()}
     ${chips}
-    <form class="chat-form" method="POST" action="/chat" id="chat-form">
-      <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
-      <textarea name="body" id="chat-input" rows="1" required maxlength="4000"
-        placeholder="${isLive ? 'اكتب رسالتك…' : `اسأل ${esc(botName)} عن أي شيء…`}"></textarea>
-      <button class="chat-send" type="submit" aria-label="إرسال">${SEND_ICON}</button>
-    </form>
-    ${colorBar(accent, user.csrf)}
+    ${closed
+      ? `<div class="closed-note">
+          <p style="margin:0">هذه المحادثة منتهية ومحفوظة في سجلك.</p>
+          <form method="POST" action="/chat/new">
+            <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+            <button class="btn btn-primary" type="submit">${icon('chat')} ابدأ محادثة جديدة</button>
+          </form>
+        </div>`
+      : `<form class="chat-form" method="POST" action="/chat/${conv.id}" id="chat-form">
+          <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+          <textarea name="body" id="chat-input" rows="1" required maxlength="4000"
+            placeholder="${isLive ? 'اكتب رسالتك…' : `اسأل ${esc(botName)} عن أي شيء…`}"></textarea>
+          <button class="chat-send" type="submit" aria-label="إرسال">${SEND_ICON}</button>
+        </form>`}
+    ${closed ? '' : colorBar(accent, user.csrf)}
   </section>
 
-  ${!isLive
-    ? `<form method="POST" action="/chat/escalate" class="center">
-        <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
-        <input type="hidden" name="reason" value="طلب مباشر">
-        <button class="btn btn-block" type="submit" style="max-inline-size:420px;margin-inline:auto">
-          ${icon('chat')} تحدّث إلى الدعم الفني مباشرة
-        </button>
-        <p class="faint" style="margin-block-start:var(--s-2)">${esc(hours.open ? 'فريقنا متاح الآن' : `خارج مواعيد العمل (${hours.label}) — رسالتك تصلنا وسنرد أول ما نفتح`)}</p>
-      </form>`
+  ${!closed
+    ? `<div class="row" style="justify-content:center;gap:var(--s-3)">
+        ${!isLive
+          ? `<form method="POST" action="/chat/${conv.id}/escalate">
+              <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+              <input type="hidden" name="reason" value="طلب مباشر">
+              <button class="btn" type="submit">${icon('chat')} تحدّث إلى الدعم الفني</button>
+            </form>`
+          : ''}
+        <form method="POST" action="/chat/${conv.id}/close" data-confirm="إنهاء هذه المحادثة؟ ستبقى محفوظة في سجلك.">
+          <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+          <button class="btn btn-sm" type="submit">${icon('check')} إنهاء المحادثة</button>
+        </form>
+      </div>
+      ${!isLive ? `<p class="faint center" style="margin:0">${esc(hours.open ? 'فريقنا متاح الآن' : `خارج مواعيد العمل (${hours.label}) — رسالتك تصلنا وسنرد أول ما نفتح`)}</p>` : ''}`
     : ''}
 </div>`,
   });
@@ -238,11 +314,17 @@ export function clientChatPage({ user, messages, mode, topics, greeting, hours, 
 
 // ——————————————————— لوحة الأدمن ———————————————————
 
+/** «—» لا قياس · «<1 د» لرد في أقل من دقيقة · وإلا الدقائق */
+const firstReplyLabel = (min) => {
+  if (min == null) return '—';
+  const unit = '<span class="faint" style="font-size:var(--t-sm)"> د</span>';
+  return min === 0 ? `&lt;1${unit}` : `${min}${unit}`;
+};
+
 export function adminChatList({ user, threads, stats = null, flash }) {
   const badge = (t) => {
-    if (t.support_mode === 'live' && t.escalated_at) {
-      return `<span class="badge badge-danger">${icon('alert')} محوّل للدعم</span>`;
-    }
+    if (t.status === 'closed') return `<span class="badge">منتهية</span>`;
+    if (t.mode === 'live') return `<span class="badge badge-danger">${icon('alert')} محوّل للدعم</span>`;
     return `<span class="badge badge-brand">${icon('grid')} مع المساعد</span>`;
   };
 
@@ -265,23 +347,24 @@ export function adminChatList({ user, threads, stats = null, flash }) {
   ${stats
     ? `<div class="stats">
       <div class="stat"><div class="stat-value">${stats.escalations}</div><div class="stat-label">تحويل خلال 30 يومًا</div></div>
-      <div class="stat"><div class="stat-value">${stats.avgFirstReplyMinutes ?? '—'}<span class="faint" style="font-size:var(--t-sm)">${stats.avgFirstReplyMinutes != null ? ' د' : ''}</span></div><div class="stat-label">متوسط أول رد</div></div>
-      <div class="stat"><div class="stat-value" style="color:${stats.satisfaction == null ? 'var(--text-faint)' : stats.satisfaction >= 80 ? 'var(--ok)' : 'var(--warn)'}">${stats.satisfaction == null ? '—' : stats.satisfaction + '%'}</div><div class="stat-label">نسبة الرضا</div></div>
-      <div class="stat"><div class="stat-value">${stats.rated}</div><div class="stat-label">تقييم مُستلَم</div></div>
+      <div class="stat"><div class="stat-value">${firstReplyLabel(stats.avgFirstReplyMinutes)}</div><div class="stat-label">متوسط أول رد</div></div>
+      <div class="stat"><div class="stat-value" style="color:${stats.openLive ? 'var(--danger)' : 'var(--ok)'}">${stats.openLive}</div><div class="stat-label">محادثة مفتوحة مع الفريق</div></div>
+      <div class="stat"><div class="stat-value">${stats.replied}</div><div class="stat-label">تحويل رُدّ عليه</div></div>
     </div>`
     : ''}
 
   ${threads.length
     ? `<div class="card card-flush" id="thread-list">${threads
         .map(
-          (t) => `<a class="thread ${t.support_mode === 'live' ? 'thread-live' : ''}" href="/admin/chat/${t.user_id}">
+          (t) => `<a class="thread ${t.mode === 'live' && t.status === 'open' ? 'thread-live' : ''}" href="/admin/chat/${t.conversation_id}">
       <div class="thread-avatar" aria-hidden="true">${esc((t.name || '?').trim().charAt(0))}</div>
       <div class="grow">
         <div class="row-between">
           <b>${esc(t.name)}</b>
           <span class="faint small">${esc(ago(t.last_at))}</span>
         </div>
-        <div class="thread-last faint">${t.last_role === 'admin' ? 'أنت: ' : t.last_role === 'bot' ? BOT_NAME + ': ' : ''}${esc((t.last_body || '').replace(/\n/g, ' ').slice(0, 80))}</div>
+        <div class="faint small">${esc(t.title || 'محادثة')}</div>
+        <div class="thread-last faint">${t.last_role === 'admin' ? 'أنت: ' : t.last_role === 'bot' ? BOT_NAME + ': ' : ''}${esc((t.last_body || '').replace(/\n/g, ' ').slice(0, 70))}</div>
         <div class="row" style="margin-block-start:var(--s-2)">${badge(t)}</div>
       </div>
       ${t.unread ? `<span class="badge badge-danger">${t.unread}</span>` : ''}
@@ -295,9 +378,10 @@ export function adminChatList({ user, threads, stats = null, flash }) {
   });
 }
 
-export function adminChatThread({ user, client, messages, state, mode, replies = [], botName = 'سامي', flash }) {
+export function adminChatThread({ user, client, conv, messages, state, replies = [], botName = 'سامي', flash }) {
   setBotName(botName);
-  const isLive = mode === 'live';
+  const isLive = conv.mode === 'live';
+  const closed = conv.status === 'closed';
   return layout({
     title: `محادثة ${client.name}`,
     user,
@@ -312,16 +396,19 @@ export function adminChatThread({ user, client, messages, state, mode, replies =
         <div class="thread-avatar" aria-hidden="true">${esc((client.name || '?').trim().charAt(0))}</div>
         <div>
           <h1 style="font-size:var(--t-md)">${esc(client.name)}</h1>
+          <div class="faint small">${esc(conv.title || 'محادثة')}</div>
           <div class="faint small ltr">${esc(client.email)}${client.whatsapp ? ` · ${esc(client.whatsapp)}` : ''}</div>
         </div>
       </div>
       <div class="row">
         ${stateBadge(state)}
-        ${isLive
-          ? `<span class="badge badge-danger">${icon('alert')} محوّل للدعم</span>`
-          : `<span class="badge badge-brand">${icon('grid')} مع المساعد</span>`}
+        ${closed
+          ? `<span class="badge">منتهية</span>`
+          : isLive
+            ? `<span class="badge badge-danger">${icon('alert')} محوّل للدعم</span>`
+            : `<span class="badge badge-brand">${icon('grid')} مع المساعد</span>`}
         <a class="btn btn-sm" href="/admin/client/${client.id}">ملف العميل</a>
-        <form method="POST" action="/admin/chat/${client.id}/snooze" class="row" style="gap:var(--s-1)">
+        <form method="POST" action="/admin/chat/${conv.id}/snooze" class="row" style="gap:var(--s-1)">
           <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
           <select name="hours" style="inline-size:auto;min-block-size:30px;padding-block:2px">
             <option value="4">أجّل 4 ساعات</option>
@@ -331,8 +418,8 @@ export function adminChatThread({ user, client, messages, state, mode, replies =
           </select>
           <button class="btn btn-sm" type="submit">${icon('clock')}</button>
         </form>
-        ${isLive
-          ? `<form method="POST" action="/admin/chat/${client.id}/close" data-confirm="إنهاء المحادثة وإعادة العميل للمساعد الآلي؟">
+        ${!closed
+          ? `<form method="POST" action="/admin/chat/${conv.id}/close" data-confirm="إنهاء المحادثة؟ ستُحفظ في سجل العميل ويمكنه فتح جديدة.">
               <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
               <button class="btn btn-sm" type="submit">${icon('check')} إنهاء المحادثة</button>
             </form>`
@@ -341,9 +428,9 @@ export function adminChatThread({ user, client, messages, state, mode, replies =
     </div>
   </section>
 
-  <section class="chat" data-chat-user="${client.id}" data-viewer="admin" data-mode="${esc(mode)}">
+  <section class="chat" data-chat-conv="${conv.id}" data-viewer="admin" data-mode="${esc(conv.mode)}">
     <div class="chat-log" id="chat-log" role="log" aria-live="polite">
-      ${log(messages, 'admin', user.csrf)}
+      ${log(messages, 'admin', user.csrf, conv.id)}
     </div>
     ${replies.length
       ? `<details class="canned">
@@ -354,7 +441,8 @@ export function adminChatThread({ user, client, messages, state, mode, replies =
         </details>`
       : ''}
     ${typingBar()}
-    <form class="chat-form" method="POST" action="/admin/chat/${client.id}" id="chat-form">
+    ${closed ? '<div class="closed-note"><p style="margin:0">هذه المحادثة منتهية. الرد عليها يعيد فتحها.</p></div>' : ''}
+    <form class="chat-form" method="POST" action="/admin/chat/${conv.id}" id="chat-form">
       <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
       <textarea name="body" id="chat-input" rows="1" required maxlength="4000"
         placeholder="ردّك…"></textarea>
@@ -364,7 +452,7 @@ export function adminChatThread({ user, client, messages, state, mode, replies =
 
   <details class="card">
     <summary><b>ملاحظة داخلية</b> — لا يراها العميل</summary>
-    <form method="POST" action="/admin/chat/${client.id}/note" class="stack" style="margin-block-start:var(--s-4)">
+    <form method="POST" action="/admin/chat/${conv.id}/note" class="stack" style="margin-block-start:var(--s-4)">
       <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
       <textarea name="body" rows="2" required maxlength="2000" placeholder="سياق للفريق…"></textarea>
       <button class="btn btn-sm" type="submit">حفظ الملاحظة</button>

@@ -172,20 +172,22 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
   .topbar .brand span:last-child { white-space: nowrap; }
   .nav {
     order: 3;
-    flex-basis: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    /* يلتفّ ولا ينزلق. الشريط المنزلق كان يخفي «الفواتير» و«الاشتراك» خارج
+       الشاشة بلا أي إشارة إلى وجودهما — وجهتان كاملتان لا يراهما العميل.
+       سطران من الأزرار أطول بقليل، لكن كل شيء ظاهر، وهذا هو المطلوب. */
+    flex-wrap: wrap;
+    row-gap: var(--s-1);
     padding-block-end: 2px;
     /* الاختصار الكامل مقصود: القاعدة العامة .grow تضبط flex:1، وأي قاعدة
-       لاحقة بـ flex:none كانت تصفّر الانكماش فيتمدد الشريط ويمدّ الصفحة كلها.
-       و min-inline-size:0 ضرورية لأن قيمتها الافتراضية auto تمنع الانكماش
-       تحت عرض المحتوى فيبطل التمرير الداخلي. */
+       لاحقة بـ flex:none كانت تصفّر الانكماش فيتمدد الشريط ويمدّ الصفحة كلها. */
     flex: 1 1 100%;
     min-inline-size: 0;
   }
-  .nav::-webkit-scrollbar { display: none; }
-  .nav a { white-space: nowrap; }
+  .nav a {
+    white-space: nowrap;
+    padding-inline: var(--s-2);
+    font-size: var(--t-xs);
+  }
 }
 
 /* ——— البطاقات ——— */
@@ -663,5 +665,21 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   .bot-intro { flex-direction: column; }
 }
 
-.rating-card { text-align: center; }
-.rating-card .chip { min-inline-size: 110px; justify-content: center; }
+/* ——— مركز الدعم على طراز هوستنجر ——— */
+.hero-support { display: flex; gap: var(--s-5); align-items: center; --chat-accent: var(--brand); }
+.hero-support .sami { flex: none; }
+.hero-support h1 { margin-block-end: var(--s-1); }
+.search-card { padding: var(--s-4); }
+.search-card input { min-block-size: 46px; border-radius: var(--r); }
+.new-conv { min-block-size: 52px; font-size: var(--t-md); }
+.closed-note {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+  flex-wrap: wrap; padding: var(--s-4); background: var(--surface-sunk);
+  border-block-start: 1px solid var(--border); color: var(--text-muted); font-size: var(--t-sm);
+}
+.support-home .thread .msg-ava { color: var(--chat-accent); }
+
+@media (max-width: 620px) {
+  .hero-support { flex-direction: column; text-align: center; }
+  .closed-note { flex-direction: column; align-items: stretch; text-align: center; }
+}

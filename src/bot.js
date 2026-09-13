@@ -15,6 +15,7 @@ import { money } from './repo.js';
 
 const CONFIDENT = 0.45;   // فوقها نجيب مباشرة
 const SUGGEST = 0.18;     // بينها وبين السابقة نقترح ولا نجزم
+const AUTO_ESCALATE_AFTER = 2; // محاولتان فاشلتان ثم تحويل تلقائي بلا سؤال
 
 // ——————————————————— مواعيد العمل ———————————————————
 
@@ -169,36 +170,35 @@ const INTENTS = [
 
 // ——————————————————— المعالجة ———————————————————
 
-export const isLive = (userId) =>
-  get('SELECT support_mode FROM users WHERE id = ?', userId)?.support_mode === 'live';
+export const isLive = (conversationId) => chat.isLive(conversationId);
 
 /**
  * يعالج رسالة العميل ويرد.
  * @returns {{handled:boolean, messages:object[]}}
  */
-export function handle(userId, text) {
+/**
+ * يعالج رسالة العميل داخل محادثة بعينها.
+ * @param {object} conv صف المحادثة (يحمل id و user_id)
+ */
+export function handle(conv, text) {
+  const userId = conv.user_id;
+  const cid = conv.id;
   const raw = String(text || '').trim();
   const t = kb.normalize(raw);
   const out = [];
 
-  // طلب صريح للتحويل يسبق كل شيء
-  if (has(t, 'كلم الدعم', 'الدعم الفني', 'موظف', 'انسان', 'حد حقيقي', 'محتاج حد', 'مش عايز بوت')) {
-    return { handled: true, escalate: true, messages: [] };
-  }
+  if (wantsHuman(t)) return { handled: true, escalate: true, messages: [] };
 
-  // 1) نيّة على بيانات حية — ما لم يكن السؤال سؤال تعلُّم لا سؤال حالة
+  // 1) نيّة على بيانات حية — ما لم يكن سؤال تعلُّم لا سؤال حالة
   const knowledge = isKnowledgeQuestion(t);
   for (const intent of INTENTS) {
     if (knowledge || !intent.match(t)) continue;
     let body;
-    try {
-      body = intent.answer(userId);
-    } catch {
-      body = null;
-    }
+    try { body = intent.answer(userId); } catch { body = null; }
     if (body) {
+      chat.bumpFailStreak(cid, true);
       kb.logEvent({ userId, question: raw, intent: intent.key, answered: 1 });
-      out.push(chat.sendMessage(userId, { body, role: 'bot', channel: 'bot' }));
+      out.push(chat.sendMessage(cid, { body, role: 'bot', channel: 'bot' }));
       return { handled: true, intent: intent.key, messages: out };
     }
   }
@@ -208,44 +208,66 @@ export function handle(userId, text) {
   const top = hits[0];
 
   if (top && top.score >= CONFIDENT) {
+    chat.bumpFailStreak(cid, true);
     kb.countView(top.id);
     kb.logEvent({ userId, question: raw, articleId: top.id, score: top.score, answered: 1 });
-    out.push(
-      chat.sendMessage(userId, {
-        body: `**${top.title}**\n\n${top.body}`,
-        role: 'bot',
-        channel: 'bot',
-        meta: { articleId: top.id, question: raw, kind: 'answer' },
-      })
-    );
+    out.push(chat.sendMessage(cid, {
+      body: `**${top.title}**\n\n${top.body}`,
+      role: 'bot', channel: 'bot',
+      meta: { articleId: top.id, question: raw, kind: 'answer' },
+    }));
     return { handled: true, articleId: top.id, messages: out };
   }
 
-  if (top && top.score >= SUGGEST) {
-    kb.logEvent({ userId, question: raw, articleId: top.id, score: top.score, answered: 0 });
-    const list = hits.map((h) => `• ${h.title}`).join('\n');
-    out.push(
-      chat.sendMessage(userId, {
-        body: `لستُ واثقًا أنني فهمت قصدك تمامًا. لعلّك تقصد أحد هذه:\n\n${list}\n\nاختر ما يناسبك، أو اضغط «تحدّث إلى الدعم الفني» وسأصلك بفريقنا فورًا.`,
-        role: 'bot',
-        channel: 'bot',
-        meta: { suggestions: hits.map((h) => ({ id: h.id, title: h.title })), kind: 'suggest' },
-      })
-    );
-    return { handled: true, suggested: true, messages: out };
+  // 3) لم يفهم — يقدّم احتمالات ولا يترك العميل في طريق مسدود
+  chat.bumpFailStreak(cid);
+  const streak = chat.failStreak(cid);
+
+  // بعد محاولتين فاشلتين متتاليتين نحوّل تلقائيًا بلا سؤال:
+  // إعادة عرض الاحتمالات على من لم تنفعه مرتين إصرارٌ لا مساعدة.
+  if (streak >= AUTO_ESCALATE_AFTER) {
+    kb.logEvent({ userId, question: raw, answered: 0, escalated: 1 });
+    out.push(chat.sendMessage(cid, {
+      body: `لم أوفّق في فهم ما تحتاجه مرتين، ولن أُضيع وقتك أكثر.\nأُحوّلك الآن إلى زميل من فريق الدعم ومعه كل ما دار بيننا.`,
+      role: 'bot', channel: 'bot', meta: { kind: 'auto_escalate' },
+    }));
+    return { handled: true, escalate: true, autoEscalated: true, messages: out };
   }
 
-  // 3) لا إجابة — لا طريق مسدود
-  kb.logEvent({ userId, question: raw, answered: 0 });
-  out.push(
-    chat.sendMessage(userId, {
-      body: `لا أملك إجابة دقيقة عن هذا السؤال، ولم أشأ أن أخمّن.\n\n${etaSentence()}\n\nاضغط «تحدّث إلى الدعم الفني» وسأحوّلك فورًا، وأنقل معك كل ما دار بيننا — فلن تحتاج إلى إعادة الشرح.`,
-      role: 'bot',
-      channel: 'bot',
-      meta: { kind: 'no_answer', question: raw },
-    })
+  kb.logEvent({ userId, question: raw, articleId: top?.id || null, score: top?.score || null, answered: 0 });
+
+  // الاحتمالات: أقرب المقالات إن وُجدت، وإلا أبواب قاعدة المعرفة نفسها
+  const suggestions = hits.filter((h) => h.score >= SUGGEST).map((h) => ({ id: h.id, title: h.title }));
+  const topics = suggestions.length ? [] : suggestedTopics();
+
+  const intro = suggestions.length
+    ? 'لستُ واثقًا أنني فهمت قصدك تمامًا. لعلّك تقصد أحد هذه:'
+    : 'لم أجد إجابة دقيقة، ولم أشأ أن أخمّن. هل يتعلق سؤالك بأحد هذه؟';
+
+  out.push(chat.sendMessage(cid, {
+    body: `${intro}\n\n${(suggestions.length ? suggestions : topics).map((x) => `• ${x.title}`).join('\n')}\n\nوإن لم يكن أيٌّ منها، فاضغط «تحدّث إلى الدعم الفني» وسأصلك بزميل فورًا.`,
+    role: 'bot', channel: 'bot',
+    meta: {
+      kind: suggestions.length ? 'suggest' : 'no_answer',
+      question: raw,
+      suggestions: suggestions.length ? suggestions : topics,
+    },
+  }));
+  return { handled: true, suggested: Boolean(suggestions.length), noAnswer: !suggestions.length, messages: out };
+}
+
+/** طلب صريح للتحدث إلى إنسان */
+function wantsHuman(t) {
+  return has(t, 'كلم الدعم', 'الدعم الفني', 'موظف', 'انسان', 'حد حقيقي', 'محتاج حد',
+    'مش عايز بوت', 'تحدث الى الدعم', 'عايز اتكلم مع', 'حد من الفريق');
+}
+
+/** أبواب قاعدة المعرفة كاحتمالات حين لا يوجد اقتراح قريب */
+function suggestedTopics() {
+  return all(
+    `SELECT category AS title, MIN(id) AS id FROM kb_articles
+      WHERE active = 1 GROUP BY category ORDER BY SUM(views) DESC LIMIT 5`
   );
-  return { handled: true, noAnswer: true, messages: out };
 }
 
 // ——————————————————— وقت التفكير ———————————————————
@@ -270,11 +292,12 @@ export function setTyping(userId, on) {
  * يرد بعد تفكير. يُرجع فورًا ولا يحجب الطلب.
  * @returns {{immediate?:object, delayMs?:number, escalated?:boolean}}
  */
-export function handleDelayed(userId, text) {
+export function handleDelayed(conv, text) {
+  const userId = conv.user_id;
   const t = kb.normalize(text);
   // التحويل الصريح: فورًا بلا انتظار
-  if (has(t, 'كلم الدعم', 'الدعم الفني', 'موظف', 'انسان', 'حد حقيقي', 'محتاج حد', 'مش عايز بوت', 'تحدث الى الدعم')) {
-    escalate(userId, { reason: 'طلب العميل التحدث إلى الفريق' });
+  if (wantsHuman(t)) {
+    escalate(conv, { reason: 'طلب العميل التحدث إلى الفريق' });
     return { escalated: true };
   }
 
@@ -289,13 +312,29 @@ export function handleDelayed(userId, text) {
     pending.delete(userId);
     try {
       setTyping(userId, false);
-      if (!isLive(userId)) handle(userId, text);
+      if (chat.isLive(conv.id)) return;
+      const r = handle(conv, text);
+      // تحويل تلقائي بعد محاولتين فاشلتين
+      if (r.escalate) escalate(conv, { reason: r.autoEscalated ? 'المساعد عجز مرتين' : 'طلب العميل' });
     } catch { /* العميل قد يكون خرج */ }
   }, delayMs);
   if (timer.unref) timer.unref();
   pending.set(userId, timer);
 
   return { delayMs: Math.round(delayMs) };
+}
+
+/**
+ * يلغي كل الردود المعلّقة.
+ * ضروري عند الإغلاق النظيف وفي الاختبارات: مؤقّت تفكير لم يُلغَ يظل يكتب
+ * في قاعدة البيانات بعد انتهاء ما استدعاه، فيفسد ما بعده بصمت.
+ */
+export function cancelAllPending() {
+  for (const [userId, t] of pending) {
+    clearTimeout(t);
+    try { setTyping(userId, false); } catch { /* لا مشتركين */ }
+  }
+  pending.clear();
 }
 
 /** يلغي أي رد معلّق — يُستدعى عند التحويل حتى لا يقاطع سامي الموظف */
@@ -309,11 +348,12 @@ export function cancelPending(userId) {
 }
 
 /** يعرض مقالًا بعينه (عند الضغط على اقتراح) */
-export function showArticle(userId, articleId) {
+export function showArticle(conv, articleId) {
   const a = kb.getArticle(articleId);
   if (!a) return null;
   kb.countView(a.id);
-  return chat.sendMessage(userId, {
+  chat.bumpFailStreak(conv.id, true);
+  return chat.sendMessage(conv.id, {
     body: `**${a.title}**\n\n${a.body}`,
     role: 'bot',
     channel: 'bot',
@@ -330,24 +370,25 @@ export function showArticle(userId, articleId) {
  * فلا يُطلب من العميل أن يعيد شرح مشكلته من أول وأحدث. وهذا حرفيًا
  * الفرق الوحيد بين تحويل محترم وتحويل يُغضب العميل.
  */
-export function escalate(userId, { reason = 'طلب العميل', question = null } = {}) {
+export function escalate(conv, { reason = 'طلب العميل' } = {}) {
+  const userId = conv.user_id;
+  const cid = conv.id;
   cancelPending(userId); // لا يجوز أن يصل رد آلي بعد وصول الموظف
-  const already = isLive(userId);
-  run("UPDATE users SET support_mode = 'live', escalated_at = ? WHERE id = ?", nowISO(), userId);
 
+  const already = chat.isLive(cid);
+  chat.setMode(cid, 'live');
+  chat.bumpFailStreak(cid, true);
   if (already) return { already: true };
 
-  // ملخص داخلي للأدمن: آخر ما دار مع البوت + ما عجز عنه
-  // الطرفان معًا: سؤال العميل هو نصف القصة، وبدونه يقرأ الدعم إجابات بلا أسئلة
+  // ملخص داخلي للأدمن: ما دار مع المساعد وما عجز عنه
   const recent = all(
     `SELECT author_role, body, created_at FROM chat_messages
-      WHERE user_id = ? AND channel = 'bot' AND visibility = 'all'
-      ORDER BY id DESC LIMIT 10`,
-    userId
+      WHERE conversation_id = ? AND visibility = 'all' ORDER BY id DESC LIMIT 10`,
+    cid
   ).reverse();
 
   const failed = all(
-    `SELECT question FROM bot_events WHERE user_id = ? AND answered = 0 ORDER BY id DESC LIMIT 3`,
+    'SELECT question FROM bot_events WHERE user_id = ? AND answered = 0 ORDER BY id DESC LIMIT 3',
     userId
   ).map((r) => r.question);
 
@@ -357,49 +398,44 @@ export function escalate(userId, { reason = 'طلب العميل', question = nu
   const down = sites.filter((s) => s.last_ok === 0).map((s) => s.name);
 
   const summary = [
-    `🔺 تحويل من المساعد الآلي — ${user?.name || ''}`,
+    `🔺 تحويل من ${botName()} — ${user?.name || ''}`,
     `السبب: ${reason}`,
     failed.length ? `أسئلة لم يجب عنها المساعد:\n${failed.map((q) => `  • ${q}`).join('\n')}` : null,
     recent.length
       ? `آخر ما دار معه:\n${recent
-          .map((m) => `  ${m.author_role === 'client' ? '👤 العميل' : '🤖 المساعد'}: ${String(m.body).replace(/\n/g, ' ').slice(0, 110)}`)
+          .map((m) => `  ${m.author_role === 'client' ? '👤 العميل' : '🤖 ' + botName()}: ${String(m.body).replace(/\n/g, ' ').slice(0, 110)}`)
           .join('\n')}`
       : null,
     `حالة الحساب: ${{ trial: 'تجربة مجانية', ok: 'منتظم', due: 'عليه مستحقات', grace: 'في مهلة السداد', restricted: 'مزاياه مقفولة' }[st.state] || st.state}` +
       (st.dueCents ? ` — مستحق ${money.format(st.dueCents)}` : ''),
     down.length ? `⚠️ مواقع لا تفتح الآن: ${down.join('، ')}` : `كل مواقعه تعمل (${sites.length})`,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ].filter(Boolean).join('\n');
 
-  chat.sendMessage(userId, { body: summary, role: 'system', channel: 'live', visibility: 'internal' });
+  chat.sendMessage(cid, { body: summary, role: 'system', channel: 'live', visibility: 'internal' });
 
-  // وللعميل: تأكيد واضح بتوقّع محدد
-  const msg = chat.sendMessage(userId, {
+  const msg = chat.sendMessage(cid, {
     body: `حوّلتك إلى فريق الدعم ✅\nنقلتُ إليهم كل ما دار بيننا، فلن تحتاج إلى إعادة شرح المشكلة.\n\n${etaSentence()}`,
-    role: 'system',
-    channel: 'live',
+    role: 'system', channel: 'live',
   });
 
-  run('INSERT INTO escalations(user_id, started_at, reason) VALUES(?,?,?)', userId, nowISO(), String(reason).slice(0, 120));
-  chat.publish('admin', 'escalation', { user_id: userId, name: user?.name, reason, at: nowISO() });
-  run('UPDATE bot_events SET escalated = 1 WHERE user_id = ? AND id IN (SELECT id FROM bot_events WHERE user_id = ? ORDER BY id DESC LIMIT 3)', userId, userId);
+  run('INSERT INTO escalations(user_id, conversation_id, started_at, reason) VALUES(?,?,?,?)',
+    userId, cid, nowISO(), String(reason).slice(0, 120));
+  chat.publish('admin', 'escalation', { conversation_id: cid, user_id: userId, name: user?.name, reason, at: nowISO() });
+  run('UPDATE bot_events SET escalated = 1 WHERE id IN (SELECT id FROM bot_events WHERE user_id = ? ORDER BY id DESC LIMIT 3)', userId);
 
   return { already: false, message: msg };
 }
 
 /** إعادة العميل لوضع المساعد بعد انتهاء المحادثة */
-export function backToBot(userId) {
-  run("UPDATE users SET support_mode = 'bot', escalated_at = NULL WHERE id = ?", userId);
-  run(
-    'UPDATE escalations SET closed_at = ? WHERE user_id = ? AND closed_at IS NULL',
-    nowISO(), userId
-  );
-  return chat.sendMessage(userId, {
-    body: 'انتهت محادثتك مع فريق الدعم. أنا سامي، وسأكون هنا لأي سؤال، ويمكنك طلب زميل من الفريق متى شئت.',
-    role: 'system',
-    channel: 'bot',
+/** إنهاء المحادثة وأرشفتها — والعميل يفتح جديدة متى شاء */
+export function closeConversation(conv, by = 'admin') {
+  chat.sendMessage(conv.id, {
+    body: by === 'admin'
+      ? 'أنهى فريق الدعم هذه المحادثة. تجدها محفوظة في سجلك، ويمكنك فتح محادثة جديدة متى احتجت.'
+      : 'أُغلقت هذه المحادثة وحُفظت في سجلك. افتح محادثة جديدة متى شئت.',
+    role: 'system', channel: 'bot',
   });
+  return chat.closeConversation(conv.id, by);
 }
 
 /** المواضيع السريعة أعلى الشات — نقطة البداية لمن لا يعرف ماذا يسأل */
@@ -416,12 +452,12 @@ export function quickTopics() {
 }
 
 /** يسجّل أول رد بشري — منه يُحسب متوسط زمن الاستجابة المعروض للعميل */
-export function markFirstReply(userId) {
+export function markFirstReply(conversationId) {
   run(
     `UPDATE escalations SET first_reply_at = ?
-      WHERE id = (SELECT id FROM escalations WHERE user_id = ? AND first_reply_at IS NULL
+      WHERE id = (SELECT id FROM escalations WHERE conversation_id = ? AND first_reply_at IS NULL
                    ORDER BY started_at DESC LIMIT 1)`,
-    nowISO(), userId
+    nowISO(), conversationId
   );
 }
 
@@ -440,4 +476,4 @@ export function botName() {
   return setting('bot_name') || 'سامي';
 }
 
-export { CONFIDENT, SUGGEST, etaSentence };
+export { CONFIDENT, SUGGEST, AUTO_ESCALATE_AFTER, etaSentence };

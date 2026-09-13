@@ -289,9 +289,11 @@ router.post('/billing/claim', async (ctx) => {
       amountCents: cents,
       senderRef: f.senderRef,
     });
-    // نُعلم الأدمن داخل الشات فورًا — أسرع قناة وصول لديه
-    chat.sendMessage(ctx.user.id, {
+    // نُعلم الأدمن داخل الشات فورًا — أسرع قناة وصول لديه.
+    // ملاحظة داخلية: صياغتها موجَّهة للأدمن، والعميل رأى تأكيده في الصفحة.
+    chat.notify(ctx.user.id, {
       role: 'system',
+      visibility: 'internal',
       body: `أبلغ العميل بتحويل ${(cents / 100).toFixed(2)} ج.م عبر ${
         { instapay: 'إنستا باي', vodafone: 'فودافون كاش', other: 'طريقة أخرى' }[f.method] || f.method
       }${f.senderRef ? ` من الرقم ${f.senderRef}` : ''}. رقم الإشعار #${id}`,
@@ -308,111 +310,129 @@ router.post('/billing/claim', async (ctx) => {
 // —— الشات: العميل ——
 
 router.get('/chat', (ctx) => {
-  const mode = bot.isLive(ctx.user.id) ? 'live' : 'bot';
-  const messages = chat.history(ctx.user.id, 100, 'client');
-  chat.markRead(ctx.user.id, 'client');
   const st = billing.accountState(ctx.user.id);
-  sendHtml(ctx.res, chatViews.clientChatPage({
-    user: ctx.user, messages, mode, locked: st.locked,
-    topics: mode === 'bot' ? bot.quickTopics() : [],
-    greeting: setting('bot_greeting') || 'أهلًا بك',
-    hours: bot.workingHours(),
+  sendHtml(ctx.res, chatViews.supportHome({
+    user: ctx.user,
+    conversations: chat.listConversations(ctx.user.id),
     botName: bot.botName(),
     color: ctx.user.chat_color || setting('chat_color_default') || '#0d7a6f',
-    pendingRating: mode === 'bot' ? support.askForRating(ctx.user.id) : null,
+    hours: bot.workingHours(),
+    popular: kb.popular(4),
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
-router.post('/chat', async (ctx) => {
-  const f = await readForm(ctx.req);
-  const wantsJson = String(ctx.req.headers.accept || '').includes('application/json');
-  try {
-    if (!chatLimiter.check(`chat:${ctx.user.id}`).allowed) throw new Error('رسائل كثيرة — تمهّل قليلًا');
-    // القناة تتبع الوضع الحالي: بدونها لا يظهر سؤال العميل في ملخص التحويل،
-    // فيرى الدعم إجابات المساعد بلا الأسئلة — وهذا يُبطل الغرض من النقلة كلها.
-    const live = bot.isLive(ctx.user.id);
-    const msg = chat.sendMessage(ctx.user.id, {
-      body: f.body, role: 'client', authorId: ctx.user.id, channel: live ? 'live' : 'bot',
-    });
-
-    // في وضع المساعد يرد البوت فورًا؛ وفي الوضع البشري لا يتدخل إطلاقًا،
-    // فلا شيء أسوأ من بوت يقاطع محادثة جارية مع موظف.
-    // سامي يفكّر 3–7 ثوانٍ ثم يرد عبر البث — لا نحجب الطلب في انتظاره
-    let thinking = null;
-    if (!live) thinking = bot.handleDelayed(ctx.user.id, f.body);
-    if (wantsJson) return sendJson(ctx.res, { message: msg, thinking });
-    redirect(ctx.res, '/chat');
-  } catch (e) {
-    if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
-    redirect(ctx.res, '/chat', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
-  }
-});
-
-router.post('/chat/color', async (ctx) => {
-  const f = await readForm(ctx.req);
-  if (chatViews.isValidColor(f.color)) {
-    run('UPDATE users SET chat_color = ? WHERE id = ?', f.color, ctx.user.id);
-  }
-  redirect(ctx.res, '/chat');
-});
-
-router.post('/chat/rate', async (ctx) => {
-  const f = await readForm(ctx.req);
-  try {
-    support.rateEscalation(ctx.user.id, Number(f.escalationId), f.score === '1', f.note);
-    chat.sendMessage(ctx.user.id, {
-      role: 'bot', channel: 'bot',
-      body: f.score === '1'
-        ? 'شكرًا لتقييمك 🙏 سعدنا بخدمتك، وأنا هنا لأي سؤال.'
-        : 'شكرًا لصراحتك. سنراجع ما حدث لنتحسّن — وإن أردت متابعة الأمر فاطلب زميلًا من الفريق في أي وقت.',
-    });
-  } catch { /* تقييم مكرر أو غير صالح */ }
-  redirect(ctx.res, '/chat');
-});
-
-router.post('/chat/escalate', async (ctx) => {
-  const f = await readForm(ctx.req);
-  bot.escalate(ctx.user.id, { reason: String(f.reason || 'طلب العميل').slice(0, 120) });
-  redirect(ctx.res, '/chat');
-});
-
-router.post('/chat/article', async (ctx) => {
-  const f = await readForm(ctx.req);
-  bot.showArticle(ctx.user.id, Number(f.articleId));
-  redirect(ctx.res, '/chat');
-});
-
-router.post('/chat/feedback', async (ctx) => {
-  const f = await readForm(ctx.req);
-  const helpful = f.helpful === '1';
-  kb.recordFeedback(Number(f.articleId), ctx.user.id, helpful, f.question);
-  if (!helpful) {
-    // «لم يفدني» ليس نهاية الطريق — نعرض الدعم البشري فورًا
-    chat.sendMessage(ctx.user.id, {
-      role: 'bot', channel: 'bot',
-      body: 'آسف إن الإجابة ما أفادتكش. تحب أحوّلك لفريق الدعم؟ اضغط «كلم الدعم الفني» وهينقل معاك كل اللي اتكلمنا فيه.',
-      meta: { kind: 'no_answer', question: f.question || '' },
-    });
-  } else {
-    chat.sendMessage(ctx.user.id, { role: 'bot', channel: 'bot', body: 'تمام 👍 لو احتجت أي حاجة تانية أنا هنا.' });
-  }
-  redirect(ctx.res, '/chat');
+router.post('/chat/new', (ctx) => {
+  const conv = chat.startConversation(ctx.user.id);
+  redirect(ctx.res, `/chat/${conv.id}`);
 });
 
 router.get('/chat/stream', (ctx) => {
   chat.openStream(ctx.res, `u:${ctx.user.id}`);
 });
 
-router.get('/chat/since', (ctx) => {
-  sendJson(ctx.res, { messages: chat.since(ctx.user.id, ctx.query.get('after'), 'client') });
+router.get('/chat/:id', (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  const messages = chat.history(conv.id, 100, 'client');
+  chat.markRead(conv.id, 'client');
+  const st = billing.accountState(ctx.user.id);
+  sendHtml(ctx.res, chatViews.conversationPage({
+    user: ctx.user, conv, messages, locked: st.locked,
+    topics: conv.mode === 'bot' && conv.status === 'open' ? bot.quickTopics() : [],
+    greeting: setting('bot_greeting') || 'أهلًا بك',
+    hours: bot.workingHours(),
+    botName: bot.botName(),
+    color: ctx.user.chat_color || setting('chat_color_default') || '#0d7a6f',
+    flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
+});
+
+router.post('/chat/:id', async (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  const f = await readForm(ctx.req);
+  const wantsJson = String(ctx.req.headers.accept || '').includes('application/json');
+  try {
+    if (conv.status === 'closed') throw new Error('هذه المحادثة منتهية — افتح محادثة جديدة');
+    if (!chatLimiter.check(`chat:${ctx.user.id}`).allowed) throw new Error('رسائل كثيرة — تمهّل قليلًا');
+
+    const live = chat.isLive(conv.id);
+    const msg = chat.sendMessage(conv.id, {
+      body: f.body, role: 'client', authorId: ctx.user.id, channel: live ? 'live' : 'bot',
+    });
+
+    // سامي يفكّر 3–7 ثوانٍ ثم يرد عبر البثّ — لا نحجب الطلب في انتظاره
+    let thinking = null;
+    if (!live) thinking = bot.handleDelayed(conv, f.body);
+    if (wantsJson) return sendJson(ctx.res, { message: msg, thinking });
+    redirect(ctx.res, `/chat/${conv.id}`);
+  } catch (e) {
+    if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
+    redirect(ctx.res, `/chat/${conv.id}`, { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+router.post('/chat/:id/escalate', async (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  const f = await readForm(ctx.req);
+  if (conv.status === 'open') bot.escalate(conv, { reason: String(f.reason || 'طلب العميل').slice(0, 120) });
+  redirect(ctx.res, `/chat/${conv.id}`);
+});
+
+router.post('/chat/:id/close', async (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  bot.closeConversation(conv, 'client');
+  redirect(ctx.res, '/chat', { headers: { 'Set-Cookie': flashCookie('ok', 'أُنهيت المحادثة وحُفظت في سجلك.') } });
+});
+
+router.post('/chat/:id/article', async (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  const f = await readForm(ctx.req);
+  if (conv.status === 'open') bot.showArticle(conv, Number(f.articleId));
+  redirect(ctx.res, `/chat/${conv.id}`);
+});
+
+router.post('/chat/:id/feedback', async (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  const f = await readForm(ctx.req);
+  const helpful = f.helpful === '1';
+  kb.recordFeedback(Number(f.articleId), ctx.user.id, helpful, f.question);
+  if (conv.status === 'open') {
+    if (!helpful) {
+      // «لم يفدني» ليس نهاية الطريق — نعرض الدعم البشري فورًا
+      chat.sendMessage(conv.id, {
+        role: 'bot', channel: 'bot',
+        body: 'أعتذر إن لم تُفدك الإجابة. هل أحوّلك إلى زميل من فريق الدعم؟ سأنقل معك كل ما دار بيننا.',
+        meta: { kind: 'no_answer', question: f.question || '' },
+      });
+    } else {
+      chat.sendMessage(conv.id, { role: 'bot', channel: 'bot', body: 'يسعدني ذلك 👍 وأنا هنا متى احتجت أي شيء.' });
+    }
+  }
+  redirect(ctx.res, `/chat/${conv.id}`);
+});
+
+router.post('/chat/color', async (ctx) => {
+  const f = await readForm(ctx.req);
+  if (chatViews.isValidColor(f.color)) run('UPDATE users SET chat_color = ? WHERE id = ?', f.color, ctx.user.id);
+  redirect(ctx.res, ctx.req.headers.referer && ctx.req.headers.referer.includes('/chat/') ? ctx.req.headers.referer : '/chat');
+});
+
+router.get('/chat/:id/since', (ctx) => {
+  const conv = chat.getConversation(ctx.user.id, Number(ctx.params.id));
+  sendJson(ctx.res, { messages: chat.since(conv.id, ctx.query.get('after'), 'client') });
 });
 
 // —— قاعدة المعرفة للعميل ——
 
 router.get('/help', (ctx) => {
+  const q = (ctx.query.get('q') || '').trim();
   sendHtml(ctx.res, kbViews.helpIndex({
-    user: ctx.user, categories: kb.categories(), articles: kb.listArticles(), flash: ctx.flash,
+    user: ctx.user,
+    categories: kb.categories(),
+    articles: kb.listArticles(),
+    q,
+    results: q ? kb.search(q, { limit: 8 }).filter((r) => r.score >= 0.15) : null,
+    flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
@@ -569,59 +589,63 @@ router.get('/admin/chat/stream', (ctx) => {
 });
 
 router.get('/admin/chat/:id', (ctx) => {
-  const client = admin.adminGetClient(Number(ctx.params.id));
-  if (!client) return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, message: 'العميل غير موجود' }), { status: 404 });
-  const messages = chat.history(client.id, 100, 'admin');
-  chat.markRead(client.id, 'admin');
+  const conv = chat.adminGetConversation(Number(ctx.params.id));
+  if (!conv) return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, message: 'المحادثة غير موجودة' }), { status: 404 });
+  const client = admin.adminGetClient(conv.user_id) || { id: conv.user_id, name: '—', email: '' };
+  const messages = chat.history(conv.id, 100, 'admin');
+  chat.markRead(conv.id, 'admin');
   sendHtml(ctx.res, chatViews.adminChatThread({
-    user: ctx.user, client, messages,
-    state: billing.accountState(client.id),
-    mode: client.support_mode || 'bot',
+    user: ctx.user, client, conv, messages,
+    state: billing.accountState(conv.user_id),
     replies: support.listReplies(),
     botName: bot.botName(),
-    stats: support.supportStats(30),
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
 router.get('/admin/chat/:id/since', (ctx) => {
-  sendJson(ctx.res, { messages: chat.since(Number(ctx.params.id), ctx.query.get('after')) });
+  sendJson(ctx.res, { messages: chat.since(Number(ctx.params.id), ctx.query.get('after'), 'admin') });
 });
 
 router.post('/admin/chat/:id', async (ctx) => {
   const f = await readForm(ctx.req);
-  const client = admin.adminGetClient(Number(ctx.params.id));
+  const conv = chat.adminGetConversation(Number(ctx.params.id));
   const wantsJson = String(ctx.req.headers.accept || '').includes('application/json');
-  if (!client) {
-    return wantsJson ? sendJson(ctx.res, { error: 'العميل غير موجود' }, { status: 404 }) : redirect(ctx.res, '/admin/chat');
+  if (!conv) {
+    return wantsJson ? sendJson(ctx.res, { error: 'المحادثة غير موجودة' }, { status: 404 }) : redirect(ctx.res, '/admin/chat');
   }
   try {
-    const msg = chat.sendMessage(client.id, { body: f.body, role: 'admin', authorId: ctx.user.id });
-    bot.markFirstReply(client.id);
+    // الرد على محادثة منتهية يعيد فتحها — أرحم من إجبار العميل على البدء من جديد
+    if (conv.status === 'closed') {
+      run("UPDATE conversations SET status = 'open', closed_at = NULL, closed_by = NULL WHERE id = ?", conv.id);
+    }
+    const msg = chat.sendMessage(conv.id, { body: f.body, role: 'admin', authorId: ctx.user.id });
+    chat.setMode(conv.id, 'live');
+    bot.markFirstReply(conv.id);
     if (wantsJson) return sendJson(ctx.res, { message: msg });
-    redirect(ctx.res, `/admin/chat/${client.id}`);
+    redirect(ctx.res, `/admin/chat/${conv.id}`);
   } catch (e) {
     if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
-    redirect(ctx.res, `/admin/chat/${client.id}`, { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+    redirect(ctx.res, `/admin/chat/${conv.id}`, { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
   }
 });
 
 router.post('/admin/chat/:id/close', async (ctx) => {
-  const id = Number(ctx.params.id);
-  if (!admin.adminGetClient(id)) return redirect(ctx.res, '/admin/chat');
-  bot.backToBot(id);
-  admin.audit(ctx.user.id, 'close_chat', `user#${id}`, null, ctx.ip);
-  redirect(ctx.res, `/admin/chat/${id}`, { headers: { 'Set-Cookie': flashCookie('ok', 'أُنهيت المحادثة وعاد العميل للمساعد الآلي.') } });
+  const conv = chat.adminGetConversation(Number(ctx.params.id));
+  if (!conv) return redirect(ctx.res, '/admin/chat');
+  bot.closeConversation(conv, 'admin');
+  admin.audit(ctx.user.id, 'close_chat', `conv#${conv.id}`, null, ctx.ip);
+  redirect(ctx.res, `/admin/chat/${conv.id}`, { headers: { 'Set-Cookie': flashCookie('ok', 'أُنهيت المحادثة وحُفظت في سجل العميل.') } });
 });
 
 router.post('/admin/chat/:id/note', async (ctx) => {
   const f = await readForm(ctx.req);
-  const id = Number(ctx.params.id);
-  if (!admin.adminGetClient(id)) return redirect(ctx.res, '/admin/chat');
+  const conv = chat.adminGetConversation(Number(ctx.params.id));
+  if (!conv) return redirect(ctx.res, '/admin/chat');
   try {
-    chat.sendMessage(id, { body: f.body, role: 'system', authorId: ctx.user.id, visibility: 'internal' });
-  } catch (e) { /* رسالة فارغة */ }
-  redirect(ctx.res, `/admin/chat/${id}`);
+    chat.sendMessage(conv.id, { body: f.body, role: 'system', authorId: ctx.user.id, visibility: 'internal' });
+  } catch { /* رسالة فارغة */ }
+  redirect(ctx.res, `/admin/chat/${conv.id}`);
 });
 
 // —— الردود المحفوظة ——
@@ -651,7 +675,9 @@ router.post('/admin/replies/:id/delete', (ctx) => {
 
 router.post('/admin/chat/:id/snooze', async (ctx) => {
   const f = await readForm(ctx.req);
-  const id = Number(ctx.params.id);
+  const conv = chat.adminGetConversation(Number(ctx.params.id));
+  if (!conv) return redirect(ctx.res, '/admin/chat');
+  const id = conv.user_id;
   if (f.hours === '0') support.unsnooze(id);
   else support.snooze(id, Number(f.hours) || 24);
   redirect(ctx.res, '/admin/chat', {
@@ -722,7 +748,9 @@ router.post('/admin/claim/:id/confirm', async (ctx) => {
         headers: { 'Set-Cookie': flashCookie('info', 'هذا الإشعار مؤكَّد بالفعل — لم تُسجَّل دفعة ثانية.') },
       });
     }
-    chat.sendMessage(claim.user_id, { role: 'system', body: 'تم تأكيد سدادك — شكرًا لك. حسابك يعمل بكامل مزاياه.' });
+    chat.notify(claim.user_id, {
+      role: 'system', body: 'تم تأكيد سدادك — شكرًا لك. حسابك يعمل بكامل مزاياه.',
+    });
     admin.audit(ctx.user.id, 'confirm_claim', `claim#${claim.id}`, String(claim.amount_cents), ctx.ip);
     redirect(ctx.res, '/admin/payments', {
       headers: { 'Set-Cookie': flashCookie('ok', r.linked ? 'تم تأكيد السداد.' : 'أُكّد الإشعار — لكنه غير مرتبط بفاتورة، فلم تُسجَّل دفعة.') },
@@ -742,7 +770,7 @@ router.post('/admin/claim/:id/reject', async (ctx) => {
     nowISO(), ctx.user.id, claim.id
   );
   if (done.changes !== 1) return redirect(ctx.res, '/admin/payments');
-  chat.sendMessage(claim.user_id, {
+  chat.notify(claim.user_id, {
     role: 'admin', authorId: ctx.user.id,
     body: f.reason ? `بخصوص إشعار التحويل: ${String(f.reason).slice(0, 400)}` : 'لم نتمكن من مطابقة التحويل — من فضلك راجعنا.',
   });
@@ -798,11 +826,11 @@ const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
  */
 const OPEN_WHEN_LOCKED = new Set([
   '/billing', '/billing/claim',
-  '/chat', '/chat/stream', '/chat/since', '/chat/escalate', '/chat/article', '/chat/feedback', '/chat/color', '/chat/rate',
+  '/chat', '/chat/stream', '/chat/since', '/chat/new', '/chat/color',
   '/invoices', '/logout', '/health',
 ]);
 const openWhenLocked = (p) =>
-  OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/') || p.startsWith('/help');
+  OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/') || p.startsWith('/help') || p.startsWith('/chat/');
 
 export function createApp() {
   return http.createServer(async (req, res) => {
@@ -911,6 +939,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const shutdown = () => {
     console.log('\n◆ إيقاف...');
     monitor.stop();
+    bot.cancelAllPending();
     server.close(() => { try { db.close(); } catch {} process.exit(0); });
     setTimeout(() => process.exit(0), 3000).unref();
   };

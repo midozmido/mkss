@@ -1,6 +1,6 @@
 // اختبار المساعد الآلي والنقلة لفريق الدعم.
 // الأهم هنا: (1) لا طريق مسدود  (2) النقلة تنقل السياق  (3) البوت لا يقاطع محادثة بشرية.
-import { test, before } from 'node:test';
+import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { all, get, run, nowISO } from '../src/db.js';
 import { migrate } from '../src/migrations.js';
@@ -28,7 +28,15 @@ function mkClient() {
   return id;
 }
 
+/** كل اختبار يبدأ بمحادثة نظيفة — هكذا يعمل النظام فعلًا الآن */
+const conv = (userId) => chat.openConversation(userId);
+const hist = (c) => chat.history(c.id, 100, 'admin');
+
 before(() => { migrate({ quiet: true }); seedArticles(); });
+
+// مؤقّت تفكير لم يُلغَ يفيق بعد انتهاء هذا الملف فيكتب في قاعدة البيانات
+// وسط اختبارات ملف آخر — وهذا ما جعل الفشل متقطعًا لا ثابتًا.
+after(() => bot.cancelAllPending());
 
 test('البحث العربي يتجاوز اختلاف الرسم والعامية', () => {
   const cases = [
@@ -51,9 +59,9 @@ test('سؤال خارج الموضوع لا يُجاب عليه بثقة كاذ�
 });
 
 test('يجيب من بيانات العميل الحية لا من المقالات', () => {
-  const u = mkClient();
-  bot.handle(u, 'موقعي شغال؟');
-  const last = chat.history(u).at(-1);
+  const u = mkClient(); const c = conv(u);
+  bot.handle(c, 'موقعي شغال؟');
+  const last = hist(c).at(-1);
   assert.equal(last.author_role, 'bot');
   assert.match(last.body, /موقع الاختبار/, 'لم يذكر اسم الموقع الفعلي');
   assert.match(last.body, /يعمل/, 'لم يذكر حالته الفعلية');
@@ -65,94 +73,120 @@ test('يعرف مستحقات العميل من فاتورته', () => {
   run(`INSERT INTO invoices(user_id, number, amount, amount_cents, currency, issued_at, due_at, status, created_at)
        VALUES(?,?,?,?,'EGP',?,?,'unpaid',?)`,
     u, `BOT-${Date.now()}`, 1500, 150000, at, at.slice(0, 10), at);
-  bot.handle(u, 'عليا كام؟');
-  const last = chat.history(u).at(-1);
+  const c = conv(u);
+  bot.handle(c, 'عليا كام؟');
+  const last = hist(c).at(-1);
   assert.match(last.body, /1,500|1500/, `لم يذكر المبلغ: ${last.body}`);
 });
 
 test('يعرض أرقام الدفع الفعلية لا نصًا عامًا', () => {
-  const u = mkClient();
-  bot.handle(u, 'ازاي ادفع الاشتراك؟');
-  const last = chat.history(u).at(-1);
+  const u = mkClient(); const c = conv(u);
+  bot.handle(c, 'ازاي ادفع الاشتراك؟');
+  const last = hist(c).at(-1);
   assert.match(last.body, /01099576398/, 'لم يعرض رقم التحويل');
   assert.match(last.body, /إنستا باي/);
 });
 
-test('سؤال بلا إجابة ينتهي دائمًا بعرض الدعم البشري — لا طريق مسدود', () => {
-  const u = mkClient();
-  const r = bot.handle(u, 'سؤال غريب جدا مالوش اي علاقة بالمواقع خالص');
+test('سؤال بلا إجابة يعرض احتمالات وينتهي بعرض الدعم البشري', () => {
+  const u = mkClient(); const c = conv(u);
+  const r = bot.handle(c, 'سؤال غريب جدا مالوش اي علاقة بالمواقع خالص');
   assert.equal(r.noAnswer, true);
-  const last = chat.history(u).at(-1);
+  const last = hist(c).at(-1);
   assert.match(last.body, /تحدّث إلى الدعم الفني/, 'لم يعرض التحويل لفريق الدعم');
   const meta = JSON.parse(last.meta);
   assert.equal(meta.kind, 'no_answer');
+  assert.ok(Array.isArray(meta.suggestions) && meta.suggestions.length > 0, 'لم يقدّم أي احتمالات');
+});
+
+test('بعد محاولتين فاشلتين يحوّل تلقائيًا بلا أن يسأل', () => {
+  const u = mkClient(); const c = conv(u);
+  const first = bot.handle(c, 'سؤال غريب جدا رقم واحد مالوش علاقة');
+  assert.ok(!first.escalate, 'حوّل من أول محاولة');
+
+  const second = bot.handle(c, 'سؤال غريب تاني برضه مالوش علاقة');
+  assert.equal(second.escalate, true, 'لم يحوّل بعد فشلين');
+  assert.equal(second.autoEscalated, true);
+  assert.match(hist(c).at(-1).body, /أُحوّلك الآن/);
+});
+
+test('إجابة ناجحة تصفّر عدّاد الفشل', () => {
+  const u = mkClient(); const c = conv(u);
+  bot.handle(c, 'سؤال غريب مالوش علاقة خالص');
+  assert.equal(chat.failStreak(c.id), 1);
+  bot.handle(c, 'الموقع بطيء');
+  assert.equal(chat.failStreak(c.id), 0, 'لم يُصفَّر العدّاد بعد إجابة ناجحة');
 });
 
 test('طلب الدعم صراحةً يحوّل فورًا بلا محاولة رد', () => {
-  const u = mkClient();
-  const r = bot.handle(u, 'عايز اكلم الدعم الفني');
+  const u = mkClient(); const c = conv(u);
+  const r = bot.handle(c, 'عايز اكلم الدعم الفني');
   assert.equal(r.escalate, true);
   assert.equal(r.messages.length, 0, 'حاول الرد بدل التحويل');
 });
 
 test('النقلة تنقل السياق للأدمن — العميل لا يعيد كلامه', () => {
-  const u = mkClient();
-  bot.handle(u, 'الموقع بتاعي بيقع كتير الفترة دي');
-  bot.handle(u, 'سؤال معقد جدا ملوش اجابة عندك');
-  bot.escalate(u, { reason: 'المساعد لم يجد إجابة' });
+  const u = mkClient(); const c = conv(u);
+  chat.sendMessage(c.id, { body: 'سؤال معقد جدا ملوش اجابة عندك', role: 'client', channel: 'bot' });
+  bot.handle(c, 'سؤال معقد جدا ملوش اجابة عندك');
+  bot.escalate(c, { reason: 'المساعد لم يجد إجابة' });
 
-  const adminView = chat.history(u, 100, 'admin');
+  const adminView = chat.history(c.id, 100, 'admin');
   const internal = adminView.filter((m) => m.visibility === 'internal');
   assert.equal(internal.length, 1, 'لم يُنشأ ملخص داخلي للأدمن');
 
   const s = internal[0].body;
-  assert.match(s, /تحويل من المساعد/);
+  assert.match(s, /تحويل من سامي/, 'الملخص لا يحمل اسم المساعد');
   assert.match(s, /سؤال معقد جدا/, 'الملخص لا يحوي سؤال العميل الذي فشل فيه المساعد');
   assert.match(s, /حالة الحساب/, 'الملخص بلا حالة مالية');
   assert.match(s, /موقع الاختبار|كل مواقعه تعمل/, 'الملخص بلا حالة المواقع');
 
   // والعميل لا يرى الملخص الداخلي إطلاقًا
-  const clientView = chat.history(u, 100, 'client');
-  assert.ok(!clientView.some((m) => m.body.includes('تحويل من المساعد')), 'تسرّب الملخص الداخلي للعميل');
+  const clientView = chat.history(c.id, 100, 'client');
+  assert.ok(!clientView.some((m) => m.body.includes('تحويل من سامي')), 'تسرّب الملخص الداخلي للعميل');
   assert.match(clientView.at(-1).body, /حوّلتك إلى فريق الدعم/);
   assert.match(clientView.at(-1).body, /لن تحتاج إلى إعادة/, 'لم يُطمئن العميل أنه لن يعيد شرح مشكلته');
 });
 
 test('بعد التحويل يصمت المساعد ولا يقاطع الموظف', () => {
-  const u = mkClient();
-  bot.escalate(u, { reason: 'اختبار' });
-  assert.equal(bot.isLive(u), true);
-  const before = chat.history(u).length;
-  // في الوضع البشري لا يُستدعى البوت أصلًا — هذا ما يضمنه المسار،
-  // ونتحقق أن العلم مضبوط حتى لا يتسلل رد آلي وسط محادثة جارية.
-  assert.equal(get('SELECT support_mode FROM users WHERE id = ?', u).support_mode, 'live');
-  assert.equal(chat.history(u).length, before);
+  const u = mkClient(); const c = conv(u);
+  bot.escalate(c, { reason: 'اختبار' });
+  assert.equal(chat.isLive(c.id), true);
+  const before = hist(c).length;
+  assert.equal(get('SELECT mode FROM conversations WHERE id = ?', c.id).mode, 'live');
+  assert.equal(hist(c).length, before);
 });
 
 test('التحويل مرتين لا يكرر الملخص الداخلي', () => {
-  const u = mkClient();
-  bot.handle(u, 'سؤال مالوش اجابة');
-  bot.escalate(u, { reason: 'أولى' });
-  const first = chat.history(u, 100, 'admin').filter((m) => m.visibility === 'internal').length;
-  const again = bot.escalate(u, { reason: 'ثانية' });
+  const u = mkClient(); const c = conv(u);
+  bot.escalate(c, { reason: 'أولى' });
+  const first = hist(c).filter((m) => m.visibility === 'internal').length;
+  const again = bot.escalate(c, { reason: 'ثانية' });
   assert.equal(again.already, true);
-  const second = chat.history(u, 100, 'admin').filter((m) => m.visibility === 'internal').length;
-  assert.equal(second, first, 'أنشأ التحويل الثاني ملخصًا مكررًا');
+  assert.equal(hist(c).filter((m) => m.visibility === 'internal').length, first, 'ملخص مكرر');
 });
 
-test('إنهاء المحادثة يعيد العميل للمساعد', () => {
-  const u = mkClient();
-  bot.escalate(u, { reason: 'اختبار' });
-  bot.backToBot(u);
-  assert.equal(bot.isLive(u), false);
-  assert.equal(get('SELECT escalated_at FROM users WHERE id = ?', u).escalated_at, null);
+test('إنهاء المحادثة يؤرشفها ويسمح بفتح جديدة', () => {
+  const u = mkClient(); const c = conv(u);
+  chat.sendMessage(c.id, { body: 'مشكلتي', role: 'client' });
+  bot.escalate(c, { reason: 'اختبار' });
+  bot.closeConversation(c, 'admin');
+
+  const after = get('SELECT * FROM conversations WHERE id = ?', c.id);
+  assert.equal(after.status, 'closed');
+  assert.equal(after.mode, 'bot');
+  assert.ok(hist(c).length > 0, 'ضاعت الرسائل بعد الإغلاق');
+
+  const fresh = chat.openConversation(u);
+  assert.notEqual(fresh.id, c.id);
+  assert.equal(chat.history(fresh.id).length, 0, 'المحادثة الجديدة ليست نظيفة');
+  assert.equal(chat.listConversations(u).length >= 2, true, 'لم تُحفظ القديمة في السجل');
 });
 
 test('الأسئلة بلا إجابة تُسجَّل لتعرف أي مقال تكتب', () => {
   const u = mkClient();
   const q = 'سؤال فريد جدا رقم ' + Date.now();
-  bot.handle(u, q);
-  bot.handle(u, q);
+  bot.handle(conv(u), q);
+  bot.handle(conv(u), q);
   const list = kb.unanswered(50);
   const row = list.find((r) => r.question === q);
   assert.ok(row, 'السؤال غير المجاب لم يُسجَّل');
@@ -177,9 +211,9 @@ test('مواعيد العمل تُحسب وتظهر في رسالة التوقّ
 });
 
 test('حقن سكربت في سؤال العميل لا يخرج كما هو', async () => {
-  const u = mkClient();
-  bot.handle(u, '<script>alert(1)</script> الموقع بطيء');
-  const stored = chat.history(u).at(-1);
+  const u = mkClient(); const c = conv(u);
+  bot.handle(c, '<script>alert(1)</script> الموقع بطيء');
+  const stored = hist(c).at(-1);
   // التخزين خام والتهريب عند العرض — نتحقق أن العرض يهرّب
   const { bubble } = await import('../src/views/chat.js');
   const html = bubble({ ...stored, body: '<script>alert(1)</script>' }, 'client');
@@ -187,13 +221,12 @@ test('حقن سكربت في سؤال العميل لا يخرج كما هو', a
 });
 
 test('ملخص التحويل يحوي سؤال العميل لا إجابات المساعد وحدها', () => {
-  const u = mkClient();
-  // نحاكي ما يفعله المسار: رسالة العميل تُسجَّل على قناة المساعد
-  chat.sendMessage(u, { body: 'الدومين بتاعي بيخلص امتى؟', role: 'client', channel: 'bot' });
-  bot.handle(u, 'الدومين بتاعي بيخلص امتى؟');
-  bot.escalate(u, { reason: 'اختبار' });
+  const u = mkClient(); const c = conv(u);
+  chat.sendMessage(c.id, { body: 'الدومين بتاعي بيخلص امتى؟', role: 'client', channel: 'bot' });
+  bot.handle(c, 'الدومين بتاعي بيخلص امتى؟');
+  bot.escalate(c, { reason: 'اختبار' });
 
-  const summary = chat.history(u, 100, 'admin').filter((m) => m.visibility === 'internal').pop().body;
+  const summary = hist(c).filter((m) => m.visibility === 'internal').pop().body;
   assert.match(summary, /👤 العميل/, 'الملخص لا يحوي أي رسالة من العميل');
   assert.match(summary, /الدومين بتاعي بيخلص/, 'سؤال العميل غائب عن الملخص');
 });
@@ -212,8 +245,9 @@ test('سامي يخاطب العميل بالفصحى لا بالعامية', ()
   const u = mkClient();
   const colloquial = /\bتقدر\b|\bعشان\b|\bمش\b|\bبتاع\b|\bازاي\b|\bكده\b|\bدلوقتي\b|\bعايز\b/;
   for (const q of ['موقعي شغال؟', 'عليا كام؟', 'كيف أسدّد؟', 'سؤال غريب ملوش اجابة']) {
-    bot.handle(u, q);
-    const body = chat.history(u).at(-1).body;
+    const c = conv(u);
+    bot.handle(c, q);
+    const body = hist(c).at(-1).body;
     assert.ok(!colloquial.test(body), `رد سامي بالعامية على «${q}»: ${body.slice(0, 90)}`);
   }
 });
@@ -229,53 +263,50 @@ test('وقت التفكير بين 3 و7 ثوانٍ', () => {
   }
 });
 
-test('سامي يفكّر ثم يرد — لا يرد فورًا', async () => {
-  const u = mkClient();
-  const before = chat.history(u).length;
-  const r = bot.handleDelayed(u, 'هل موقعي يعمل؟');
+test('سامي يفكّر ثم يرد — لا يرد فورًا', () => {
+  const u = mkClient(); const c = conv(u);
+  const before = hist(c).length;
+  const r = bot.handleDelayed(c, 'هل موقعي يعمل؟');
   assert.ok(r.delayMs >= 3000, 'رد بلا تفكير');
-  assert.equal(chat.history(u).length, before, 'وصل الرد فورًا دون انتظار');
+  assert.equal(hist(c).length, before, 'وصل الرد فورًا دون انتظار');
 });
 
 test('طلب التحدث إلى إنسان لا يُؤخَّر — من يطلب موظفًا يكون متضايقًا', () => {
-  const u = mkClient();
-  const r = bot.handleDelayed(u, 'عايز اكلم الدعم الفني');
+  const u = mkClient(); const c = conv(u);
+  const r = bot.handleDelayed(c, 'عايز اكلم الدعم الفني');
   assert.equal(r.escalated, true);
   assert.equal(r.delayMs, undefined, 'أخّر طلب التحويل');
-  assert.equal(bot.isLive(u), true);
+  assert.equal(chat.isLive(c.id), true);
 });
 
 test('رسالة جديدة أثناء التفكير تلغي الرد السابق', () => {
-  const u = mkClient();
-  const first = bot.handleDelayed(u, 'سؤال أول');
-  const second = bot.handleDelayed(u, 'هل موقعي يعمل؟');
+  const u = mkClient(); const c = conv(u);
+  const first = bot.handleDelayed(c, 'سؤال أول');
+  const second = bot.handleDelayed(c, 'هل موقعي يعمل؟');
   assert.ok(first.delayMs && second.delayMs, 'لم يُجدول أحد الردين');
-  // لا يصل ردّان — نتحقق أن المؤقّت السابق أُلغي بعدم تراكم الرسائل
-  assert.equal(chat.history(u).filter((m) => m.author_role === 'bot').length, 0);
+  assert.equal(hist(c).filter((m) => m.author_role === 'bot').length, 0);
 });
 
 test('التحويل يلغي أي تفكير جارٍ فلا يقاطع سامي الموظف', () => {
-  const u = mkClient();
-  bot.handleDelayed(u, 'سؤال يحتاج تفكيرًا');
-  bot.escalate(u, { reason: 'اختبار' });
-  assert.equal(bot.isLive(u), true);
-  const botMsgs = chat.history(u).filter((m) => m.author_role === 'bot').length;
-  assert.equal(botMsgs, 0, 'تسلّل رد آلي بعد التحويل');
+  const u = mkClient(); const c = conv(u);
+  bot.handleDelayed(c, 'سؤال يحتاج تفكيرًا');
+  bot.escalate(c, { reason: 'اختبار' });
+  assert.equal(chat.isLive(c.id), true);
+  assert.equal(hist(c).filter((m) => m.author_role === 'bot').length, 0, 'تسلّل رد آلي بعد التحويل');
 });
 
 test('زمن أول رد يُحسب من لحظة التحويل', () => {
-  const u = mkClient();
-  bot.escalate(u, { reason: 'اختبار' });
-  const row = get('SELECT * FROM escalations WHERE user_id = ? ORDER BY id DESC LIMIT 1', u);
+  const u = mkClient(); const c = conv(u);
+  bot.escalate(c, { reason: 'اختبار' });
+  const row = get('SELECT * FROM escalations WHERE conversation_id = ? ORDER BY id DESC LIMIT 1', c.id);
   assert.ok(row, 'لم يُسجَّل التحويل');
   assert.equal(row.first_reply_at, null);
 
-  bot.markFirstReply(u);
-  const after = get('SELECT * FROM escalations WHERE id = ?', row.id);
-  assert.ok(after.first_reply_at, 'لم يُسجَّل أول رد');
+  bot.markFirstReply(c.id);
+  assert.ok(get('SELECT first_reply_at FROM escalations WHERE id = ?', row.id).first_reply_at);
 
-  bot.backToBot(u);
-  assert.ok(get('SELECT closed_at FROM escalations WHERE id = ?', row.id).closed_at, 'لم تُغلق المحادثة');
+  bot.closeConversation(c, 'admin');
+  assert.ok(get('SELECT closed_at FROM escalations WHERE id = ?', row.id).closed_at, 'لم تُغلق');
 });
 
 test('لون الشات يقبل الألوان المعرّفة فقط', async () => {
@@ -335,21 +366,21 @@ test('كل مقالات سامي بالفصحى في المتن والعامية
 });
 
 test('يميّز سؤال المعرفة عن سؤال حالة الموقع', () => {
-  const u = mkClient();
+  const u = mkClient(); const c = conv(u);
 
   // سؤال تعلُّم → مقال، لا أرقام موقعه
-  bot.handle(u, 'ليه الصور بتبطئ الموقع؟');
-  let last = chat.history(u).at(-1).body;
+  bot.handle(c, 'ليه الصور بتبطئ الموقع؟');
+  let last = hist(c).at(-1).body;
   assert.match(last, /الصور/, 'لم يشرح سبب البطء');
   assert.ok(!/جزء من الألف/.test(last), 'رد بقياسات موقعه على سؤال تعلُّم');
 
   // سؤال عن حالته → بيانات حية
-  bot.handle(u, 'موقعي بطيء؟');
-  last = chat.history(u).at(-1).body;
+  bot.handle(c, 'موقعي بطيء؟');
+  last = hist(c).at(-1).body;
   assert.match(last, /موقع الاختبار/, 'لم يرد ببيانات موقعه على سؤال عن حالته');
 
   // «كم المستحق عليّ» تبقى نيّة رغم صيغة السؤال
-  bot.handle(u, 'كم المستحق عليّ؟');
-  last = chat.history(u).at(-1).body;
+  bot.handle(c, 'كم المستحق عليّ؟');
+  last = hist(c).at(-1).body;
   assert.ok(/مستحقات|المستحق/.test(last), `لم يفهم سؤال المستحقات: ${last.slice(0, 60)}`);
 });

@@ -23,46 +23,28 @@ export function saveReply({ id, title, body, shortcut }) {
 export const deleteReply = (id) => run('DELETE FROM canned_replies WHERE id = ?', id);
 export const noteReplyUse = (id) => run('UPDATE canned_replies SET uses = uses + 1 WHERE id = ?', id);
 
-// ——————————————————— تقييم الرضا ———————————————————
+// ——————————————————— إحصاءات الدعم ———————————————————
+// لا تقييم للمحادثات بطلب صريح — نقيس زمن الاستجابة وحده،
+// وهو المؤشر الذي يعتمد عليك لا على مزاج العميل في لحظة.
 
-/** يُسأل العميل بعد إغلاق المحادثة — وهذا التوقيت مقصود: التقييم أثناءها يقاطع */
-export function askForRating(userId) {
-  const esc = get(
-    `SELECT * FROM escalations WHERE user_id = ? AND closed_at IS NOT NULL AND rating IS NULL
-      ORDER BY closed_at DESC LIMIT 1`,
-    userId
-  );
-  if (!esc) return null;
-  return esc;
-}
-
-export function rateEscalation(userId, escalationId, score, note) {
-  const row = get('SELECT * FROM escalations WHERE id = ? AND user_id = ?', escalationId, userId);
-  if (!row) throw new Error('المحادثة غير موجودة');
-  if (row.rating != null) return { already: true };
-  run('UPDATE escalations SET rating = ?, rating_note = ?, rated_at = ? WHERE id = ?',
-    score ? 1 : 0, note ? String(note).slice(0, 500) : null, nowISO(), escalationId);
-  return { already: false };
-}
-
-/** نسبة الرضا وزمن أول رد — ما يُقاس يتحسّن */
 export function supportStats(days = 30) {
   const since = `-${Number(days) || 30} days`;
   const r = get(
     `SELECT COUNT(*) AS total,
-            SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) AS happy,
-            SUM(CASE WHEN rating IS NOT NULL THEN 1 ELSE 0 END) AS rated,
+            SUM(CASE WHEN first_reply_at IS NOT NULL THEN 1 ELSE 0 END) AS replied,
             AVG(CASE WHEN first_reply_at IS NOT NULL
                      THEN (julianday(first_reply_at) - julianday(started_at)) * 1440 END) AS avg_min
        FROM escalations WHERE started_at >= datetime('now', ?)`,
     since
   );
-  const rated = r?.rated || 0;
+  const open = get("SELECT COUNT(*) AS n FROM conversations WHERE status = 'open' AND mode = 'live'");
   return {
     escalations: r?.total || 0,
-    rated,
-    satisfaction: rated ? Math.round(((r.happy || 0) / rated) * 100) : null,
-    avgFirstReplyMinutes: r?.avg_min ? Math.round(r.avg_min) : null,
+    replied: r?.replied || 0,
+    // المقارنة بـ null لا بالصدق: متوسط صفر دقيقة (رد في أقل من دقيقة) قيمة
+    // صحيحة وممتازة، وكان يُمحى لأن 0 falsy — فيختفي المقياس كلما أسرع الفريق.
+    avgFirstReplyMinutes: r?.avg_min == null ? null : Math.round(r.avg_min),
+    openLive: open?.n || 0,
   };
 }
 
@@ -88,8 +70,10 @@ export function searchConversations(query, { limit = 40 } = {}) {
   if (!words.length) return [];
   const like = `%${normalize(query).slice(0, 60)}%`;
   return all(
-    `SELECT m.*, u.name AS client_name
-       FROM chat_messages m JOIN users u ON u.id = m.user_id
+    `SELECT m.*, u.name AS client_name, c.title AS conversation_title
+       FROM chat_messages m
+       JOIN users u ON u.id = m.user_id
+       LEFT JOIN conversations c ON c.id = m.conversation_id
       WHERE lower(m.body) LIKE lower(?) OR m.body LIKE ?
       ORDER BY m.id DESC LIMIT ?`,
     like, `%${String(query).slice(0, 60)}%`, Math.min(Number(limit) || 40, 100)
@@ -126,7 +110,9 @@ export function proactiveForCheck(site, result) {
   const say = (kind, body) => {
     if (alreadySent(site.user_id, site.id, kind)) return;
     if (!markSent(site.user_id, site.id, kind)) return;
-    chat.sendMessage(site.user_id, { body, role: 'bot', channel: 'bot', meta: { kind: 'proactive', about: kind } });
+    // التنبيه يدخل المحادثة المفتوحة إن وُجدت، وإلا يفتح واحدة —
+    // فلا يضيع التنبيه، ولا تمتلئ قائمة العميل بمحادثة لكل تنبيه.
+    chat.notify(site.user_id, { body, role: 'bot', channel: 'bot', meta: { kind: 'proactive', about: kind } });
     sent.push(kind);
   };
 
@@ -162,7 +148,7 @@ export function proactiveForCheck(site, result) {
 export function proactiveRecovered(site) {
   if (alreadySent(site.user_id, site.id, 'recovered')) return false;
   if (!markSent(site.user_id, site.id, 'recovered')) return false;
-  chat.sendMessage(site.user_id, {
+  chat.notify(site.user_id, {
     body: `بشرى: «${site.name}» عاد للعمل ✅ وأغلقنا العطل.\nكل التفاصيل مسجّلة في سجل الأعطال داخل صفحة الموقع.`,
     role: 'bot', channel: 'bot', meta: { kind: 'proactive', about: 'recovered' },
   });
