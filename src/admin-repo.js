@@ -2,6 +2,7 @@
 // كل دالة هنا تفترض أن المستدعي أدمن — الفحص يتم في السيرفر قبل الاستدعاء.
 import { all, get, run, nowISO } from './db.js';
 import { money } from './repo.js';
+import { referenceCode } from './billing.js';
 
 export function audit(actorId, action, target, detail, ip) {
   run(
@@ -76,13 +77,16 @@ export const adminClientInvoices = (userId) =>
     userId
   );
 
-export function adminCreateClient({ name, email, company, phone, mvp_url, mvp_label }, passwordHash) {
+export function adminCreateClient({ name, email, company, phone, whatsapp, mvp_url, mvp_label }, passwordHash) {
   const at = nowISO();
+  const months = Number(get("SELECT value FROM settings WHERE key = 'trial_months'")?.value || 6);
+  const trialEnds = new Date(Date.parse(at) + months * 30 * 86400_000).toISOString();
   const r = run(
-    `INSERT INTO users(email, password_hash, name, role, phone, company, mvp_url, mvp_label, active, created_at)
-     VALUES(?,?,?,'client',?,?,?,?,1,?)`,
+    `INSERT INTO users(email, password_hash, name, role, phone, whatsapp, company, mvp_url, mvp_label,
+                       active, created_at, trial_ends_at)
+     VALUES(?,?,?,'client',?,?,?,?,?,1,?,?)`,
     String(email).trim().toLowerCase(), passwordHash, String(name).trim(),
-    phone || null, company || null, mvp_url || null, mvp_label || null, at
+    phone || null, whatsapp || phone || null, company || null, mvp_url || null, mvp_label || null, at, trialEnds
   );
   return Number(r.lastInsertRowid);
 }
@@ -108,7 +112,12 @@ export function adminCreateInvoice(userId, { description, amount, currency = 'EG
     userId, site_id, number, String(description || '').slice(0, 200),
     cents / 100, cents, currency, at, due_at || null, at
   );
-  return { id: Number(r.lastInsertRowid), number };
+  const id = Number(r.lastInsertRowid);
+  // كود مرجعي يُكتب في ملاحظات التحويل — إنستا باي وفودافون كاش بلا API،
+  // وهذا ما يجعل مطابقة التحويل بالفاتورة فورية بدل التخمين.
+  const ref = referenceCode(id, get("SELECT value FROM settings WHERE key = 'pay_vodafone'")?.value);
+  run('UPDATE invoices SET reference_code = ? WHERE id = ?', ref, id);
+  return { id, number, reference: ref };
 }
 
 /**

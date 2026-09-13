@@ -102,6 +102,7 @@
 
 body {
   margin: 0;
+  overflow-x: clip;   /* حزام أمان: أي فيض مستقبلي لا يكسر تجربة الموبايل */
   font-family: var(--font);
   font-size: var(--t-base);
   line-height: 1.7;            /* العربي يحتاج تنفّسًا أكثر من اللاتيني */
@@ -126,9 +127,9 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
 /* ——— التخطيط ——— */
 .wrap { max-width: 1120px; margin-inline: auto; padding-inline: var(--s-4); }
 .stack > * + * { margin-block-start: var(--s-4); }
-.row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; min-inline-size: 0; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
-.grow { flex: 1; }
+.grow { flex: 1; min-inline-size: 0; }
 .muted { color: var(--text-muted); }
 .faint { color: var(--text-faint); font-size: var(--t-sm); }
 .small { font-size: var(--t-sm); }
@@ -176,10 +177,15 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
     overflow-x: auto;
     scrollbar-width: none;
     padding-block-end: 2px;
+    /* الاختصار الكامل مقصود: القاعدة العامة .grow تضبط flex:1، وأي قاعدة
+       لاحقة بـ flex:none كانت تصفّر الانكماش فيتمدد الشريط ويمدّ الصفحة كلها.
+       و min-inline-size:0 ضرورية لأن قيمتها الافتراضية auto تمنع الانكماش
+       تحت عرض المحتوى فيبطل التمرير الداخلي. */
+    flex: 1 1 100%;
+    min-inline-size: 0;
   }
   .nav::-webkit-scrollbar { display: none; }
   .nav a { white-space: nowrap; }
-  .topbar .grow { flex: none; }
 }
 
 /* ——— البطاقات ——— */
@@ -262,7 +268,7 @@ a  { color: var(--brand-text); text-decoration-thickness: 1px; text-underline-of
 .finding-fix { font-size: var(--t-sm); color: var(--text-muted); margin-block-start: var(--s-1); }
 
 /* ——— الجداول ——— */
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow-x: auto; max-inline-size: 100%; min-inline-size: 0; }
 table { inline-size: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 th, td { padding: var(--s-3) var(--s-4); text-align: start; border-block-end: 1px solid var(--border); }
 th { font-weight: 700; color: var(--text-muted); font-size: var(--t-xs); text-transform: none; background: var(--surface-sunk); }
@@ -365,3 +371,124 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   border-radius: var(--r-sm); z-index: 100;
 }
 .skip-link:focus { inset-block-start: var(--s-2); }
+
+/* ============================================================
+   الدفع والاشتراك
+   ============================================================ */
+.pay-grid { display: grid; gap: var(--s-3); }
+@media (min-width: 640px) { .pay-grid { grid-template-columns: 1fr 1fr; } }
+
+.pay-method {
+  border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-4);
+  background: var(--surface-sunk); display: flex; flex-direction: column; gap: var(--s-3);
+}
+.pay-method-head { display: flex; align-items: center; gap: var(--s-3); }
+.pay-logo {
+  inline-size: 40px; block-size: 40px; border-radius: 10px; flex: none;
+  display: grid; place-items: center; font-weight: 800; font-size: var(--t-sm); color: #fff;
+  letter-spacing: .02em;
+}
+.pay-instapay { background: linear-gradient(135deg, #6d28d9, #4c1d95); }
+.pay-vodafone { background: linear-gradient(135deg, #e60000, #a30000); }
+.pay-name { font-weight: 700; }
+.pay-number {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+  flex-wrap: wrap;
+  background: var(--surface); border: 1px dashed var(--border-strong);
+  border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
+}
+.pay-number .mono { font-size: var(--t-md); font-weight: 700; letter-spacing: .04em; }
+.pay-amount {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4); background: var(--brand-soft);
+  border-radius: var(--r); color: var(--brand-text);
+}
+.pay-amount b { font-size: var(--t-lg); }
+
+.btn-whatsapp { background: #1ea952; border-color: #1ea952; color: #fff; font-weight: 700; }
+.btn-whatsapp:hover { background: #17864181; background: #178641; border-color: #178641; }
+
+/* صفحة القفل */
+.lock-card { text-align: center; }
+.lock-icon {
+  inline-size: 64px; block-size: 64px; margin-inline: auto; margin-block-end: var(--s-4);
+  border-radius: var(--r-full); display: grid; place-items: center;
+  background: var(--warn-soft); color: var(--warn);
+}
+.lock-icon svg { inline-size: 30px; block-size: 30px; }
+.lock-lead { font-size: var(--t-md); }
+.lock-note {
+  background: var(--ok-soft); color: var(--ok); border-radius: var(--r);
+  padding: var(--s-3) var(--s-4); font-size: var(--t-sm); margin-block-start: var(--s-4);
+}
+
+/* ============================================================
+   الشات
+   ============================================================ */
+.chat { display: flex; flex-direction: column; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+
+.chat-log {
+  display: flex; flex-direction: column; gap: var(--s-3);
+  padding: var(--s-4); overflow-y: auto;
+  block-size: min(56vh, 460px); min-block-size: 240px;
+  scroll-behavior: smooth; overscroll-behavior: contain;
+}
+
+.msg { max-inline-size: 82%; align-self: flex-start; }
+.msg-body {
+  background: var(--surface-sunk); border: 1px solid var(--border);
+  padding: var(--s-3) var(--s-4); border-radius: var(--r-lg);
+  border-start-start-radius: var(--r-sm);
+  white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7;
+}
+.msg-meta { font-size: var(--t-xs); color: var(--text-faint); margin-block-start: var(--s-1); padding-inline: var(--s-2); }
+.msg-mine { align-self: flex-end; }
+.msg-mine .msg-body {
+  background: var(--brand); border-color: var(--brand); color: #fff;
+  border-start-start-radius: var(--r-lg); border-start-end-radius: var(--r-sm);
+}
+.msg-mine .msg-meta { text-align: end; }
+.msg-system .msg-body { background: var(--info-soft); border-color: transparent; color: var(--info); font-size: var(--t-sm); }
+.msg-new { animation: rise .26s cubic-bezier(.22,.61,.36,1) both; }
+
+.chat-form {
+  display: flex; gap: var(--s-2); align-items: flex-end;
+  padding: var(--s-3); border-block-start: 1px solid var(--border); background: var(--surface);
+}
+.chat-form textarea {
+  flex: 1; min-block-size: var(--tap); max-block-size: 160px; resize: none;
+  border-radius: var(--r); padding: var(--s-3);
+}
+.chat-form .btn { min-block-size: var(--tap); flex: none; }
+
+/* قائمة المحادثات */
+.thread {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-4); border-block-end: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+}
+.thread:last-child { border-block-end: none; }
+.thread:hover { background: var(--surface-sunk); }
+.thread-avatar {
+  inline-size: 40px; block-size: 40px; border-radius: var(--r-full); flex: none;
+  display: grid; place-items: center; font-weight: 800;
+  background: var(--brand-soft); color: var(--brand-text);
+}
+.thread-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-inline-size: 60vw; }
+
+/* شارة غير المقروء في شريط التنقل */
+.nav a .pill {
+  display: inline-grid; place-items: center; min-inline-size: 18px; block-size: 18px;
+  padding-inline: 5px; border-radius: var(--r-full);
+  background: var(--danger); color: #fff; font-size: 11px; font-weight: 800;
+  margin-inline-start: var(--s-1);
+}
+
+@media (max-width: 620px) {
+  .chat-log { block-size: min(52vh, 380px); }
+  .msg { max-inline-size: 90%; }
+  .pay-number { flex-direction: column; align-items: stretch; }
+  .pay-number .btn { inline-size: 100%; }
+  .thread-last { max-inline-size: 48vw; }
+}

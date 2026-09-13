@@ -115,7 +115,7 @@ export function adminClients({ user, clients, flash }) {
   });
 }
 
-export function adminClient({ user, client, sites, invoices, link, flash }) {
+export function adminClient({ user, client, sites, invoices, link, state, flash }) {
   return layout({
     title: client.name,
     user,
@@ -135,7 +135,19 @@ export function adminClient({ user, client, sites, invoices, link, flash }) {
   <section class="card">
     <h1>${esc(client.name)}</h1>
     <p class="muted small ltr">${esc(client.email)}${client.phone ? ` · ${esc(client.phone)}` : ''}</p>
+    ${state ? `<div class="row" style="margin-block-start:var(--s-3)">
+      ${billingStateBadge(state)}
+      ${state.dueCents > 0 ? `<span class="badge badge-warn">${icon('receipt')} مستحق ${esc(money.format(state.dueCents))}</span>` : ''}
+      ${state.inTrial ? `<span class="badge badge-info">${icon('clock')} تجربة حتى ${esc(fmtDate(state.trialEndsAt))}</span>` : ''}
+      ${state.state === 'grace' ? `<span class="badge badge-warn">${icon('alert')} باقٍ ${esc(state.graceLeft)} يوم قبل القفل</span>` : ''}
+    </div>` : ''}
     <div class="row" style="margin-block-start:var(--s-4)">
+      <a class="btn btn-sm" href="/admin/chat/${client.id}">${icon('chat')} محادثة</a>
+      <form method="POST" action="/admin/client/${client.id}/exempt">
+        <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+        <input type="hidden" name="exempt" value="${client.exempt ? '0' : '1'}">
+        <button class="btn btn-sm" type="submit">${client.exempt ? 'إلغاء الإعفاء من القفل' : 'إعفاء من القفل'}</button>
+      </form>
       <form method="POST" action="/admin/client/${client.id}/reset-link">
         <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
         <button class="btn btn-sm" type="submit">توليد رابط كلمة سر جديد</button>
@@ -214,6 +226,18 @@ export function adminClient({ user, client, sites, invoices, link, flash }) {
     : ''}
 </div>`,
   });
+}
+
+function billingStateBadge(st) {
+  const map = {
+    trial: ['badge-info', 'clock', 'تجربة مجانية'],
+    ok: ['badge-ok', 'check', 'منتظم'],
+    due: ['badge-info', 'receipt', 'عليه مستحقات'],
+    grace: ['badge-warn', 'alert', 'في مهلة السداد'],
+    restricted: ['badge-danger', 'x', 'مزاياه مقفولة'],
+  };
+  const [cls, ic, label] = map[st.state] || map.ok;
+  return `<span class="badge ${cls}">${icon(ic)} ${esc(label)}</span>`;
 }
 
 export function adminSite({ user, site, client, check, maintenance, incidents, flash }) {
@@ -329,6 +353,137 @@ export function adminRequests({ user, requests, flash }) {
       .join('')}</tbody>
   </table></div></div>`
     : `<div class="card empty">${icon('inbox')}<p>لا توجد طلبات.</p></div>`}
+</div>`,
+  });
+}
+
+// ——————————————————— المدفوعات ———————————————————
+
+export function adminPayments({ user, claims, cfg, flash }) {
+  const method = { instapay: 'إنستا باي', vodafone: 'فودافون كاش', other: 'أخرى' };
+  return layout({
+    title: 'المدفوعات',
+    user,
+    active: '/admin/payments',
+    flash,
+    body: `<div class="stack">
+  <div class="row-between">
+    <h1>إشعارات التحويل</h1>
+    <a class="btn btn-sm" href="/admin/settings">${icon('shield')} إعدادات الدفع</a>
+  </div>
+
+  <div class="alert alert-info">${icon('alert')}<div>
+    إنستا باي وفودافون كاش لا يبلّغان النظام تلقائيًا. العميل يبلّغ بالتحويل من لوحته،
+    وأنت تطابقه مع حسابك ثم تؤكده هنا — والتأكيد يسجّل الدفعة ويفك القفل فورًا.
+  </div></div>
+
+  ${claims.length
+    ? `<div class="card card-flush"><div class="table-scroll"><table>
+    <thead><tr><th>العميل</th><th>الفاتورة</th><th>الطريقة</th><th>المبلغ</th><th>محوَّل من</th><th>الوقت</th><th></th></tr></thead>
+    <tbody>${claims
+      .map(
+        (c) => `<tr>
+      <td><a href="/admin/chat/${c.user_id}">${esc(c.client_name)}</a></td>
+      <td class="mono small">${esc(c.invoice_number || '—')}</td>
+      <td>${esc(method[c.method] || c.method)}</td>
+      <td class="num">${esc(money.format(c.amount_cents))}</td>
+      <td class="ltr small mono">${esc(c.sender_ref || '—')}</td>
+      <td class="small">${esc(ago(c.at))}</td>
+      <td>
+        <div class="row">
+          <form method="POST" action="/admin/claim/${c.id}/confirm"
+                data-confirm="تأكيد استلام ${money.format(c.amount_cents)} من ${c.client_name}؟">
+            <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+            <button class="btn btn-sm btn-primary" type="submit">${icon('check')} أكّد</button>
+          </form>
+          <form method="POST" action="/admin/claim/${c.id}/reject" class="row">
+            <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+            <input name="reason" placeholder="السبب" maxlength="200" style="inline-size:130px">
+            <button class="btn btn-sm" type="submit">رفض</button>
+          </form>
+        </div>
+      </td>
+    </tr>`
+      )
+      .join('')}</tbody>
+  </table></div></div>`
+    : `<div class="card empty">${icon('receipt')}<p>لا إشعارات تحويل بانتظار المراجعة.</p></div>`}
+
+  <section class="card">
+    <h2>أرقام التحصيل الحالية</h2>
+    <div class="pay-grid">
+      <div class="pay-method">
+        <div class="pay-method-head">
+          <span class="pay-logo pay-instapay" aria-hidden="true">IP</span>
+          <div><div class="pay-name">إنستا باي</div><div class="faint mono ltr">${esc(cfg.instapay)}</div></div>
+        </div>
+      </div>
+      <div class="pay-method">
+        <div class="pay-method-head">
+          <span class="pay-logo pay-vodafone" aria-hidden="true">VF</span>
+          <div><div class="pay-name">فودافون كاش</div><div class="faint mono ltr">${esc(cfg.vodafone)}</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="faint" style="margin-block-start:var(--s-3)">
+      فترة الدعم المجاني: ${esc(cfg.trialMonths)} شهور · مهلة السداد: ${esc(cfg.graceDays)} أيام
+    </p>
+  </section>
+</div>`,
+  });
+}
+
+// ——————————————————— الإعدادات ———————————————————
+
+export function adminSettings({ user, cfg, flash }) {
+  return layout({
+    title: 'إعدادات الدفع',
+    user,
+    active: '/admin/payments',
+    flash,
+    body: `<div class="stack">
+  <a class="btn btn-sm" href="/admin/payments">${icon('arrow')} المدفوعات</a>
+  <h1>إعدادات الدفع والاشتراك</h1>
+
+  <section class="card">
+    <form method="POST" action="/admin/settings" class="stack">
+      <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="ip">رقم إنستا باي</label>
+          <input id="ip" name="pay_instapay" dir="ltr" value="${esc(cfg.instapay)}" maxlength="40">
+        </div>
+        <div class="field">
+          <label for="vf">رقم فودافون كاش</label>
+          <input id="vf" name="pay_vodafone" dir="ltr" value="${esc(cfg.vodafone)}" maxlength="40">
+        </div>
+        <div class="field">
+          <label for="wa">رقم واتساب (بمفتاح الدولة)</label>
+          <input id="wa" name="pay_whatsapp" dir="ltr" value="${esc(cfg.whatsapp)}" maxlength="40" placeholder="201099576398">
+          <div class="hint">بدون علامة + — مثال: 201099576398</div>
+        </div>
+        <div class="field">
+          <label for="holder">اسم المستلم</label>
+          <input id="holder" name="pay_holder" value="${esc(cfg.holder)}" maxlength="80">
+        </div>
+        <div class="field">
+          <label for="tm">فترة الدعم المجاني (شهور)</label>
+          <input id="tm" name="trial_months" type="number" min="0" max="36" dir="ltr" value="${esc(cfg.trialMonths)}">
+          <div class="hint">تُطبَّق على العملاء الجدد فقط.</div>
+        </div>
+        <div class="field">
+          <label for="gd">مهلة السداد قبل القفل (أيام)</label>
+          <input id="gd" name="grace_days" type="number" min="0" max="60" dir="ltr" value="${esc(cfg.graceDays)}">
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">حفظ</button>
+    </form>
+  </section>
+
+  <div class="alert alert-warn">${icon('alert')}<div>
+    تغيير مهلة السداد يسري فورًا على كل العملاء — بمن فيهم من هم داخل المهلة الآن.
+    خفضها قد يقفل حسابات في اللحظة نفسها.
+  </div></div>
 </div>`,
   });
 }

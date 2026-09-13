@@ -7,18 +7,22 @@ import { fileURLToPath } from 'node:url';
 import { URL } from 'node:url';
 import crypto from 'node:crypto';
 
-import { db, get, run, nowISO } from './src/db.js';
+import { db, get, run, nowISO, setting } from './src/db.js';
 import { migrate } from './src/migrations.js';
 import * as auth from './src/auth.js';
 import * as repo from './src/repo.js';
 import * as admin from './src/admin-repo.js';
 import * as monitor from './src/monitor.js';
 import {
-  esc, createRouter, readForm as readFormRaw, parseCookies, cookieHeader, sendHtml, redirect,
+  esc, createRouter, readForm as readFormRaw, parseCookies, cookieHeader, sendHtml, sendJson, redirect,
   securityHeaders, clientIp, createRateLimiter, pick,
 } from './src/http-util.js';
 import * as pages from './src/views/pages.js';
 import * as adminViews from './src/views/admin.js';
+import * as billing from './src/billing.js';
+import * as chat from './src/chat.js';
+import * as billingViews from './src/views/billing.js';
+import * as chatViews from './src/views/chat.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
@@ -32,6 +36,7 @@ const readForm = (req) => (req.parsedForm ? Promise.resolve(req.parsedForm) : re
 
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60_000, max: 10 });
 const formLimiter = createRateLimiter({ windowMs: 60_000, max: 30 });
+const chatLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
 // ——————————————————— الملفات الساكنة ———————————————————
 
@@ -185,9 +190,13 @@ router.post('/set-password', async (ctx) => {
 router.get('/', (ctx) => {
   if (!ctx.user) return redirect(ctx.res, '/login');
   if (ctx.user.role === 'admin') return redirect(ctx.res, '/admin');
-  sendHtml(ctx.res, pages.dashboardPage({ user: ctx.user, data: repo.dashboard(ctx.user.id), flash: ctx.flash }), {
-    headers: { 'Set-Cookie': clearFlash() },
+  const st = ctx.user.billing || billing.accountState(ctx.user.id);
+  const banner = billingViews.billingBanner(st, {
+    link: billing.whatsappLink(`السلام عليكم، أنا ${ctx.user.name} وأريد تفعيل الاشتراك`),
   });
+  sendHtml(ctx.res, pages.dashboardPage({
+    user: ctx.user, data: repo.dashboard(ctx.user.id), flash: ctx.flash, billingBanner: banner,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
 router.get('/site/:id', (ctx) => {
@@ -252,6 +261,78 @@ router.post('/ticket/:id/reply', async (ctx) => {
   redirect(ctx.res, `/ticket/${ctx.params.id}`);
 });
 
+// —— الاشتراك والدفع ——
+
+router.get('/billing', (ctx) => {
+  const st = { ...billing.accountState(ctx.user.id), csrf: ctx.user.csrf };
+  const cfg = billing.paymentSettings();
+  const link = billing.whatsappLink(`السلام عليكم، أنا ${ctx.user.name} وأريد تفعيل الاشتراك`);
+  const claims = billing.userClaims(ctx.user.id);
+  const view = st.locked ? billingViews.lockedPage : billingViews.billingPage;
+  sendHtml(ctx.res, view({ user: ctx.user, st, cfg, link, claims, flash: ctx.flash }), {
+    headers: { 'Set-Cookie': clearFlash() },
+  });
+});
+
+router.post('/billing/claim', async (ctx) => {
+  const f = await readForm(ctx.req);
+  try {
+    const cents = Math.round(Number(f.amount) * 100);
+    const id = billing.claimPayment(ctx.user.id, {
+      invoiceId: f.invoiceId ? Number(f.invoiceId) : null,
+      method: f.method,
+      amountCents: cents,
+      senderRef: f.senderRef,
+    });
+    // نُعلم الأدمن داخل الشات فورًا — أسرع قناة وصول لديه
+    chat.sendMessage(ctx.user.id, {
+      role: 'system',
+      body: `أبلغ العميل بتحويل ${(cents / 100).toFixed(2)} ج.م عبر ${
+        { instapay: 'إنستا باي', vodafone: 'فودافون كاش', other: 'طريقة أخرى' }[f.method] || f.method
+      }${f.senderRef ? ` من الرقم ${f.senderRef}` : ''}. رقم الإشعار #${id}`,
+    });
+    admin.audit(ctx.user.id, 'payment_claim', `claim#${id}`, f.method, ctx.ip);
+    redirect(ctx.res, '/billing', {
+      headers: { 'Set-Cookie': flashCookie('ok', 'وصلنا إشعارك. سنؤكد السداد فور المطابقة.') },
+    });
+  } catch (e) {
+    redirect(ctx.res, '/billing', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+// —— الشات: العميل ——
+
+router.get('/chat', (ctx) => {
+  const messages = chat.history(ctx.user.id);
+  chat.markRead(ctx.user.id, 'client');
+  const st = billing.accountState(ctx.user.id);
+  sendHtml(ctx.res, chatViews.clientChatPage({
+    user: ctx.user, messages, locked: st.locked, flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
+});
+
+router.post('/chat', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const wantsJson = String(ctx.req.headers.accept || '').includes('application/json');
+  try {
+    if (!chatLimiter.check(`chat:${ctx.user.id}`).allowed) throw new Error('رسائل كثيرة — تمهّل قليلًا');
+    const msg = chat.sendMessage(ctx.user.id, { body: f.body, role: 'client', authorId: ctx.user.id });
+    if (wantsJson) return sendJson(ctx.res, { message: msg });
+    redirect(ctx.res, '/chat');
+  } catch (e) {
+    if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
+    redirect(ctx.res, '/chat', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+router.get('/chat/stream', (ctx) => {
+  chat.openStream(ctx.res, `u:${ctx.user.id}`);
+});
+
+router.get('/chat/since', (ctx) => {
+  sendJson(ctx.res, { messages: chat.since(ctx.user.id, ctx.query.get('after')) });
+});
+
 // —— لوحة الأدمن ——
 
 router.get('/admin', (ctx) => {
@@ -269,7 +350,7 @@ router.get('/admin/clients', (ctx) => {
 });
 
 router.post('/admin/clients', async (ctx) => {
-  const f = pick(await readForm(ctx.req), ['name', 'email', 'company', 'phone', 'mvp_url', 'mvp_label']);
+  const f = pick(await readForm(ctx.req), ['name', 'email', 'company', 'phone', 'whatsapp', 'mvp_url', 'mvp_label']);
   if (!f.name || !f.email) {
     return redirect(ctx.res, '/admin/clients', { headers: { 'Set-Cookie': flashCookie('danger', 'الاسم والبريد مطلوبان.') } });
   }
@@ -295,6 +376,7 @@ router.get('/admin/client/:id', (ctx) => {
     user: ctx.user, client, link,
     sites: admin.adminClientSites(client.id),
     invoices: admin.adminClientInvoices(client.id),
+    state: billing.accountState(client.id),
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
@@ -386,6 +468,113 @@ router.post('/admin/invoice/:id/pay', async (ctx) => {
   }
 });
 
+router.get('/admin/chat', (ctx) => {
+  sendHtml(ctx.res, chatViews.adminChatList({ user: ctx.user, threads: chat.adminThreads(), flash: ctx.flash }), {
+    headers: { 'Set-Cookie': clearFlash() },
+  });
+});
+
+router.get('/admin/chat/stream', (ctx) => {
+  chat.openStream(ctx.res, 'admin');
+});
+
+router.get('/admin/chat/:id', (ctx) => {
+  const client = admin.adminGetClient(Number(ctx.params.id));
+  if (!client) return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, message: 'العميل غير موجود' }), { status: 404 });
+  const messages = chat.history(client.id);
+  chat.markRead(client.id, 'admin');
+  sendHtml(ctx.res, chatViews.adminChatThread({
+    user: ctx.user, client, messages, state: billing.accountState(client.id), flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
+});
+
+router.get('/admin/chat/:id/since', (ctx) => {
+  sendJson(ctx.res, { messages: chat.since(Number(ctx.params.id), ctx.query.get('after')) });
+});
+
+router.post('/admin/chat/:id', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const client = admin.adminGetClient(Number(ctx.params.id));
+  const wantsJson = String(ctx.req.headers.accept || '').includes('application/json');
+  if (!client) {
+    return wantsJson ? sendJson(ctx.res, { error: 'العميل غير موجود' }, { status: 404 }) : redirect(ctx.res, '/admin/chat');
+  }
+  try {
+    const msg = chat.sendMessage(client.id, { body: f.body, role: 'admin', authorId: ctx.user.id });
+    if (wantsJson) return sendJson(ctx.res, { message: msg });
+    redirect(ctx.res, `/admin/chat/${client.id}`);
+  } catch (e) {
+    if (wantsJson) return sendJson(ctx.res, { error: e.message }, { status: 400 });
+    redirect(ctx.res, `/admin/chat/${client.id}`, { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+router.get('/admin/payments', (ctx) => {
+  sendHtml(ctx.res, adminViews.adminPayments({
+    user: ctx.user, claims: billing.pendingClaims(), cfg: billing.paymentSettings(), flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
+});
+
+router.post('/admin/claim/:id/confirm', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const claim = get('SELECT * FROM payment_claims WHERE id = ?', Number(ctx.params.id));
+  if (!claim) return redirect(ctx.res, '/admin/payments');
+  try {
+    if (claim.invoice_id) {
+      admin.adminRecordPayment(claim.invoice_id, {
+        amount: claim.amount_cents / 100,
+        method: { instapay: 'إنستا باي', vodafone: 'فودافون كاش' }[claim.method] || 'تحويل',
+        note: `إشعار العميل #${claim.id}`,
+      }, db);
+    }
+    run("UPDATE payment_claims SET status = 'confirmed', handled_at = ?, handled_by = ? WHERE id = ?",
+        nowISO(), ctx.user.id, claim.id);
+    chat.sendMessage(claim.user_id, { role: 'system', body: 'تم تأكيد سدادك — شكرًا لك. حسابك يعمل بكامل مزاياه.' });
+    admin.audit(ctx.user.id, 'confirm_claim', `claim#${claim.id}`, String(claim.amount_cents), ctx.ip);
+    redirect(ctx.res, '/admin/payments', { headers: { 'Set-Cookie': flashCookie('ok', 'تم تأكيد السداد.') } });
+  } catch (e) {
+    redirect(ctx.res, '/admin/payments', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+router.post('/admin/claim/:id/reject', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const claim = get('SELECT * FROM payment_claims WHERE id = ?', Number(ctx.params.id));
+  if (!claim) return redirect(ctx.res, '/admin/payments');
+  run("UPDATE payment_claims SET status = 'rejected', handled_at = ?, handled_by = ? WHERE id = ?",
+      nowISO(), ctx.user.id, claim.id);
+  chat.sendMessage(claim.user_id, {
+    role: 'admin', authorId: ctx.user.id,
+    body: f.reason ? `بخصوص إشعار التحويل: ${String(f.reason).slice(0, 400)}` : 'لم نتمكن من مطابقة التحويل — من فضلك راجعنا.',
+  });
+  admin.audit(ctx.user.id, 'reject_claim', `claim#${claim.id}`, f.reason || null, ctx.ip);
+  redirect(ctx.res, '/admin/payments');
+});
+
+router.get('/admin/settings', (ctx) => {
+  sendHtml(ctx.res, adminViews.adminSettings({ user: ctx.user, cfg: billing.paymentSettings(), flash: ctx.flash }), {
+    headers: { 'Set-Cookie': clearFlash() },
+  });
+});
+
+router.post('/admin/settings', async (ctx) => {
+  const f = pick(await readForm(ctx.req), ['pay_instapay', 'pay_vodafone', 'pay_whatsapp', 'pay_holder', 'trial_months', 'grace_days']);
+  for (const [k, v] of Object.entries(f)) setting(k, String(v).slice(0, 120));
+  admin.audit(ctx.user.id, 'update_settings', null, Object.keys(f).join(','), ctx.ip);
+  redirect(ctx.res, '/admin/settings', { headers: { 'Set-Cookie': flashCookie('ok', 'حُفظت الإعدادات.') } });
+});
+
+router.post('/admin/client/:id/exempt', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const id = Number(ctx.params.id);
+  const on = f.exempt === '1' ? 1 : 0;
+  run('UPDATE users SET exempt = ? WHERE id = ?', on, id);
+  admin.audit(ctx.user.id, on ? 'exempt_on' : 'exempt_off', `user#${id}`, null, ctx.ip);
+  redirect(ctx.res, `/admin/client/${id}`, {
+    headers: { 'Set-Cookie': flashCookie('ok', on ? 'أُعفي العميل من القفل.' : 'أُلغي الإعفاء.') },
+  });
+});
+
 router.get('/admin/requests', (ctx) => {
   sendHtml(ctx.res, adminViews.adminRequests({ user: ctx.user, requests: admin.adminPendingResets(), flash: ctx.flash }), {
     headers: { 'Set-Cookie': clearFlash() },
@@ -402,6 +591,18 @@ router.get('/health', (ctx) => {
 
 const PUBLIC_PATHS = new Set(['/login', '/reset-request', '/set-password', '/health']);
 const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
+
+/**
+ * ما يبقى مفتوحًا للعميل المقفول.
+ * القاعدة: القفل يقفل المزايا، ولا يقفل طريق الدفع ولا قناة التواصل أبدًا —
+ * عميل لا يرى ما عليه ولا يصل إليك لن يدفع أسرع، بل أبطأ.
+ */
+const OPEN_WHEN_LOCKED = new Set([
+  '/billing', '/billing/claim',
+  '/chat', '/chat/stream', '/chat/since',
+  '/invoices', '/logout', '/health',
+]);
+const openWhenLocked = (p) => OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/');
 
 export function createApp() {
   return http.createServer(async (req, res) => {
@@ -420,7 +621,18 @@ export function createApp() {
 
       const sid = parseCookies(req)[auth.COOKIE_NAME];
       const sessionUser = auth.sessionUser(sid);
-      const user = sessionUser ? { ...sessionUser, csrf: auth.csrfToken(sid) } : null;
+      let user = null;
+      if (sessionUser) {
+        user = { ...sessionUser, csrf: auth.csrfToken(sid) };
+        // شارات شريط التنقل
+        if (user.role === 'admin') {
+          user.unreadChat = chat.unreadForAdmin();
+          user.pendingClaims = billing.pendingClaims().length;
+          user.pendingResets = admin.adminPendingResets().length;
+        } else {
+          user.unreadChat = chat.unreadForClient(user.id);
+        }
+      }
       const ip = clientIp(req, { trustProxy: TRUST_PROXY });
 
       // رؤوس أمان بوابتنا على كل رد HTML
@@ -438,6 +650,14 @@ export function createApp() {
       if (pathname.startsWith('/admin') && user?.role !== 'admin') {
         // 404 لا 403: لا نؤكد لغير المخوَّل وجود لوحة أدمن
         return sendHtml(res, pages.errorPage({ user, status: 404, message: 'الصفحة غير موجودة' }), { status: 404 });
+      }
+
+      // بوابة الاشتراك: تُقفل المزايا بعد انتهاء مهلة السداد
+      if (user && user.role === 'client' && !openWhenLocked(pathname)) {
+        const st = billing.accountState(user.id);
+        billing.syncRestriction(user.id, st);
+        if (st.locked) return redirect(res, '/billing');
+        user.billing = st;
       }
 
       // CSRF على كل POST من مستخدم مسجل

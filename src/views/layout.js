@@ -214,17 +214,30 @@ export function sparkline(checks, { width = 640, height = 120 } = {}) {
 
 export function layout({ title, user, active = '', body, flash = null, nonce = '' }) {
   const isAdmin = user?.role === 'admin';
-  const nav = user
-    ? (isAdmin
-        ? [['/admin', 'لوحة الأدمن', 'grid'], ['/admin/clients', 'العملاء', 'globe'], ['/admin/requests', 'الطلبات', 'inbox']]
-        : [['/', 'مواقعي', 'grid'], ['/invoices', 'الفواتير', 'receipt'], ['/tickets', 'الدعم', 'chat']]
-      )
-        .map(
-          ([href, label, ic]) =>
-            `<a href="${href}"${active === href ? ' aria-current="page"' : ''}>${icon(ic)} ${esc(label)}</a>`
-        )
-        .join('')
-    : '';
+  const pill = (n) => (n > 0 ? `<span class="pill">${n > 99 ? '99+' : n}</span>` : '');
+  const items = user
+    ? isAdmin
+      ? [
+          ['/admin', 'لوحة الأدمن', 'grid', 0],
+          ['/admin/clients', 'العملاء', 'globe', 0],
+          ['/admin/chat', 'المحادثات', 'chat', user.unreadChat || 0],
+          ['/admin/payments', 'المدفوعات', 'receipt', user.pendingClaims || 0],
+          ['/admin/requests', 'الطلبات', 'inbox', user.pendingResets || 0],
+        ]
+      : [
+          ['/', 'مواقعي', 'grid', 0],
+          ['/chat', 'المحادثة', 'chat', user.unreadChat || 0],
+          ['/invoices', 'الفواتير', 'receipt', 0],
+          ['/billing', 'الاشتراك', 'shield', 0],
+          ['/tickets', 'الطلبات', 'inbox', 0],
+        ]
+    : [];
+  const nav = items
+    .map(
+      ([href, label, ic, n]) =>
+        `<a href="${href}"${active === href ? ' aria-current="page"' : ''}>${icon(ic)} ${esc(label)}${pill(n)}</a>`
+    )
+    .join('');
 
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">

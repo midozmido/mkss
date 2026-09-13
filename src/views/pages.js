@@ -80,7 +80,7 @@ export function narrative({ site, streak, uptime, lastMaintenance, tlsDays }) {
 
 // ——————————————————— لوحة العميل ———————————————————
 
-export function dashboardPage({ user, data, flash }) {
+export function dashboardPage({ user, data, flash, billingBanner: banner = '' }) {
   const { sites, counts, outstanding: due, mvp, openTickets } = data;
 
   // بطاقة المنتج (MVP) — أبرز عنصر، وتختفي تلقائيًا لمن لا منتج له
@@ -157,7 +157,7 @@ export function dashboardPage({ user, data, flash }) {
     ${openTickets ? `<a class="btn btn-sm" href="/tickets">${icon('chat')} ${plural(openTickets, 'تذكرة مفتوحة', 'تذكرتان مفتوحتان', 'تذاكر مفتوحة', 'تذكرة مفتوحة')}</a>` : ''}
   </div>
   ${mvpCard}
-  ${dueBanner}
+  ${banner || dueBanner}
   ${stats}
   ${cards}
 </div>`,
