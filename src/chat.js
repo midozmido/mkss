@@ -123,11 +123,15 @@ export function adminThreads() {
             (SELECT created_at FROM chat_messages m WHERE m.user_id = u.id ORDER BY m.id DESC LIMIT 1) AS last_at,
             (SELECT author_role FROM chat_messages m WHERE m.user_id = u.id ORDER BY m.id DESC LIMIT 1) AS last_role,
             (SELECT COUNT(*) FROM chat_messages m WHERE m.user_id = u.id AND m.read_by_admin = 0) AS unread,
-            u.support_mode, u.escalated_at
+            u.support_mode, u.escalated_at, u.snooze_until
        FROM users u
       WHERE u.role = 'client'
         AND EXISTS (SELECT 1 FROM chat_messages m WHERE m.user_id = u.id)
-      ORDER BY unread DESC, last_at DESC`
+      -- المؤجَّلة تنزل لأسفل حتى ينتهي أجلها: هذا هو معنى التأجيل،
+      -- وإبقاؤها في الأعلى يجعل الزر بلا أثر.
+      ORDER BY (CASE WHEN u.snooze_until > ? THEN 1 ELSE 0 END) ASC,
+               unread DESC, last_at DESC`,
+    nowISO()
   );
 }
 

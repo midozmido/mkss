@@ -662,3 +662,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   .chip { font-size: var(--t-xs); }
   .bot-intro { flex-direction: column; }
 }
+
+.rating-card { text-align: center; }
+.rating-card .chip { min-inline-size: 110px; justify-content: center; }

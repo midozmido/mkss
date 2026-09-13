@@ -26,6 +26,8 @@ import * as chatViews from './src/views/chat.js';
 import * as bot from './src/bot.js';
 import * as kb from './src/kb.js';
 import * as kbViews from './src/views/kb.js';
+import * as support from './src/support.js';
+import * as supportViews from './src/views/support.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
@@ -317,6 +319,7 @@ router.get('/chat', (ctx) => {
     hours: bot.workingHours(),
     botName: bot.botName(),
     color: ctx.user.chat_color || setting('chat_color_default') || '#0d7a6f',
+    pendingRating: mode === 'bot' ? support.askForRating(ctx.user.id) : null,
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
@@ -351,6 +354,20 @@ router.post('/chat/color', async (ctx) => {
   if (chatViews.isValidColor(f.color)) {
     run('UPDATE users SET chat_color = ? WHERE id = ?', f.color, ctx.user.id);
   }
+  redirect(ctx.res, '/chat');
+});
+
+router.post('/chat/rate', async (ctx) => {
+  const f = await readForm(ctx.req);
+  try {
+    support.rateEscalation(ctx.user.id, Number(f.escalationId), f.score === '1', f.note);
+    chat.sendMessage(ctx.user.id, {
+      role: 'bot', channel: 'bot',
+      body: f.score === '1'
+        ? 'شكرًا لتقييمك 🙏 سعدنا بخدمتك، وأنا هنا لأي سؤال.'
+        : 'شكرًا لصراحتك. سنراجع ما حدث لنتحسّن — وإن أردت متابعة الأمر فاطلب زميلًا من الفريق في أي وقت.',
+    });
+  } catch { /* تقييم مكرر أو غير صالح */ }
   redirect(ctx.res, '/chat');
 });
 
@@ -542,9 +559,9 @@ router.post('/admin/invoice/:id/pay', async (ctx) => {
 });
 
 router.get('/admin/chat', (ctx) => {
-  sendHtml(ctx.res, chatViews.adminChatList({ user: ctx.user, threads: chat.adminThreads(), flash: ctx.flash }), {
-    headers: { 'Set-Cookie': clearFlash() },
-  });
+  sendHtml(ctx.res, chatViews.adminChatList({
+    user: ctx.user, threads: chat.adminThreads(), stats: support.supportStats(30), flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
 router.get('/admin/chat/stream', (ctx) => {
@@ -560,8 +577,9 @@ router.get('/admin/chat/:id', (ctx) => {
     user: ctx.user, client, messages,
     state: billing.accountState(client.id),
     mode: client.support_mode || 'bot',
-    replies: [],
+    replies: support.listReplies(),
     botName: bot.botName(),
+    stats: support.supportStats(30),
     flash: ctx.flash,
   }), { headers: { 'Set-Cookie': clearFlash() } });
 });
@@ -604,6 +622,48 @@ router.post('/admin/chat/:id/note', async (ctx) => {
     chat.sendMessage(id, { body: f.body, role: 'system', authorId: ctx.user.id, visibility: 'internal' });
   } catch (e) { /* رسالة فارغة */ }
   redirect(ctx.res, `/admin/chat/${id}`);
+});
+
+// —— الردود المحفوظة ——
+
+router.get('/admin/replies', (ctx) => {
+  sendHtml(ctx.res, supportViews.adminReplies({ user: ctx.user, replies: support.listReplies(), flash: ctx.flash }), {
+    headers: { 'Set-Cookie': clearFlash() },
+  });
+});
+
+router.post('/admin/replies', async (ctx) => {
+  const f = pick(await readForm(ctx.req), ['id', 'title', 'body', 'shortcut']);
+  try {
+    support.saveReply({ ...f, id: f.id ? Number(f.id) : null });
+    redirect(ctx.res, '/admin/replies', { headers: { 'Set-Cookie': flashCookie('ok', 'حُفظ الرد.') } });
+  } catch (e) {
+    redirect(ctx.res, '/admin/replies', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
+  }
+});
+
+router.post('/admin/replies/:id/delete', (ctx) => {
+  support.deleteReply(Number(ctx.params.id));
+  redirect(ctx.res, '/admin/replies');
+});
+
+// —— التأجيل والبحث ——
+
+router.post('/admin/chat/:id/snooze', async (ctx) => {
+  const f = await readForm(ctx.req);
+  const id = Number(ctx.params.id);
+  if (f.hours === '0') support.unsnooze(id);
+  else support.snooze(id, Number(f.hours) || 24);
+  redirect(ctx.res, '/admin/chat', {
+    headers: { 'Set-Cookie': flashCookie('ok', f.hours === '0' ? 'أُلغي التأجيل.' : 'أُجّلت المحادثة.') },
+  });
+});
+
+router.get('/admin/search', (ctx) => {
+  const q = ctx.query.get('q') || '';
+  sendHtml(ctx.res, supportViews.adminSearch({
+    user: ctx.user, q, results: q ? support.searchConversations(q) : [], flash: ctx.flash,
+  }), { headers: { 'Set-Cookie': clearFlash() } });
 });
 
 // —— قاعدة المعرفة: إدارة ——
@@ -738,7 +798,7 @@ const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
  */
 const OPEN_WHEN_LOCKED = new Set([
   '/billing', '/billing/claim',
-  '/chat', '/chat/stream', '/chat/since', '/chat/escalate', '/chat/article', '/chat/feedback', '/chat/color',
+  '/chat', '/chat/stream', '/chat/since', '/chat/escalate', '/chat/article', '/chat/feedback', '/chat/color', '/chat/rate',
   '/invoices', '/logout', '/health',
 ]);
 const openWhenLocked = (p) =>

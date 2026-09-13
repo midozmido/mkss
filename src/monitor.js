@@ -7,6 +7,7 @@ import net from 'node:net';
 import { promises as dnsp } from 'node:dns';
 import { all, get, run, nowISO, setting } from './db.js';
 import { runCheck, toCheckRow } from './checks/run.js';
+import * as support from './support.js';
 
 const TICK_MS = 30_000;          // كل نصف دقيقة نسأل: مين مستحق للفحص؟
 const MAX_CONCURRENT = 5;        // سقف الفحوصات المتوازية
@@ -175,7 +176,13 @@ export async function checkSite(site, { allowPrivate = false, networkCheck = net
     }
   } else {
     if (site.consecutive_failures) run('UPDATE sites SET consecutive_failures = 0 WHERE id = ?', site.id);
+    const hadOpen = get(
+      "SELECT id FROM incidents WHERE site_id = ? AND resolved = 0 AND kind IN ('down','server_error','blocked')",
+      site.id
+    );
     resolveIncidents(site.id, ['down', 'server_error', 'blocked']);
+    // العميل يستحق أن يعرف بالعودة كما عرف بالعطل
+    if (hadOpen) { try { support.proactiveRecovered(site); } catch { /* لا نُفشل الفحص */ } }
   }
 
   // أعطال الشهادة مستقلة عن التشغيل — موقع شغّال بشهادة منتهية ما زال معطوبًا
@@ -184,6 +191,9 @@ export async function checkSite(site, { allowPrivate = false, networkCheck = net
   } else if (result.ok) {
     resolveIncidents(site.id, ['ssl']);
   }
+
+  // رسائل سامي الاستباقية — لا تُفشل الفحص إن تعذّرت
+  try { support.proactiveForCheck(site, result); } catch { /* تجاهل */ }
 
   // الفحص التالي: أقرب عند الفشل الأول لتأكيده بسرعة
   const nextMs = failed && (site.consecutive_failures || 0) + 1 < CONFIRM_FAILURES

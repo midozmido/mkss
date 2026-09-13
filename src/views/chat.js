@@ -143,7 +143,7 @@ function colorBar(current, csrf) {
 
 // ——————————————————— شات العميل ———————————————————
 
-export function clientChatPage({ user, messages, mode, topics, greeting, hours, botName = 'سامي', color, flash, locked = false }) {
+export function clientChatPage({ user, messages, mode, topics, greeting, hours, botName = 'سامي', color, pendingRating = null, flash, locked = false }) {
   setBotName(botName);
   const isLive = mode === 'live';
   const accent = color || '#0d7a6f';
@@ -186,6 +186,19 @@ export function clientChatPage({ user, messages, mode, topics, greeting, hours, 
     مزايا لوحتك متوقفة، لكن المحادثة تظل مفتوحة دائمًا. <a href="/billing">تفعيل الاشتراك</a>
   </div></div>` : ''}
 
+  ${pendingRating
+    ? `<section class="card rating-card" style="--chat-accent:${esc(accent)}">
+        <p style="margin:0"><b>كيف كانت محادثتك مع فريق الدعم؟</b></p>
+        <form method="POST" action="/chat/rate" class="row" style="justify-content:center;margin-block-start:var(--s-3)">
+          <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+          <input type="hidden" name="escalationId" value="${pendingRating.id}">
+          <button class="chip chip-strong" name="score" value="1" type="submit">👍 راضٍ</button>
+          <button class="chip" name="score" value="0" type="submit">👎 غير راضٍ</button>
+        </form>
+        <p class="faint" style="margin-block-start:var(--s-2);margin-block-end:0">تقييمك يساعدنا على التحسّن.</p>
+      </section>`
+    : ''}
+
   ${!isLive && !messages.length
     ? `<div class="card bot-intro" style="--chat-accent:${esc(accent)}">
         ${sami(56)}
@@ -225,7 +238,7 @@ export function clientChatPage({ user, messages, mode, topics, greeting, hours, 
 
 // ——————————————————— لوحة الأدمن ———————————————————
 
-export function adminChatList({ user, threads, flash }) {
+export function adminChatList({ user, threads, stats = null, flash }) {
   const badge = (t) => {
     if (t.support_mode === 'live' && t.escalated_at) {
       return `<span class="badge badge-danger">${icon('alert')} محوّل للدعم</span>`;
@@ -242,10 +255,21 @@ export function adminChatList({ user, threads, flash }) {
   <div class="row-between">
     <h1>المحادثات</h1>
     <div class="row">
+      <a class="btn btn-sm" href="/admin/search">${icon('grid')} بحث</a>
+      <a class="btn btn-sm" href="/admin/replies">${icon('chat')} ردود محفوظة</a>
       <a class="btn btn-sm" href="/admin/kb">${icon('inbox')} قاعدة المعرفة</a>
       <span class="badge" id="chat-status">${icon('clock')} جارٍ الاتصال…</span>
     </div>
   </div>
+
+  ${stats
+    ? `<div class="stats">
+      <div class="stat"><div class="stat-value">${stats.escalations}</div><div class="stat-label">تحويل خلال 30 يومًا</div></div>
+      <div class="stat"><div class="stat-value">${stats.avgFirstReplyMinutes ?? '—'}<span class="faint" style="font-size:var(--t-sm)">${stats.avgFirstReplyMinutes != null ? ' د' : ''}</span></div><div class="stat-label">متوسط أول رد</div></div>
+      <div class="stat"><div class="stat-value" style="color:${stats.satisfaction == null ? 'var(--text-faint)' : stats.satisfaction >= 80 ? 'var(--ok)' : 'var(--warn)'}">${stats.satisfaction == null ? '—' : stats.satisfaction + '%'}</div><div class="stat-label">نسبة الرضا</div></div>
+      <div class="stat"><div class="stat-value">${stats.rated}</div><div class="stat-label">تقييم مُستلَم</div></div>
+    </div>`
+    : ''}
 
   ${threads.length
     ? `<div class="card card-flush" id="thread-list">${threads
@@ -261,6 +285,8 @@ export function adminChatList({ user, threads, flash }) {
         <div class="row" style="margin-block-start:var(--s-2)">${badge(t)}</div>
       </div>
       ${t.unread ? `<span class="badge badge-danger">${t.unread}</span>` : ''}
+      ${t.snooze_until && t.snooze_until > new Date().toISOString()
+        ? `<span class="badge">${icon('clock')} مؤجّلة</span>` : ''}
     </a>`
         )
         .join('')}</div>`
@@ -295,6 +321,16 @@ export function adminChatThread({ user, client, messages, state, mode, replies =
           ? `<span class="badge badge-danger">${icon('alert')} محوّل للدعم</span>`
           : `<span class="badge badge-brand">${icon('grid')} مع المساعد</span>`}
         <a class="btn btn-sm" href="/admin/client/${client.id}">ملف العميل</a>
+        <form method="POST" action="/admin/chat/${client.id}/snooze" class="row" style="gap:var(--s-1)">
+          <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
+          <select name="hours" style="inline-size:auto;min-block-size:30px;padding-block:2px">
+            <option value="4">أجّل 4 ساعات</option>
+            <option value="24">أجّل يومًا</option>
+            <option value="72">أجّل 3 أيام</option>
+            <option value="0">إلغاء التأجيل</option>
+          </select>
+          <button class="btn btn-sm" type="submit">${icon('clock')}</button>
+        </form>
         ${isLive
           ? `<form method="POST" action="/admin/chat/${client.id}/close" data-confirm="إنهاء المحادثة وإعادة العميل للمساعد الآلي؟">
               <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
