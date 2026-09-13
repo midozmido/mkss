@@ -4,11 +4,14 @@
   "private": true,
   "description": "نظام دعم العملاء ومراقبة المواقع — صفر اعتماديات خارجية",
   "type": "module",
-  "engines": { "node": ">=22.5.0" },
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "start": "node server.js",
     "seed": "node seed.js",
-    "reset": "rm -f data/mkss.db && node seed.js"
+    "reset": "rm -f data/mkss.db && node seed.js",
+    "test": "node --test"
   },
   "dependencies": {},
   "devDependencies": {}

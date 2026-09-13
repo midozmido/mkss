@@ -103,10 +103,12 @@ const PLATFORMS = {
     en: 'Magento',
     color: '#ee672f',
     rules: [
-      { re: /\/static\/version\d+\/frontend\//i, w: 45, where: 'html' },
-      { re: /Magento_|mage\/|requirejs\/require\.js/i, w: 35, where: 'html' },
+      { re: /\/static\/version\d+\/frontend\//i, w: 50, where: 'html', note: 'مسار أصول ماجنتو' },
+      { re: /Magento_[A-Z][A-Za-z]+/, w: 45, where: 'html', note: 'وحدات ماجنتو' },
+      // لاحظ الشرطة المائلة قبل mage — بدونها تتطابق داخل كلمة image/
+      { re: /\/mage\/|mage\/cookies|mage\/translate/i, w: 35, where: 'html' },
       { re: /X-Magento/i, w: 50, where: 'headers' },
-      { re: /mage-cache-storage|form_key/i, w: 30, where: 'cookies' },
+      { re: /mage-cache-storage/i, w: 35, where: 'cookies' },
     ],
   },
   opencart: {
@@ -154,7 +156,7 @@ const PLATFORMS = {
     color: '#15171a',
     rules: [
       { re: /<meta[^>]+name=["']generator["'][^>]+Ghost/i, w: 50, where: 'html' },
-      { re: /ghost-|\/ghost\/api\//i, w: 30, where: 'html' },
+      { re: /\/ghost\/api\/|content\/themes\/casper/i, w: 35, where: 'html' },
     ],
   },
   bigcommerce: {
@@ -243,7 +245,7 @@ const PLATFORMS = {
     color: '#0c4b33',
     isCustom: true,
     rules: [
-      { re: /csrftoken|django_language|sessionid/i, w: 35, where: 'cookies' },
+      { re: /csrftoken|django_language/i, w: 35, where: 'cookies' },
       { re: /\/static\/admin\/|csrfmiddlewaretoken/i, w: 35, where: 'html' },
     ],
   },
@@ -337,8 +339,11 @@ export function fingerprint(res) {
   scores.sort((a, b) => b.score - a.score);
 
   // الإضافات المرتبطة بمنصة (زي ووكومرس) ما تنافسش المنصة الأم
-  const primary = scores.find((s) => !s.def.isAddon) || scores[0] || null;
-  const addons = scores.filter((s) => s.def.isAddon && s !== primary);
+  // عتبة الثقة: أقل من 40 نقطة دليل ضعيف — نقول "غير معروف" بدل تخمين يفقد العميل ثقته
+  const MIN_SCORE = 40;
+  const strong = scores.filter((s) => s.score >= MIN_SCORE);
+  const primary = strong.find((s) => !s.def.isAddon) || strong[0] || null;
+  const addons = strong.filter((s) => s.def.isAddon && s !== primary);
 
   const detected = primary
     ? {
@@ -364,9 +369,11 @@ export function fingerprint(res) {
       confidence: Math.min(99, a.score),
       version: extractVersion(a.def, html),
     })),
-    runnerUp: scores[1] && scores[1] !== primary
-      ? { key: scores[1].key, label: scores[1].def.label, score: scores[1].score }
+    runnerUp: scores.find((s) => s !== primary)
+      ? (() => { const r = scores.find((s) => s !== primary);
+                 return { key: r.key, label: r.def.label, score: r.score }; })()
       : null,
+    weakSignals: primary ? [] : scores.slice(0, 2).map((s) => ({ label: s.def.label, score: s.score })),
     extras: EXTRAS.filter((e) => e.re.test(html)).map((e) => ({ key: e.key, label: e.label })),
     server: cleanHeader(headers['server']),
     poweredBy: cleanHeader(headers['x-powered-by']),

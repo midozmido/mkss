@@ -1,42 +1,41 @@
-// جالب HTTP خام بقياس زمن دقيق — node:http / node:https فقط
+// جالب HTTP خام بقياس زمن دقيق — node:http / node:https فقط.
+// كل طلب يمر على حارس SSRF أولًا، ويتصل بالـ IP الذي تم التحقق منه مباشرة
+// (تثبيت الـ IP) فلا تستطيع إجابة DNS متغيرة أن تحوّلنا لعنوان داخلي بعد الفحص.
 import http from 'node:http';
 import https from 'node:https';
 import { URL } from 'node:url';
+import { assertSafeUrl } from './guard.js';
 
 const UA = 'MKSS-Monitor/1.0 (+site health checker)';
-const MAX_BODY = 512 * 1024; // نقرأ 512KB بس — كفاية للبصمة ومش هيرهق الذاكرة
+const MAX_BODY = 512 * 1024; // 512KB — كفاية للبصمة ولا ترهق الذاكرة
 const MAX_REDIRECTS = 5;
 
-/**
- * طلب واحد بدون تتبع تحويلات.
- * يرجع: status, headers, body, ttfb, total, bytes, socket info
- */
-function once(urlStr, { timeout = 15000, method = 'GET' } = {}) {
+/** طلب واحد لهدف تم التحقق منه بالفعل، بدون تتبع تحويلات */
+function once(urlStr, safe, { timeout = 15000, method = 'GET' } = {}) {
   return new Promise((resolve) => {
-    let url;
-    try {
-      url = new URL(urlStr);
-    } catch {
-      return resolve({ error: 'رابط غير صالح', errorCode: 'BAD_URL' });
-    }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return resolve({ error: 'بروتوكول غير مدعوم', errorCode: 'BAD_PROTOCOL' });
-    }
-
-    const lib = url.protocol === 'https:' ? https : http;
+    const url = new URL(urlStr);
+    const lib = safe.protocol === 'https:' ? https : http;
     const started = process.hrtime.bigint();
     let ttfb = null;
     let settled = false;
     const ms = (t) => Number((t - started) / 1000000n);
 
+    const isDefaultPort =
+      (safe.protocol === 'https:' && safe.port === 443) ||
+      (safe.protocol === 'http:' && safe.port === 80);
+
     const req = lib.request(
       {
-        protocol: url.protocol,
-        hostname: url.hostname,
-        port: url.port || (url.protocol === 'https:' ? 443 : 80),
+        protocol: safe.protocol,
+        // نتصل بالـ IP المتحقق منه لا بالاسم — هذا ما يمنع DNS rebinding
+        host: safe.ip,
+        port: safe.port,
         path: url.pathname + url.search,
         method,
+        // Host الحقيقي يذهب في الهيدر ليصل للاستضافة المشتركة بشكل صحيح
+        setHost: false,
         headers: {
+          Host: isDefaultPort ? safe.host : `${safe.host}:${safe.port}`,
           'User-Agent': UA,
           Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'ar,en;q=0.8',
@@ -44,7 +43,9 @@ function once(urlStr, { timeout = 15000, method = 'GET' } = {}) {
           Connection: 'close',
         },
         timeout,
-        // نفحص الشهادة بشكل منفصل في tls.js — هنا مش عايزين الفحص يفشل الطلب كله
+        // SNI باسم الدومين الحقيقي — ضروري للاستضافة المشتركة
+        servername: safe.protocol === 'https:' ? safe.host : undefined,
+        // الشهادة تُفحص بشكل منفصل في tls.js — هنا لا نريد فشل الطلب كله
         rejectUnauthorized: false,
       },
       (res) => {
@@ -78,8 +79,9 @@ function once(urlStr, { timeout = 15000, method = 'GET' } = {}) {
             ttfb,
             total: ms(process.hrtime.bigint()),
             url: urlStr,
-            protocol: url.protocol,
-            host: url.hostname,
+            protocol: safe.protocol,
+            host: safe.host,
+            ip: safe.ip,
           });
         };
 
@@ -126,6 +128,7 @@ function describeError(e) {
     EHOSTUNREACH: 'تعذر الوصول للسيرفر',
     ENETUNREACH: 'الشبكة غير متاحة',
     EAI_AGAIN: 'فشل مؤقت في الـ DNS',
+    EPROTO: 'خطأ في بروتوكول TLS',
     CERT_HAS_EXPIRED: 'شهادة SSL منتهية',
     DEPTH_ZERO_SELF_SIGNED_CERT: 'شهادة SSL موقّعة ذاتيًا',
     UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'تعذر التحقق من شهادة SSL',
@@ -133,14 +136,31 @@ function describeError(e) {
   return map[e.code] || e.message || 'خطأ غير معروف في الاتصال';
 }
 
-/** جلب مع تتبع التحويلات، ويرجع سلسلة التحويلات كلها */
+/**
+ * جلب مع تتبع التحويلات. **كل قفزة** تمر على حارس SSRF من جديد،
+ * لأن موقعًا عامًا قد يحوّل لعنوان داخلي.
+ */
 export async function fetchSite(startUrl, opts = {}) {
+  const { allowPrivate = false } = opts;
   let current = startUrl;
   const chain = [];
   let first = null;
 
   for (let i = 0; i <= MAX_REDIRECTS; i++) {
-    const res = await once(current, opts);
+    const safe = await assertSafeUrl(current, { allowPrivate });
+    if (!safe.ok) {
+      return {
+        error: safe.reason,
+        errorCode: safe.code,
+        blocked: true,
+        url: current,
+        chain,
+        redirects: chain.length,
+        firstResponse: first,
+      };
+    }
+
+    const res = await once(current, safe, opts);
     if (!first) first = res;
     if (res.error) {
       return { ...res, chain, redirects: chain.length, firstResponse: first };
@@ -156,7 +176,6 @@ export async function fetchSite(startUrl, opts = {}) {
         chain,
         redirects: chain.length,
         firstResponse: first,
-        // الزمن الكلي = مجموع كل القفزات
         totalChain: chain.reduce((s, c) => s + (c.total || 0), 0) + (res.total || 0),
       };
     }
@@ -181,4 +200,4 @@ export async function fetchSite(startUrl, opts = {}) {
   };
 }
 
-export { once as fetchOnce, MAX_BODY };
+export { MAX_BODY, MAX_REDIRECTS };

@@ -1,5 +1,6 @@
 // فحص الـ DNS — node:dns المدمج
-import { Resolver, promises as dnsp } from 'node:dns';
+import { promises as dnsp } from 'node:dns';
+import { isIP } from 'node:net';
 import { URL } from 'node:url';
 
 /** يحل الدومين ويقرأ سجلاته الأساسية مع قياس الزمن */
@@ -9,6 +10,15 @@ export async function inspectDNS(urlStr, { timeout = 5000 } = {}) {
     host = new URL(urlStr).hostname;
   } catch {
     return { ok: false, reason: 'رابط غير صالح' };
+  }
+
+  // موقع مسجَّل بعنوان IP مباشر لا يوجد له DNS يُفحص — وهذا ليس عطلًا
+  if (isIP(host)) {
+    return {
+      ok: true, ms: 0, host, ips: [host], nameservers: [],
+      hasMX: false, mx: [], hasSPF: false, hasDMARC: false,
+      provider: null, literalIP: true,
+    };
   }
 
   const started = Date.now();
