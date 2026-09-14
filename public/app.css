@@ -698,102 +698,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .empty svg { inline-size: 40px; block-size: 40px; opacity: .35; margin-block-end: var(--s-3); }
 
 /* ============================================================
-   بوابتا الدخول
-   ============================================================ */
-.auth-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  min-block-size: 100dvh;
-}
-
-.auth-main {
-  display: grid; place-items: center;
-  min-inline-size: 0;
-  padding: var(--s-6) var(--s-4);
-}
-.auth-card {
-  inline-size: 100%; max-inline-size: 440px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow);
-  padding: var(--s-6) var(--s-5);
-}
-.auth-head { text-align: center; margin-block-end: var(--s-5); }
-.auth-head .brand-mark { inline-size: 44px; block-size: 44px; margin-inline: auto; margin-block-end: var(--s-3); font-size: var(--t-base); }
-
-/* اللوحة التعريفية تنصرف تمامًا تحت ‎900px‎: نصف شاشة زينة فوق نموذج
-   مضغوط أسوأ من نموذج وحده يملأ الشاشة. */
-.auth-aside { display: none; }
-
-@media (min-width: 900px) {
-  .auth-shell { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); }
-  /* النموذج في عمود البداية — يمين الشاشة في RTL — لأنه المقصود من الصفحة،
-     وعين القارئ العربي تبدأ من هناك. اللوحة زينة تأتي بعده. */
-  .auth-main  { grid-area: 1 / 1; }
-  .auth-aside { grid-area: 1 / 2; }
-
-  .auth-aside {
-    display: grid; align-items: center;
-    position: relative; overflow: hidden;   /* يقصّ الكرتين الضوئيتين فلا تمدّان الصفحة أفقيًا */
-    padding: var(--s-8) var(--s-7);
-    background: linear-gradient(155deg, var(--portal) 0%, var(--portal-deep) 100%);
-    color: var(--portal-ink);
-  }
-  body[data-portal="admin"] .auth-aside {
-    background: linear-gradient(155deg, var(--admin) 0%, var(--admin-deep) 100%);
-  }
-}
-
-.auth-aside-in { position: relative; z-index: 0; max-inline-size: 46ch; margin-inline: auto; }
-/* الكرتان تليان النص في الـ DOM، فبلا ترتيب صريح ترسمان فوق الحروف */
-.auth-aside-in > :not(.auth-orb) { position: relative; z-index: 1; }
-
-.auth-aside h2 { font-size: var(--t-2xl); color: var(--portal-ink); margin-block: var(--s-5) var(--s-3); }
-.auth-aside p  { color: color-mix(in srgb, var(--portal-ink) 82%, transparent); font-size: var(--t-md); line-height: 1.9; }
-.auth-aside .brand-name b,
-.auth-aside .brand-mark { color: var(--portal-ink); }
-.auth-aside .brand-mark { background: color-mix(in srgb, var(--portal-ink) 18%, transparent); }
-.auth-aside .brand-name small { color: color-mix(in srgb, var(--portal-ink) 66%, transparent); }
-.auth-aside .vip { color: var(--vip-bright); }
-.auth-brand { display: inline-flex; align-items: center; gap: var(--s-2); }
-
-.auth-points { list-style: none; margin: var(--s-6) 0 0; padding: 0; display: grid; gap: var(--s-3); }
-.auth-points li {
-  display: flex; align-items: flex-start; gap: var(--s-3);
-  font-size: var(--t-sm);
-  color: color-mix(in srgb, var(--portal-ink) 88%, transparent);
-}
-.auth-points svg { flex: none; inline-size: 18px; block-size: 18px; margin-block-start: 3px; color: var(--vip-bright); }
-
-.auth-orb {
-  position: absolute; z-index: 0; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(circle, color-mix(in srgb, var(--portal-ink) 34%, transparent) 0%, transparent 70%);
-  filter: blur(14px);
-}
-.auth-orb-1 {
-  inline-size: 340px; block-size: 340px;
-  inset-block-start: -110px; inset-inline-end: -90px;
-  animation: orb-a 17s ease-in-out infinite alternate;
-}
-.auth-orb-2 {
-  inline-size: 260px; block-size: 260px;
-  inset-block-end: -90px; inset-inline-start: -70px;
-  animation: orb-b 23s ease-in-out infinite alternate;
-}
-@keyframes orb-a { to { transform: translate3d(-7%, 9%, 0) scale(1.14); } }
-@keyframes orb-b { to { transform: translate3d(8%, -7%, 0) scale(.88); } }
-
-/* غلاف قديم بقي في صفحتَي «تفعيل الحساب» و«كلمة سر جديدة»:
-   يبقى محايدًا داخل ‎.auth-card‎ الجديدة، وإلا صار ارتفاعه ‎100dvh‎
-   داخل بطاقة بارتفاع محتواها. */
-.auth-page { display: contents; }
-/* وإن بقيت بطاقة داخل بطاقة، لا تتضاعف الحواف والظلال */
-.auth-card .card, .auth-card .auth-card {
-  background: none; border: 0; box-shadow: none; padding: 0; max-inline-size: none;
-}
-
-/* ============================================================
    طبقة الحركة
    ============================================================ */
 
@@ -1221,74 +1125,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .bare-body { inline-size: 100%; max-inline-size: 520px; }
 
 /* ============================================================
-   نموذج الدخول — الحقول وما حولها
-   ============================================================ */
-.auth-form { gap: var(--s-4); }
-
-.auth-tag {
-  display: inline-flex; align-items: center; gap: var(--s-2);
-  padding: var(--s-1) var(--s-3);
-  border-radius: var(--r-full);
-  background: var(--brand-soft); color: var(--brand-text);
-  font-size: var(--t-xs); font-weight: var(--w-bold);
-  margin-block-end: var(--s-3);
-}
-body[data-portal="admin"] .auth-tag {
-  background: color-mix(in srgb, var(--admin) 16%, transparent);
-  color: color-mix(in srgb, var(--admin) 78%, var(--text));
-}
-
-/* زر إظهار كلمة السر داخل الحقل. الحقل ‎dir="ltr"‎ والزر في نهايته
-   البصرية — ‎inset-inline-end‎ داخل حاوية ‎dir‎ افتراضي يضعه في اليسار،
-   وهو اليسار الذي نريده لأن النص اللاتيني يبدأ من اليمين هنا. */
-.pw-wrap { position: relative; display: block; }
-.pw-wrap input { inline-size: 100%; padding-inline-end: calc(var(--tap) - var(--s-2)); }
-.pw-toggle {
-  position: absolute; inset-block: 4px; inset-inline-end: 4px;
-  inline-size: 38px;
-  display: grid; place-items: center;
-  border: 0; border-radius: var(--r-sm);
-  background: none; color: var(--text-faint);
-  cursor: pointer;
-}
-.pw-toggle:hover { color: var(--text); background: var(--surface-sunk); }
-.pw-toggle[aria-pressed="true"] { color: var(--brand); }
-.pw-toggle svg { inline-size: 18px; block-size: 18px; }
-
-.pw-rules {
-  list-style: none; margin: 0; padding: var(--s-3);
-  border-radius: var(--r); background: var(--surface-sunk);
-  display: grid; gap: var(--s-2);
-  font-size: var(--t-xs); color: var(--text-muted);
-}
-.pw-rules li { display: flex; align-items: center; gap: var(--s-2); }
-.pw-rules svg { flex: none; inline-size: 14px; block-size: 14px; color: var(--text-faint); }
-
-.auth-help { margin-block-start: var(--s-5); }
-.auth-help > summary {
-  cursor: pointer; font-size: var(--t-sm); font-weight: var(--w-medium);
-  color: var(--text-muted); padding-block: var(--s-2);
-}
-.auth-help > summary:hover { color: var(--brand-text); }
-.auth-help[open] > summary { margin-block-end: var(--s-3); }
-
-.auth-note {
-  display: flex; align-items: flex-start; gap: var(--s-2);
-  margin-block-start: var(--s-5);
-}
-.auth-note svg { flex: none; margin-block-start: 2px; }
-
-.auth-switch {
-  margin-block: var(--s-5) 0;
-  padding-block-start: var(--s-4);
-  border-block-start: 1px solid var(--border);
-  text-align: center; font-size: var(--t-sm); color: var(--text-muted);
-}
-.auth-switch a { font-weight: var(--w-bold); }
-
-.btn-lg { padding: var(--s-3) var(--s-5); font-size: var(--t-md); min-block-size: var(--tap); }
-
-/* ============================================================
    مواضيع المساعدة في صفحة الدعم — بديل صندوق البحث الملغى
    ============================================================ */
 .topics-title {
@@ -1395,4 +1231,359 @@ body[data-portal="admin"] .auth-main { border-block-start: 4px solid var(--admin
 body[data-portal="admin"] .auth-card { border-color: color-mix(in srgb, var(--admin) 35%, var(--border)); }
 @media (min-width: 900px) {
   body[data-portal="admin"] .auth-main { border-block-start: 0; }
+}
+
+/* ============================================================
+   بوابتا الدخول
+   ------------------------------------------------------------
+   المبدأ: النموذج هو البطل، واللوحة صامتة خلفه. صفحة دخول تُصرف فيها
+   البهرجةُ على الزخرفة تجعل الحقلَ — وهو سبب وجود الصفحة — أضعف ما فيها.
+   ============================================================ */
+
+/* لوحات الدخول: نطاقان مستقلّان عن ‎--brand‎ عمدًا. ‎--brand‎ يصير فيروزيًّا
+   لامعًا في الوضع الليلي، والنص الأبيض فوقه يسقط تحت أي حدّ تباين مقبول.
+   هذان يبقيان داكنين في الوضعين معًا، فحبرهما لا ينقلب. */
+:root {
+  --auth-deep:   #04100e;   /* أعمق نقطة في اللوحة */
+  --auth-rise:   #0a3b34;   /* أعلاها */
+  --auth-live:   #2dd4bf;   /* الشرطة الحيّة والمنحنى */
+  --auth-warn:   #f59e0b;   /* الشرطة الكهرمانية الوحيدة */
+  --auth-ink:    #ffffff;
+  --auth-page:   #eaf0ee;   /* أرضية عمود النموذج — رمادي بميل أخضر، لا رمادي محايد */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --auth-page: #060b0a; }
+}
+:root[data-theme="dark"] { --auth-page: #060b0a; }
+
+body[data-portal="admin"] {
+  --auth-deep: #0a0918;
+  --auth-rise: #2a2470;
+  --auth-live: #a5b4fc;
+  --auth-warn: #fbbf24;
+  /* الهوية تُعاد توجيهها عند الجذر لا عند كل عنصر: زرّ «دخول» والعلامة
+     وحلقة التركيز كانت تبقى بلون العميل في بوابة الإدارة، فتنكسر الهوية
+     عند أبرز عنصرين في الصفحة — وهو ما يجعل الفصل زخرفةً لا حقيقة. */
+  --brand:        #4f46e5;
+  --brand-strong: #4338ca;
+  --brand-soft:   #eceafd;
+  --brand-text:   #3730a3;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) body[data-portal="admin"],
+  body[data-portal="admin"] {
+    --brand: #818cf8; --brand-strong: #a5b4fc; --brand-soft: #1e1b4b; --brand-text: #c7d2fe;
+  }
+}
+:root[data-theme="light"] body[data-portal="admin"] {
+  --brand: #4f46e5; --brand-strong: #4338ca; --brand-soft: #eceafd; --brand-text: #3730a3;
+}
+
+body.is-auth { background: var(--auth-page); min-block-size: 100dvh; }
+
+/* خيط بلون البوابة أعلى الشاشة. على الموبايل تنصرف اللوحة تمامًا، فيبقى
+   هذا الخيط وحده يقول لمن يدخل من هاتفه: أنت أمام بوابة الإدارة لا العملاء. */
+.auth-rule {
+  position: fixed; inset-block-start: 0; inset-inline: 0; z-index: 5;
+  block-size: 3px;
+  background: linear-gradient(to left, var(--auth-rise), var(--auth-live));
+}
+
+.auth-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-block-size: 100dvh;
+}
+
+/* ——— عمود النموذج ——— */
+.auth-main {
+  grid-area: 1 / 1;
+  display: grid; align-content: center; justify-items: center;
+  padding: var(--s-7) var(--s-5);
+  /* توسيط بصري لا حسابي: الكتلة تجلس أعلى من المنتصف الرياضي بقليل،
+     لأن العين تقرأ المنتصف الحقيقي منخفضًا. */
+  padding-block-end: calc(var(--s-7) + 3vh);
+  min-inline-size: 0;
+}
+
+.auth-card {
+  inline-size: 100%; max-inline-size: 424px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: var(--s-6);
+  /* ظل مركّب: خيط قريب يرسم الحافة، وانتشار بعيد يرفع البطاقة عن الأرضية.
+     الظل الواحد الكبير يجعلها تطفو بلا حافة، والواحد الصغير يلصقها. */
+  box-shadow:
+    0 1px 2px rgb(4 16 14 / .04),
+    0 4px 10px rgb(4 16 14 / .04),
+    0 24px 48px -24px rgb(4 16 14 / .18);
+}
+:root[data-theme="dark"] .auth-card,
+:root:not([data-theme="light"]) .auth-card { box-shadow: 0 24px 48px -24px rgb(0 0 0 / .7); }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .auth-card {
+    box-shadow: 0 1px 2px rgb(4 16 14 / .04), 0 4px 10px rgb(4 16 14 / .04), 0 24px 48px -24px rgb(4 16 14 / .18);
+  }
+}
+
+.auth-mark { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; margin-block-end: var(--s-5); }
+.auth-mark .brand-mark { inline-size: 34px; block-size: 34px; border-radius: 10px; font-size: var(--t-base); }
+
+.auth-head { margin-block-end: var(--s-4); }
+.auth-head h1 { font-size: var(--t-2xl); line-height: 1.25; margin-block-end: var(--s-2); }
+.auth-head p  { margin: 0; color: var(--text-muted); }
+
+.auth-tag {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  padding: var(--s-1) var(--s-3); margin-block-end: var(--s-3);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--auth-rise) 14%, transparent);
+  color: color-mix(in srgb, var(--auth-rise) 72%, var(--text));
+  font-size: var(--t-xs); font-weight: var(--w-bold);
+}
+.auth-tag svg { inline-size: 14px; block-size: 14px; }
+
+/* تثبّت المسافة بين الترويسة والنموذج سواء ظهرت رسالة أو لم تظهر */
+.auth-slot { min-block-size: var(--s-2); }
+.auth-slot:not(:empty) .alert { margin-block-end: var(--s-4); }
+
+.auth-form { display: grid; gap: var(--s-4); }
+
+/* ——— الحقول ——— */
+.is-auth .field { display: grid; gap: var(--s-2); }
+.is-auth .field > label { font-size: var(--t-sm); font-weight: var(--w-medium); color: var(--text); }
+.is-auth input {
+  min-block-size: 48px;          /* مساحة لمس مريحة، وارتفاع يوازن حجم البطاقة */
+  padding: 0 var(--s-4);
+  font-size: var(--t-md);        /* دون ‎16px‎ يقرّب iOS الشاشة تلقائيًّا عند التركيز */
+  border-radius: var(--r);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  inline-size: 100%;
+  transition: border-color .14s var(--ease), box-shadow .14s var(--ease);
+}
+.is-auth input::placeholder { color: var(--text-faint); }
+.is-auth input:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--border-strong)); }
+/* الحلقة بالظل لا بالحدّ: تغيير عرض الحدّ يزيح المحتوى بكسلًا عند التركيز */
+.is-auth input:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+.is-auth .hint { margin: 0; font-size: var(--t-xs); color: var(--text-faint); }
+
+/* الحقل ‎dir=ltr‎ والزر في نهايته البصرية */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { padding-inline-start: 46px; }
+.pw-toggle {
+  position: absolute; inset-block: 5px; inset-inline-start: 5px;
+  inline-size: 38px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--text-faint);
+  cursor: pointer;
+  transition: color .14s var(--ease), background .14s var(--ease);
+}
+.pw-toggle:hover { color: var(--text); background: var(--surface-sunk); }
+.pw-toggle[aria-pressed="true"] { color: var(--brand); }
+.pw-toggle svg { inline-size: 18px; block-size: 18px; }
+.pw-toggle .pw-hide { display: none; }
+.pw-toggle[aria-pressed="true"] .pw-show { display: none; }
+.pw-toggle[aria-pressed="true"] .pw-hide { display: block; }
+
+/* أشيع سبب لـ«كلمة السر غلط» وهي صحيحة — ولا يراه المستخدم لأنها منقّطة */
+/* ‎[hidden]‎ من ورقة المتصفّح ضعيفة، و‎display:flex‎ هنا تهزمها فيظهر
+   التحذير دائمًا — تحذير كاذب أسوأ من غياب التحذير. */
+.caps-warn[hidden] { display: none; }
+.caps-warn {
+  display: flex; align-items: center; gap: var(--s-2);
+  margin: 0; font-size: var(--t-xs); font-weight: var(--w-medium);
+  color: var(--warn);
+}
+.caps-warn svg { flex: none; inline-size: 14px; block-size: 14px; }
+
+.pw-rules {
+  list-style: none; margin: 0; padding: var(--s-3) var(--s-4);
+  border-radius: var(--r); background: var(--surface-sunk);
+  display: grid; gap: var(--s-2);
+  font-size: var(--t-xs); color: var(--text-muted);
+}
+.pw-rules li { display: flex; align-items: center; gap: var(--s-2); }
+.pw-rules svg { flex: none; inline-size: 14px; block-size: 14px; color: var(--text-faint); }
+
+/* ——— زرّ الإرسال وحالته ——— */
+.is-auth .btn-lg { min-block-size: 48px; font-size: var(--t-md); border-radius: var(--r); }
+.spinner {
+  display: none; flex: none;
+  inline-size: 16px; block-size: 16px;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-block-start-color: currentColor;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn[data-busy] { pointer-events: none; opacity: .85; }
+.btn[data-busy] .spinner { display: block; }
+
+/* ——— ما تحت النموذج ——— */
+.auth-help { margin-block-start: var(--s-5); border-block-start: 1px solid var(--border); padding-block-start: var(--s-4); }
+.auth-help > summary {
+  display: flex; align-items: center; gap: var(--s-2);
+  cursor: pointer; list-style: none;
+  font-size: var(--t-sm); font-weight: var(--w-medium); color: var(--text-muted);
+}
+.auth-help > summary::-webkit-details-marker { display: none; }
+.auth-help > summary:hover { color: var(--brand-text); }
+.auth-help .caret { inline-size: 14px; block-size: 14px; transform: rotate(-90deg); transition: transform .2s var(--ease); }
+.auth-help[open] .caret { transform: rotate(-180deg); }
+.auth-help[open] > summary { margin-block-end: var(--s-4); }
+
+.auth-note {
+  display: flex; align-items: flex-start; gap: var(--s-2);
+  margin-block: var(--s-5) 0; padding-block-start: var(--s-4);
+  border-block-start: 1px solid var(--border);
+  font-size: var(--t-xs); color: var(--text-muted); line-height: 1.8;
+}
+.auth-note svg { flex: none; margin-block-start: 3px; inline-size: 14px; block-size: 14px; }
+
+.auth-switch {
+  margin-block: var(--s-5) 0; padding-block-start: var(--s-4);
+  border-block-start: 1px solid var(--border);
+  font-size: var(--t-sm); color: var(--text-muted);
+}
+.auth-switch a { font-weight: var(--w-bold); }
+
+.auth-foot {
+  display: flex; align-items: center; justify-content: center; gap: var(--s-2);
+  margin: var(--s-5) 0 0; max-inline-size: 424px;
+  font-size: var(--t-xs); color: var(--text-faint);
+}
+.auth-foot svg { inline-size: 13px; block-size: 13px; }
+
+/* ============================================================
+   اللوحة: جدار المراقبة
+   ============================================================ */
+.auth-aside { display: none; }
+
+@media (min-width: 960px) {
+  .auth-shell { grid-template-columns: minmax(0, 440px) minmax(0, 1fr); }
+  /* النموذج في عمود البداية — يمين الشاشة في RTL — لأنه المقصود من
+     الصفحة، وعين القارئ العربي تبدأ من هناك. */
+  .auth-main  { grid-area: 1 / 1; }
+  .auth-aside { grid-area: 1 / 2; }
+
+  .auth-aside {
+    display: grid; align-content: center;
+    position: relative; overflow: hidden;
+    padding: var(--s-8) var(--s-7);
+    color: var(--auth-ink);
+    background:
+      radial-gradient(120% 90% at 85% 8%, color-mix(in srgb, var(--auth-live) 20%, transparent) 0%, transparent 55%),
+      linear-gradient(200deg, var(--auth-rise) 0%, var(--auth-deep) 72%);
+  }
+}
+
+/* تُتوسَّط في عمودها لا تُلصق ببدايته: على ‎1440px‎ يبلغ العمود ألف بكسل،
+   فيبقى نصفه فارغًا إن هي هُجرت إلى حافة واحدة. */
+.auth-aside-in { position: relative; z-index: 1; inline-size: min(100%, 46rem); margin-inline: auto; }
+
+.auth-eyebrow {
+  margin: 0 0 var(--s-3);
+  font-size: var(--t-xs); font-weight: var(--w-bold);
+  color: var(--auth-live);
+}
+.auth-aside h2 {
+  font-size: clamp(1.75rem, 2.4vw, 2.4rem); line-height: 1.35;
+  color: var(--auth-ink); margin-block-end: var(--s-4);
+}
+.auth-lede {
+  margin: 0; font-size: var(--t-md); line-height: 1.9;
+  color: color-mix(in srgb, var(--auth-ink) 74%, transparent);
+  max-inline-size: 44ch;
+}
+
+.auth-chips { list-style: none; display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-6) 0 0; padding: 0; }
+.auth-chips li {
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in srgb, var(--auth-ink) 16%, transparent);
+  background: color-mix(in srgb, var(--auth-ink) 6%, transparent);
+  color: color-mix(in srgb, var(--auth-ink) 82%, transparent);
+  font-size: var(--t-xs); font-weight: var(--w-medium);
+}
+
+/* ——— الجدار: شريط التشغيل نفسه، بحجم اللوحة ——— */
+.wall {
+  margin-block-start: var(--s-7);
+  position: relative;
+  padding: var(--s-5) var(--s-5) var(--s-4);
+  border-radius: var(--r-lg);
+  border: 1px solid color-mix(in srgb, var(--auth-ink) 10%, transparent);
+  background: color-mix(in srgb, var(--auth-deep) 45%, transparent);
+}
+.wall-bars { display: grid; gap: 10px; }
+/* كل صفّ يملأ عرضه كاملًا: التفاوت في **عدد** الشرطات يقرأ دقّةَ قياس
+   مختلفة، أما التفاوت في **العرض** فيقرأ خطأ تنفيذ لا تصميمًا. */
+/* ‎space-between‎ مع عرض أقصى ضيّق: الصفّ يملأ عرضه، والشرطة تبقى نحيلة
+   والفجوة ظاهرة — هكذا يبدو شريط تشغيل. بلا الحدّ الأقصى تتمدّد الشرطات
+   حتى تتلاصق فيقرأ الصفُّ باركودًا لا قياسًا. */
+.wall-row { display: flex; justify-content: space-between; gap: 2px; opacity: var(--dim); }
+.wall-row .tk {
+  flex: 1 1 0; min-inline-size: 2px; max-inline-size: 5px;
+  block-size: 18px; border-radius: 2px;
+  background: color-mix(in srgb, var(--auth-ink) 22%, transparent);
+}
+/* الصفّ الحيّ أطول وأنصع: محلّ النظر في اللوحة، فلا يتساوى مع جاريه */
+.wall-row.is-live .tk { block-size: 30px; }
+/* الصفّ الحيّ: الشرطات تهبط تباعًا كما تهبط الفحوص الحقيقية */
+.wall-row.is-live .tk {
+  background: var(--auth-live);
+  opacity: .22;
+  animation: tick 4.6s var(--ease) infinite;
+}
+.wall-row .tk-warn { background: var(--auth-warn); }
+@keyframes tick {
+  0%, 6%   { opacity: .22; transform: scaleY(.72); }
+  12%, 40% { opacity: 1;   transform: scaleY(1); }
+  70%, 100%{ opacity: .22; transform: scaleY(.72); }
+}
+
+.wall-curve {
+  display: block; inline-size: 100%; block-size: 56px;
+  margin-block-start: var(--s-4);
+  padding-block-start: var(--s-4);
+  border-block-start: 1px solid color-mix(in srgb, var(--auth-ink) 9%, transparent);
+  color: color-mix(in srgb, var(--auth-live) 50%, transparent);
+}
+.wall-curve path {
+  stroke-dasharray: 900; stroke-dashoffset: 900;
+  animation: draw 2.4s var(--ease) .35s forwards;
+}
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* ——— دخول الصفحة ——— */
+@keyframes auth-in { from { opacity: 0; transform: translateY(10px); } }
+.auth-card    { animation: auth-in .5s var(--ease) both; }
+.auth-foot    { animation: auth-in .5s var(--ease) .12s both; }
+.auth-aside-in > * { animation: auth-in .6s var(--ease) both; }
+.auth-aside-in > :nth-child(2) { animation-delay: .06s; }
+.auth-aside-in > :nth-child(3) { animation-delay: .12s; }
+.auth-aside-in > :nth-child(4) { animation-delay: .18s; }
+.auth-aside-in > :nth-child(5) { animation-delay: .24s; }
+
+/* ——— الموبايل ——— */
+@media (max-width: 959px) {
+  .auth-main { padding-block-start: calc(var(--s-7) + 3px); }
+  .auth-card { border-radius: 16px; padding: var(--s-5); }
+}
+@media (max-width: 420px) {
+  .auth-card { padding: var(--s-4); border-radius: 14px; }
+  .auth-head h1 { font-size: var(--t-xl); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wall-row.is-live .tk { animation: none; opacity: 1; }
+  .wall-curve path { stroke-dashoffset: 0; animation: none; }
 }

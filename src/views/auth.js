@@ -6,37 +6,61 @@
 // المكان الخطأ، فلا يطرق باب العملاء بحساب إداري ولا العكس.
 import { authLayout, icon, esc } from './layout.js';
 
-/** حقل نصّي — تسمية واضحة، وتلميح تحتها لا داخلها (التلميح داخل الحقل يختفي عند الكتابة) */
+/**
+ * حقل نصّي.
+ * التسمية **فوق** الحقل لا داخله: النائب (placeholder) يختفي أول ما يكتب
+ * المستخدم، فيفقد من توقّف لحظةً معرفةَ ما كان يملأ. وهذا أشيع عيب في
+ * نماذج الدخول «الأنيقة».
+ */
 function field({ id, name, label, type = 'text', hint = '', value = '', autocomplete, extra = '' }) {
   return `<div class="field">
     <label for="${id}">${esc(label)}</label>
     <input id="${id}" name="${name}" type="${type}" required
            ${autocomplete ? `autocomplete="${autocomplete}"` : ''}
            ${type === 'email' ? 'inputmode="email" dir="ltr" spellcheck="false"' : ''}
-           ${type === 'password' ? 'dir="ltr"' : ''}
            value="${esc(value)}" ${extra}>
-    ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
+    ${hint ? `<p class="hint">${esc(hint)}</p>` : ''}
   </div>`;
 }
 
-/** حقل كلمة سر بزرّ إظهار — الزر يعمل إن وُجد مستمعه، ولا يضرّ إن غاب */
+/**
+ * حقل كلمة سر: زرّ إظهار، وتنبيه Caps Lock.
+ *
+ * تنبيه الكابس ليس رفاهية: أشيع سبب لـ«كلمة السر غلط» وهي صحيحة، ولا يراه
+ * المستخدم لأن الحروف منقّطة. قوله له يوفّر محاولة ضائعة وحظرًا مؤقّتًا.
+ * الزرّان يعملان إن وُجد مستمعهما في app.js، ولا يضرّان إن غاب.
+ */
 function passwordField({ id, name, label, autocomplete, hint = '', extra = '' }) {
   return `<div class="field">
     <label for="${id}">${esc(label)}</label>
     <div class="pw-wrap">
-      <input id="${id}" name="${name}" type="password" required dir="ltr"
-             autocomplete="${autocomplete}" ${extra}>
+      <input id="${id}" name="${name}" type="password" required
+             autocomplete="${autocomplete}" data-caps ${extra}>
       <button class="pw-toggle" type="button" data-pw-toggle="${id}"
               aria-controls="${id}" aria-pressed="false" aria-label="إظهار كلمة السر"
       >${icon('eye', 'pw-show')}${icon('eye-off', 'pw-hide')}</button>
     </div>
-    ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
+    <p class="caps-warn" hidden>${icon('alert')} <span>مفتاح Caps Lock مُفعَّل</span></p>
+    ${hint ? `<p class="hint">${esc(hint)}</p>` : ''}
   </div>`;
 }
 
-const alerts = (error, notice) => `
+/**
+ * خانة الرسائل.
+ * الرسالة تصل مع تحميل صفحة كامل (النموذج يُرسَل ويُعاد الرسم من الخادم)،
+ * فلا «قفزة» داخل الصفحة تُمنع هنا. الخانة موجودة لتثبيت المسافة بين
+ * الترويسة والنموذج في الحالتين، لا أكثر — ولا تُوعد بما لا تفعل.
+ */
+const slot = (error, notice) => `<div class="auth-slot" role="status" aria-live="polite">
   ${error ? `<div class="alert alert-danger" role="alert">${icon('alert')}<div>${esc(error)}</div></div>` : ''}
-  ${notice ? `<div class="alert alert-ok" role="status">${icon('check')}<div>${esc(notice)}</div></div>` : ''}`;
+  ${notice ? `<div class="alert alert-ok">${icon('check')}<div>${esc(notice)}</div></div>` : ''}
+</div>`;
+
+/** زرّ الإرسال: يعرض حالته أثناء الانتظار فلا يبدو الضغط بلا أثر */
+const submit = (label) => `<button class="btn btn-primary btn-block btn-lg" type="submit" data-pending="${esc(label)}">
+  <span class="btn-label">${esc(label)}</span>
+  <span class="spinner" aria-hidden="true"></span>
+</button>`;
 
 // ——————————————————— بوابة العملاء ———————————————————
 
@@ -44,12 +68,12 @@ export function clientLoginPage({ error = null, notice = null, email = '' } = {}
   return authLayout({
     title: 'تسجيل الدخول',
     variant: 'client',
-    body: `<div class="auth-head">
+    body: `<header class="auth-head">
     <h1>أهلًا بعودتك</h1>
-    <p class="muted">ادخل بالبريد وكلمة السر — لا شيء غير ذلك.</p>
-  </div>
-  ${alerts(error, notice)}
-  <form method="POST" action="/login" class="stack auth-form">
+    <p>ادخل بالبريد وكلمة السر — لا شيء غير ذلك.</p>
+  </header>
+  ${slot(error, notice)}
+  <form method="POST" action="/login" class="auth-form">
     ${field({
       id: 'email', name: 'email', label: 'البريد الإلكتروني', type: 'email',
       value: email, autocomplete: 'username', extra: email ? '' : 'autofocus',
@@ -58,23 +82,24 @@ export function clientLoginPage({ error = null, notice = null, email = '' } = {}
       id: 'password', name: 'password', label: 'كلمة السر',
       autocomplete: 'current-password', extra: email ? 'autofocus' : '',
     })}
-    <button class="btn btn-primary btn-block btn-lg" type="submit">دخول</button>
+    ${submit('دخول')}
   </form>
 
   <details class="auth-help">
-    <summary>نسيت كلمة السر؟</summary>
-    <form method="POST" action="/reset-request" class="stack">
+    <summary>
+      <span>نسيت كلمة السر؟</span>
+      ${icon('arrow', 'caret')}
+    </summary>
+    <form method="POST" action="/reset-request" class="auth-form">
       ${field({
         id: 'reset-email', name: 'email', label: 'بريدك الإلكتروني', type: 'email',
-        autocomplete: 'username', hint: 'سنتحقق منه ثم نرسل لك رابطًا جديدًا.',
+        autocomplete: 'username', hint: 'نتحقّق منه ثم نرسل لك رابطًا يصلح مرة واحدة.',
       })}
-      <button class="btn btn-block btn-sm" type="submit">اطلب رابطًا جديدًا</button>
+      <button class="btn btn-block" type="submit">اطلب رابطًا جديدًا</button>
     </form>
   </details>
 
-  <p class="auth-switch">
-    من فريق الإدارة؟ <a href="/admin/login">ادخل من بوابة الإدارة</a>
-  </p>`,
+  <p class="auth-switch">من فريق الإدارة؟ <a href="/admin/login">ادخل من بوابة الإدارة</a></p>`,
   });
 }
 
@@ -84,13 +109,13 @@ export function adminLoginPage({ error = null, notice = null, email = '' } = {})
   return authLayout({
     title: 'بوابة الإدارة',
     variant: 'admin',
-    body: `<div class="auth-head">
+    body: `<header class="auth-head">
     <span class="auth-tag">${icon('shield')} بوابة الإدارة</span>
     <h1>تسجيل دخول الفريق</h1>
-    <p class="muted">هذه البوابة لحسابات التشغيل. حسابات العملاء تدخل من مكان آخر.</p>
-  </div>
-  ${alerts(error, notice)}
-  <form method="POST" action="/admin/login" class="stack auth-form">
+    <p>هذه البوابة لحسابات التشغيل وحدها.</p>
+  </header>
+  ${slot(error, notice)}
+  <form method="POST" action="/admin/login" class="auth-form">
     ${field({
       id: 'email', name: 'email', label: 'البريد الإلكتروني', type: 'email',
       value: email, autocomplete: 'username', extra: email ? '' : 'autofocus',
@@ -99,18 +124,16 @@ export function adminLoginPage({ error = null, notice = null, email = '' } = {})
       id: 'password', name: 'password', label: 'كلمة السر',
       autocomplete: 'current-password', extra: email ? 'autofocus' : '',
     })}
-    <button class="btn btn-primary btn-block btn-lg" type="submit">دخول</button>
+    ${submit('دخول')}
   </form>
 
-  <p class="hint auth-note">
+  <p class="auth-note">
     ${icon('alert')}
-    لا استعادة ذاتية لكلمة سر إدارية من الويب: تُضبط من الخادم مباشرة.
-    نافذةٌ كهذه أوسع من أن تُترك مفتوحة.
+    <span>لا استعادة ذاتية لكلمة سر إدارية من الويب: تُضبط من الخادم مباشرة.
+    نافذةٌ كهذه أوسع من أن تُترك مفتوحة.</span>
   </p>
 
-  <p class="auth-switch">
-    عميل؟ <a href="/login">ادخل من بوابة العملاء</a>
-  </p>`,
+  <p class="auth-switch">عميل؟ <a href="/login">ادخل من بوابة العملاء</a></p>`,
   });
 }
 
@@ -121,12 +144,12 @@ export function setPasswordPage({ token, error = null, kind = 'activate' } = {})
   return authLayout({
     title: isActivate ? 'تفعيل الحساب' : 'كلمة سر جديدة',
     variant: 'client',
-    body: `<div class="auth-head">
+    body: `<header class="auth-head">
     <h1>${isActivate ? 'فعّل حسابك' : 'اختر كلمة سر جديدة'}</h1>
-    <p class="muted">${isActivate ? 'خطوة واحدة، مرة واحدة فقط.' : 'اختر كلمة سر قوية وتذكّرها.'}</p>
-  </div>
-  ${error ? `<div class="alert alert-danger" role="alert">${icon('alert')}<div>${esc(error)}</div></div>` : ''}
-  <form method="POST" action="/set-password" class="stack auth-form">
+    <p>${isActivate ? 'خطوة واحدة، مرة واحدة فقط.' : 'اختر كلمة سر قوية وتذكّرها.'}</p>
+  </header>
+  ${slot(error, null)}
+  <form method="POST" action="/set-password" class="auth-form">
     <input type="hidden" name="token" value="${esc(token)}">
     ${passwordField({
       id: 'password', name: 'password', label: 'كلمة السر',
@@ -137,11 +160,11 @@ export function setPasswordPage({ token, error = null, kind = 'activate' } = {})
       autocomplete: 'new-password', extra: 'minlength="10"',
     })}
     <ul class="pw-rules">
-      <li>${icon('check')} عشرة أحرف على الأقل</li>
-      <li>${icon('check')} ليست من كلمات السر الشائعة</li>
-      <li>${icon('check')} جملة تتذكّرها أقوى من رمز تنساه</li>
+      <li>${icon('check')} <span>عشرة أحرف على الأقل</span></li>
+      <li>${icon('check')} <span>ليست من كلمات السر الشائعة</span></li>
+      <li>${icon('check')} <span>جملة تتذكّرها أقوى من رمز تنساه</span></li>
     </ul>
-    <button class="btn btn-primary btn-block btn-lg" type="submit">حفظ والدخول</button>
+    ${submit('حفظ والدخول')}
   </form>`,
   });
 }

@@ -402,34 +402,99 @@ export function bareLayout({ title, body, nonce = '' }) {
 }
 
 /**
- * قالب الدخول — بلا شريط ولا تنقل.
+ * جدار المراقبة — الخلفية الحيّة لصفحة الدخول.
+ *
+ * ليست زينة: هي أداة المنتج نفسها. شريط التشغيل الذي يراه العميل داخل
+ * النظام (كل شرطة = فحص) مرسوم هنا بحجم اللوحة. صفحة دخول تُزيَّن بتدرّج
+ * وكرتين ضوئيتين تصلح لأي منتج؛ وهذه لا تصلح إلا لمنتج يراقب مواقع.
+ *
+ * شرطة كهرمانية واحدة مقصودة: جدار كله أخضر ادّعاءٌ لا يصدّقه من شغّل
+ * موقعًا يومًا، وصِدق الأداة يبدأ من صورتها.
+ */
+function monitorWall(variant) {
+  // صفوف بأطوال مختلفة — التساوي التام يقرأ كزخرفة، والتفاوت يقرأ كقياس
+  // ثلاثة صفوف لا خمسة: صفّ حيّ بارز بينهما صفّان خافتان. الخمسة كانت
+  // تقرأ نقشًا، والثلاثة تقرأ قياسًا — وواحدٌ منها هو محلّ النظر.
+  const rows = [
+    { n: 44, live: false, dim: 0.34 },
+    { n: 36, live: true,  dim: 1.00 },
+    { n: 52, live: false, dim: 0.22 },
+  ];
+  const bars = rows.map((r, ri) => {
+    const ticks = Array.from({ length: r.n }, (_, i) => {
+      // موضع ثابت للشرطة الكهرمانية: عشوائية كل تحميل تبدو عطلًا لا تصميمًا
+      const warn = r.live && i === 23;
+      const delay = r.live ? ` style="animation-delay:${(i * 55)}ms"` : '';
+      return `<i class="${warn ? 'tk tk-warn' : 'tk'}"${delay}></i>`;
+    }).join('');
+    return `<div class="wall-row${r.live ? ' is-live' : ''}" style="--dim:${r.dim}">${ticks}</div>`;
+  }).join('');
+
+  // منحنى زمن الاستجابة — مسار واحد يُرسم عند الدخول، بلا أرقام مزعومة
+  const curve = variant === 'admin'
+    ? 'M0,54 C40,54 52,20 92,20 C132,20 144,46 184,46 C224,46 236,14 276,14 C316,14 328,40 360,40'
+    : 'M0,46 C36,46 48,16 88,16 C128,16 138,50 178,50 C218,50 230,22 270,22 C310,22 324,44 360,44';
+
+  return `<div class="wall" aria-hidden="true">
+    <div class="wall-bars">${bars}</div>
+    <svg class="wall-curve" viewBox="0 0 360 68" preserveAspectRatio="none" fill="none">
+      <path d="${curve}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>`;
+}
+
+/** رقائق بمفردات المنتج نفسه — لا أرقام تُدَّعى، ولا وعود لا يفي بها */
+function authChips(variant) {
+  const items = variant === 'admin'
+    ? ['محادثات العملاء', 'تأكيد التحويلات', 'سجل الصيانة', 'قاعدة المعرفة']
+    : ['حالة الموقع', 'شهادة الأمان', 'زمن الاستجابة', 'سجل الأعطال', 'المستحقات'];
+  return `<ul class="auth-chips" aria-hidden="true">${
+    items.map((t, i) => `<li style="--i:${i}">${esc(t)}</li>`).join('')}</ul>`;
+}
+
+/**
+ * قالب الدخول — بلا شريط ولا تنقّل.
+ *
  * الدخول أول ما يراه الداخل، فلا يصح أن يحمل عناصر لا يملك الوصول إليها.
- * @param {'client'|'admin'} variant يغيّر الهوية البصرية حتى لا تختلط البوابتان
+ * والنموذج هو البطل: يقع في عمود البداية (يمين الشاشة في RTL) حيث تبدأ
+ * العين العربية، واللوحة تأتي بعده لا قبله.
+ *
+ * @param {'client'|'admin'} variant يغيّر ثلاثة أشياء معًا لا لونًا واحدًا:
+ *   النطاق اللوني، ونصّ اللوحة، ومفردات الرقائق. وأهمّها أن ‎--brand‎ نفسه
+ *   يُعاد توجيهه، فيتلوّن زرّ «دخول» والعلامة وحلقة التركيز بلون البوابة —
+ *   تغيير الخلفية وحدها يجعل البوابتين واجهةً واحدة مصبوغة مرتين.
+ *   (جدار المراقبة مشترك: الأدمن يراقب مواقع عملائه أيضًا.)
  */
 export function authLayout({ title, body, variant = 'client', nonce = '' }) {
+  const isAdmin = variant === 'admin';
   return `${HEAD(title)}
 <body class="is-auth" data-portal="${esc(variant)}">
+<span class="auth-rule" aria-hidden="true"></span>
 <div class="auth-shell">
-  <section class="auth-aside" aria-hidden="true">
-    <div class="auth-aside-in">
-      <span class="auth-brand">${wordmark()}</span>
-      <h2>${variant === 'admin' ? 'بوابة الإدارة' : 'مواقعك تحت العين، على مدار الساعة.'}</h2>
-      <p>${variant === 'admin'
-        ? 'إدارة العملاء والمواقع والتحصيل والدعم المباشر من مكان واحد.'
-        : 'حالة كل موقع، وآخر صيانة، ومستحقاتك، ودعم يرد عليك — في شاشة واحدة.'}</p>
-      <ul class="auth-points">
-        ${(variant === 'admin'
-          ? ['محادثات العملاء في طابور واحد', 'تأكيد التحويلات ومتابعة المستحقات', 'فحص المواقع وسجل الصيانة']
-          : ['هل الموقع شغّال الآن؟ تعرف في ثانية', 'آخر صيانة ومَن نفّذها', 'دعم يرد عليك داخل النظام'])
-          .map((x) => `<li>${icon('check')} ${esc(x)}</li>`).join('')}
-      </ul>
-      <span class="auth-orb auth-orb-1"></span>
-      <span class="auth-orb auth-orb-2"></span>
+  <main class="auth-main">
+    <div class="auth-card">
+      <a class="auth-mark" href="/login" aria-label="${esc(APP_NAME)}">${wordmark()}</a>
+      ${body}
     </div>
-  </section>
-  <section class="auth-main">
-    <div class="auth-card">${body}</div>
-  </section>
+    <p class="auth-foot">
+      ${icon('shield')}
+      <span>اتصال مشفّر · الجلسة تنتهي تلقائيًّا</span>
+    </p>
+  </main>
+
+  <aside class="auth-aside">
+    <div class="auth-aside-in">
+      <p class="auth-eyebrow">${isAdmin ? 'أدوات التشغيل' : 'مراقبة ودعم'}</p>
+      <h2>${isAdmin
+        ? 'كل عميل، وكل موقع،<br>وكل مستحق — في مكان واحد.'
+        : 'موقعك تحت العين،<br>على مدار الساعة.'}</h2>
+      <p class="auth-lede">${isAdmin
+        ? 'طابور محادثات عملائك، وحالة مواقعهم، وما لم يُسدَّد بعد — بلا تنقّل بين أدوات.'
+        : 'نفحصه، ونخبرك قبل أن يسألك زبونك، ونحتفظ لك بسجل كل ما فعلناه.'}</p>
+      ${authChips(variant)}
+      ${monitorWall(variant)}
+    </div>
+  </aside>
 </div>
 <script src="/app.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
 </body>

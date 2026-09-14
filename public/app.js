@@ -183,6 +183,49 @@
     try { input.setSelectionRange(end, end); } catch (err) { /* بعض الأنواع ترفض */ }
   });
 
+  // ——————————————————— تنبيه Caps Lock ———————————————————
+  // أشيع سبب لـ«كلمة السر غير صحيحة» وهي صحيحة: الحروف منقّطة فلا يرى
+  // المستخدم أنها كبيرة. قولها له يوفّر محاولة ضائعة — وحظرًا بعد عشر محاولات.
+  (function () {
+    var caps = document.querySelectorAll('[data-caps]');
+    if (!caps.length) return;
+    var show = function (input, on) {
+      var warn = input.closest('.field') && input.closest('.field').querySelector('.caps-warn');
+      if (warn) warn.hidden = !on;
+    };
+    caps.forEach(function (input) {
+      var check = function (e) {
+        // getModifierState غير مدعومة في كل حدث ولا كل متصفّح — نتجاهل بصمت
+        if (!e.getModifierState) return;
+        try { show(input, e.getModifierState('CapsLock')); } catch (err) { /* لا دعم */ }
+      };
+      input.addEventListener('keydown', check);
+      input.addEventListener('keyup', check);
+      // مغادرة الحقل تُخفي التنبيه: تحذير معلّق فوق حقل لا يُكتب فيه ضجيج
+      input.addEventListener('blur', function () { show(input, false); });
+    });
+  })();
+
+  // ——————————————————— زرّ الإرسال أثناء الانتظار ———————————————————
+  // الضغط على «دخول» ثم لا شيء لثانية يجعل المستخدم يضغط ثانيةً وثالثة.
+  // نعرض الحالة، و**لا نعطّل الزر قبل الإرسال**: الزر المعطّل لا تُرسَل قيمته
+  // ولا يُرسل النموذج أصلًا في بعض المتصفّحات.
+  document.addEventListener('submit', function (e) {
+    if (e.defaultPrevented) return;
+    var btn = e.target.querySelector('button[data-pending]');
+    if (!btn) return;
+    btn.setAttribute('data-busy', '');
+    btn.setAttribute('aria-busy', 'true');
+  });
+
+  // العودة من ذاكرة الخلف تُعيد الصفحة كما غادرتها: زرّ عالق في حالة انتظار
+  window.addEventListener('pageshow', function () {
+    document.querySelectorAll('[data-busy]').forEach(function (b) {
+      b.removeAttribute('data-busy');
+      b.removeAttribute('aria-busy');
+    });
+  });
+
   // ——————————————————— شريط تقدّم التنقّل وانتقال الصفحات ———————————————————
   var navBar = document.getElementById('nav-progress');
   var navFill = navBar ? navBar.querySelector('span') : null;
