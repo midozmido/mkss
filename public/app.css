@@ -1,8 +1,60 @@
 /* ============================================================
-   MKSS — نظام التصميم
+   Support VIP System — نظام التصميم
    خطوط النظام فقط · خصائص منطقية لـ RTL · وضع داكن وفاتح
    بدون أي CDN أو مكتبة أو خطوة بناء
    ============================================================ */
+
+/* ——— الخط: Tajawal، مشحون مع المشروع لا من CDN ———
+   ستة ملفات، ‎57KB‎ مجتمعة. تقسيم عربي/لاتيني بـ unicode-range مقصود:
+   من يقرأ العربية وحدها لا ينزّل الملف اللاتيني وبالعكس. */
+@font-face {
+  font-family: 'Tajawal';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/tajawal-400-ar.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC4, U+10EFC-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
+}
+@font-face {
+  font-family: 'Tajawal';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/tajawal-400-la.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Tajawal';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/tajawal-500-ar.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC4, U+10EFC-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
+}
+@font-face {
+  font-family: 'Tajawal';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/tajawal-500-la.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Tajawal';
+  font-style: normal;
+  font-weight: var(--w-bold);
+  font-display: swap;
+  src: url('/fonts/tajawal-700-ar.woff2') format('woff2');
+  unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC4, U+10EFC-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24, U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47, U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59, U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A, U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
+}
+@font-face {
+  font-family: 'Tajawal';
+  font-style: normal;
+  font-weight: var(--w-bold);
+  font-display: swap;
+  src: url('/fonts/tajawal-700-la.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 /* ——— التوكنات: الوضع الفاتح هو الأساس ——— */
 :root {
@@ -89,7 +141,15 @@
   --ease-out: cubic-bezier(.22, .61, .36, 1); /* خروج ناعم بلا ارتداد */
 
   /* الطباعة */
-  --font: "Segoe UI", "Dubai", "SF Arabic", "Noto Sans Arabic", "Helvetica Neue", Tahoma, Arial, sans-serif;
+  --font: "Tajawal", "Segoe UI", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+
+  /* سلّم الأوزان — ثلاث درجات، لا أربع ولا خمس.
+     Tajawal فيه ‎400/500/700‎ فقط، وكل وزن آخر يزوّره المتصفّح صناعيًّا
+     فتتلطّخ حروف العربية. التوكنات تمنع أن يتسلّل ‎600‎ أو ‎800‎ ثانيةً:
+     من يكتب وزنًا جديدًا يجد نفسه أمام ثلاثة أسماء لا أمام رقم حر. */
+  --w-body:   400;   /* الفقرات والقيم — الافتراضي */
+  --w-medium: 500;   /* تسميات، تنقّل غير مفعّل، ملخّصات، تمييز هادئ */
+  --w-bold:   700;   /* عناوين، أزرار، شارات، أرقام كبيرة، المفعّل */
   --mono: "Cascadia Mono", "SF Mono", "DejaVu Sans Mono", Consolas, monospace;
   --t-xs: .75rem;  --t-sm: .8125rem; --t-base: .9375rem;
   --t-md: 1.0625rem; --t-lg: 1.25rem; --t-xl: 1.5rem; --t-2xl: 2rem;
@@ -160,12 +220,19 @@ body {
   font-family: var(--font);
   font-size: var(--t-base);
   line-height: 1.7;            /* العربي يحتاج تنفّسًا أكثر من اللاتيني */
+  /* بلا هذا السطر يخترع المتصفّح وزنًا غائبًا بتسمين الحروف برمجيًّا،
+     فتلتحم أطراف العربية ويبدو النص ملطّخًا على الشاشات العادية. */
+  font-synthesis-weight: none;
+  font-synthesis-style: none;
   color: var(--text);
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
 }
 
-h1, h2, h3 { margin: 0; line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }
+/* لا ‎letter-spacing‎ على عنوان عربي: التضييق السالب عادة لاتينية، وفي
+   العربية يقرّب أطراف الحروف المتّصلة حتى تكاد تلتحم — وأثره يزداد مع
+   كبر الحجم، أي حيث يُستعمل بالضبط. */
+h1, h2, h3 { margin: 0; line-height: 1.35; font-weight: var(--w-bold); }
 h1 { font-size: var(--t-xl); }
 h2 { font-size: var(--t-md); }
 h3 { font-size: var(--t-base); }
@@ -276,7 +343,9 @@ body.nav-open { overflow: hidden; }
 .nav-group-label {
   display: block;
   padding: var(--s-1) var(--s-3) var(--s-2);
-  font-size: var(--t-xs); font-weight: 700; letter-spacing: .04em;
+  /* عنوان قسم هادئ لا عنصر قوي. والتباعد الموجب أسوأ ما يُفعل بالعربية:
+     يفكّ اتصال الحروف فتُقرأ حروفًا متناثرة لا كلمة واحدة. */
+  font-size: var(--t-xs); font-weight: var(--w-medium);
   color: var(--text-faint);
 }
 
@@ -287,7 +356,7 @@ body.nav-open { overflow: hidden; }
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
   color: var(--text-muted); text-decoration: none;
-  font-size: var(--t-sm); font-weight: 600;
+  font-size: var(--t-sm); font-weight: var(--w-medium);
   transition: background .16s var(--ease), color .16s var(--ease), transform .16s var(--ease);
 }
 .nav-item + .nav-item { margin-block-start: 2px; }
@@ -297,7 +366,7 @@ body.nav-open { overflow: hidden; }
 .nav-ico svg { inline-size: 18px; block-size: 18px; }
 .nav-label { flex: 1; min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.nav-item.is-active { background: var(--brand-soft); color: var(--brand-text); font-weight: 700; }
+.nav-item.is-active { background: var(--brand-soft); color: var(--brand-text); font-weight: var(--w-bold); }
 .nav-item.is-active .nav-ico { color: var(--brand); }
 /* شريط على حافة البداية — في RTL هي الحافة اليمنى للعنصر.
    الانحناء على الزاويتين الجانبيتين وحدهما حتى لا يبرز الشريط
@@ -316,7 +385,7 @@ body.nav-open { overflow: hidden; }
   min-inline-size: 18px; block-size: 18px; padding-inline: 5px;
   border-radius: var(--r-full);
   background: var(--danger); color: var(--on-accent);
-  font-size: 11px; font-weight: 800; line-height: 1;
+  font-size: 11px; font-weight: var(--w-bold); line-height: 1;
   unicode-bidi: isolate;
 }
 
@@ -326,7 +395,7 @@ body.nav-open { overflow: hidden; }
   inline-size: 34px; block-size: 34px; flex: none;
   border-radius: var(--r-full); display: grid; place-items: center;
   background: var(--brand-soft); color: var(--brand-text);
-  font-weight: 800; font-size: var(--t-sm);
+  font-weight: var(--w-bold); font-size: var(--t-sm);
 }
 /* ‎justify-items:start‎ يضع الصندوقين عند حافة البداية بحسب اتجاه الحاوية،
    فيستوي البريد ‎dir="ltr"‎ مع الاسم العربي بدل أن ينفصل إلى الطرف المقابل. */
@@ -362,18 +431,18 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 .page > * + * { margin-block-start: var(--s-4); }
 
 /* ——— العلامة ——— */
-.brand { display: flex; align-items: center; gap: var(--s-2); font-weight: 700; color: var(--text); text-decoration: none; min-inline-size: 0; }
+.brand { display: flex; align-items: center; gap: var(--s-2); font-weight: var(--w-bold); color: var(--text); text-decoration: none; min-inline-size: 0; }
 .brand-mark {
   inline-size: 28px; block-size: 28px; border-radius: 8px; flex: none;
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
-  display: grid; place-items: center; color: #fff; font-size: var(--t-sm); font-weight: 800;
+  display: grid; place-items: center; color: #fff; font-size: var(--t-sm); font-weight: var(--w-bold);
 }
 .brand-name { display: grid; line-height: 1.2; min-inline-size: 0; }
 /* «Support VIP» مقطع لاتيني داخل صفحة RTL: العزل يمنع انزلاق الكلمتين
    إلى ترتيب مقلوب حين يجاورهما رقم أو علامة ترقيم عربية. */
-.brand-name b { font-size: var(--t-base); font-weight: 800; unicode-bidi: isolate; }
+.brand-name b { font-size: var(--t-base); font-weight: var(--w-bold); unicode-bidi: isolate; }
 .brand-name small { font-size: var(--t-xs); color: var(--text-faint); letter-spacing: .14em; }
-.vip { color: var(--vip); font-weight: 900; }
+.vip { color: var(--vip); font-weight: var(--w-bold); }
 .brand-compact .brand-mark { inline-size: 26px; block-size: 26px; }
 .brand-compact .brand-name b { font-size: var(--t-sm); }
 
@@ -445,7 +514,7 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
     padding: var(--s-1) var(--s-3);
     border-radius: var(--r-sm);
     background: var(--tip-bg); color: var(--tip-text);
-    font-size: var(--t-xs); font-weight: 600;
+    font-size: var(--t-xs); font-weight: var(--w-medium);
     white-space: nowrap; overflow: visible; flex: none;
     box-shadow: var(--shadow-lg);
     opacity: 0; visibility: hidden; pointer-events: none;
@@ -499,7 +568,7 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 .mvp h2 { color: #fff; font-size: var(--t-lg); }
 .mvp .mvp-meta { color: rgb(255 255 255 / .85); font-size: var(--t-sm); }
 .mvp .btn-light {
-  background: #fff; color: var(--brand-strong); border: none; font-weight: 700;
+  background: #fff; color: var(--brand-strong); border: none; font-weight: var(--w-bold);
   min-block-size: var(--tap); padding-inline: var(--s-5);
 }
 .mvp .btn-light:hover { background: rgb(255 255 255 / .9); }
@@ -510,13 +579,13 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
   background: var(--surface-sunk); border-radius: var(--r);
   padding: var(--s-4) var(--s-5); border-inline-start: 3px solid var(--brand);
 }
-.narrative b { color: var(--brand-text); font-weight: 700; }
+.narrative b { color: var(--brand-text); font-weight: var(--w-bold); }
 
 /* ——— الشارات ——— */
 .badge {
   display: inline-flex; align-items: center; gap: var(--s-1);
   padding: 3px var(--s-2); border-radius: var(--r-full);
-  font-size: var(--t-xs); font-weight: 700; white-space: nowrap;
+  font-size: var(--t-xs); font-weight: var(--w-bold); white-space: nowrap;
   background: var(--neutral-soft); color: var(--neutral);
 }
 .badge-ok     { background: var(--ok-soft);     color: var(--ok); }
@@ -530,7 +599,7 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 .ring { display: grid; place-items: center; position: relative; inline-size: 64px; block-size: 64px; flex: none; }
 .ring svg { transform: rotate(-90deg); }
 .ring-value {
-  position: absolute; font-weight: 800; font-size: var(--t-md);
+  position: absolute; font-weight: var(--w-bold); font-size: var(--t-md);
   unicode-bidi: isolate; direction: ltr;
 }
 .ring-track { stroke: var(--surface-sunk); }
@@ -538,28 +607,29 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 
 /* ——— كرت الموقع ——— */
 .site-card { display: flex; gap: var(--s-4); align-items: flex-start; text-decoration: none; color: inherit; }
-.site-card .site-name { font-weight: 700; font-size: var(--t-md); margin-block-end: 2px; }
+.site-card .site-name { font-weight: var(--w-bold); font-size: var(--t-md); margin-block-end: 2px; }
 .site-card .site-url { font-size: var(--t-sm); color: var(--text-faint); word-break: break-all; }
 
 /* ——— الإحصاءات ——— */
 .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-3); }
 @media (min-width: 720px) { .stats { grid-template-columns: repeat(4, 1fr); } }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: var(--s-4); }
-.stat .stat-value { font-size: var(--t-xl); font-weight: 800; line-height: 1.2; unicode-bidi: isolate; direction: ltr; }
+.stat .stat-value { font-size: var(--t-xl); font-weight: var(--w-bold); line-height: 1.2; unicode-bidi: isolate; direction: ltr; }
 .stat .stat-label { font-size: var(--t-sm); color: var(--text-muted); }
 
 /* ——— الملاحظات (مشكلة + حل) ——— */
 .finding { display: flex; gap: var(--s-3); padding: var(--s-4) 0; border-block-start: 1px solid var(--border); }
 .finding:first-child { border-block-start: none; }
 .finding-icon { flex: none; inline-size: 20px; block-size: 20px; margin-block-start: 2px; }
-.finding-problem { font-weight: 600; }
+/* المشكلة عنوان الملاحظة، والحلّ شرحها — فلا يتساويان في الثقل */
+.finding-problem { font-weight: var(--w-bold); }
 .finding-fix { font-size: var(--t-sm); color: var(--text-muted); margin-block-start: var(--s-1); }
 
 /* ——— الجداول ——— */
 .table-scroll { overflow-x: auto; max-inline-size: 100%; min-inline-size: 0; }
 table { inline-size: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 th, td { padding: var(--s-3) var(--s-4); text-align: start; border-block-end: 1px solid var(--border); }
-th { font-weight: 700; color: var(--text-muted); font-size: var(--t-xs); text-transform: none; background: var(--surface-sunk); }
+th { font-weight: var(--w-bold); color: var(--text-muted); font-size: var(--t-xs); text-transform: none; background: var(--surface-sunk); }
 tbody tr:last-child td { border-block-end: none; }
 
 /* ——— الأزرار ——— */
@@ -568,7 +638,8 @@ tbody tr:last-child td { border-block-end: none; }
   min-block-size: 38px; padding: var(--s-2) var(--s-4);
   border-radius: var(--r-sm); border: 1px solid var(--border-strong);
   background: var(--surface); color: var(--text);
-  font: inherit; font-size: var(--t-sm); font-weight: 600;
+  /* الزر فعلٌ لا تسمية، فيأخذ الدرجة القوية */
+  font: inherit; font-size: var(--t-sm); font-weight: var(--w-bold);
   cursor: pointer; text-decoration: none;
   transition: background .16s var(--ease), border-color .16s var(--ease),
               color .16s var(--ease), transform .12s var(--ease);
@@ -586,7 +657,7 @@ tbody tr:last-child td { border-block-end: none; }
 
 /* ——— النماذج ——— */
 .field { display: block; margin-block-end: var(--s-4); }
-.field > label { display: block; font-weight: 600; font-size: var(--t-sm); margin-block-end: var(--s-2); }
+.field > label { display: block; font-weight: var(--w-medium); font-size: var(--t-sm); margin-block-end: var(--s-2); }
 .field .hint { font-size: var(--t-xs); color: var(--text-faint); margin-block-start: var(--s-1); }
 input[type="text"], input[type="email"], input[type="password"], input[type="url"],
 input[type="number"], input[type="date"], select, textarea {
@@ -846,19 +917,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .pay-method-head { display: flex; align-items: center; gap: var(--s-3); }
 .pay-logo {
   inline-size: 40px; block-size: 40px; border-radius: 10px; flex: none;
-  display: grid; place-items: center; font-weight: 800; font-size: var(--t-sm); color: #fff;
+  display: grid; place-items: center; font-weight: var(--w-bold); font-size: var(--t-sm); color: #fff;
   letter-spacing: .02em;
 }
 .pay-instapay { background: linear-gradient(135deg, #6d28d9, #4c1d95); }
 .pay-vodafone { background: linear-gradient(135deg, #e60000, #a30000); }
-.pay-name { font-weight: 700; }
+.pay-name { font-weight: var(--w-bold); }
 .pay-number {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
   flex-wrap: wrap;
   background: var(--surface); border: 1px dashed var(--border-strong);
   border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
 }
-.pay-number .mono { font-size: var(--t-md); font-weight: 700; letter-spacing: .04em; }
+.pay-number .mono { font-size: var(--t-md); font-weight: var(--w-bold); letter-spacing: .04em; }
 .pay-amount {
   display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); background: var(--brand-soft);
@@ -866,7 +937,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 }
 .pay-amount b { font-size: var(--t-lg); }
 
-.btn-whatsapp { background: #1ea952; border-color: #1ea952; color: #fff; font-weight: 700; }
+.btn-whatsapp { background: #1ea952; border-color: #1ea952; color: #fff; font-weight: var(--w-bold); }
 .btn-whatsapp:hover { background: #178641; border-color: #178641; }
 
 /* صفحة القفل */
@@ -945,7 +1016,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 /* فقاعة المساعد — لونها من لون الشات لا من الرمادي المحايد */
 .msg-bot .msg-body { background: var(--brand-soft); border-color: transparent; color: var(--text); }
 .msg-bot .msg-body b { color: var(--brand-text); }
-.bullet { color: var(--brand); font-weight: 800; }
+.bullet { color: var(--brand); font-weight: var(--w-bold); }
 .msg-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-2); }
 .msg-actions form { display: inline-flex; gap: var(--s-1); }
 
@@ -979,7 +1050,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   border: 1px dashed var(--warn); color: var(--text); font-size: var(--t-sm); border-radius: var(--r);
 }
 .msg-tag {
-  font-size: var(--t-xs); font-weight: 700; color: var(--warn);
+  font-size: var(--t-xs); font-weight: var(--w-bold); color: var(--warn);
   display: flex; align-items: center; gap: var(--s-1); margin-block-end: var(--s-1);
 }
 .msg-tag svg { inline-size: 13px; block-size: 13px; }
@@ -1028,7 +1099,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .thread:last-child { border-block-end: none; }
 .thread:hover { background: var(--surface-sunk); }
 .thread-avatar { inline-size: 40px; block-size: 40px; border-radius: var(--r-full); flex: none;
-  display: grid; place-items: center; font-weight: 800;
+  display: grid; place-items: center; font-weight: var(--w-bold);
   background: var(--brand-soft); color: var(--brand-text); }
 .thread-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-inline-size: 60vw; }
 .thread-live { border-inline-start: 3px solid var(--danger); }
@@ -1059,7 +1130,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   padding: var(--s-2) var(--s-3); min-block-size: 36px;
   border: 1px solid var(--border-strong); border-radius: var(--r-full);
   background: var(--surface); color: var(--text);
-  font: inherit; font-size: var(--t-sm); font-weight: 600;
+  font: inherit; font-size: var(--t-sm); font-weight: var(--w-medium);
   cursor: pointer; text-align: start; line-height: 1.4;
 }
 .chip:hover { background: var(--surface-sunk); border-color: var(--brand); }
@@ -1074,7 +1145,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 }
 
 .canned { border-block-start: 1px solid var(--border); padding: var(--s-3) var(--s-4); }
-.canned summary { cursor: pointer; font-size: var(--t-sm); font-weight: 600; }
+.canned summary { cursor: pointer; font-size: var(--t-sm); font-weight: var(--w-medium); }
 .canned-list { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-3); }
 
 /* مقالات قاعدة المعرفة */
@@ -1159,7 +1230,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   padding: var(--s-1) var(--s-3);
   border-radius: var(--r-full);
   background: var(--brand-soft); color: var(--brand-text);
-  font-size: var(--t-xs); font-weight: 700;
+  font-size: var(--t-xs); font-weight: var(--w-bold);
   margin-block-end: var(--s-3);
 }
 body[data-portal="admin"] .auth-tag {
@@ -1195,7 +1266,7 @@ body[data-portal="admin"] .auth-tag {
 
 .auth-help { margin-block-start: var(--s-5); }
 .auth-help > summary {
-  cursor: pointer; font-size: var(--t-sm); font-weight: 600;
+  cursor: pointer; font-size: var(--t-sm); font-weight: var(--w-medium);
   color: var(--text-muted); padding-block: var(--s-2);
 }
 .auth-help > summary:hover { color: var(--brand-text); }
@@ -1213,7 +1284,7 @@ body[data-portal="admin"] .auth-tag {
   border-block-start: 1px solid var(--border);
   text-align: center; font-size: var(--t-sm); color: var(--text-muted);
 }
-.auth-switch a { font-weight: 700; }
+.auth-switch a { font-weight: var(--w-bold); }
 
 .btn-lg { padding: var(--s-3) var(--s-5); font-size: var(--t-md); min-block-size: var(--tap); }
 
@@ -1239,7 +1310,7 @@ body[data-portal="admin"] .auth-tag {
 .topic-link:hover svg { opacity: 1; color: var(--brand); }
 .topics-all {
   display: inline-flex; align-items: center; gap: var(--s-2);
-  margin-block-start: var(--s-3); font-size: var(--t-sm); font-weight: 600;
+  margin-block-start: var(--s-3); font-size: var(--t-sm); font-weight: var(--w-medium);
 }
 .topics-all svg { transform: scaleX(-1); }
 
@@ -1269,7 +1340,7 @@ body[data-portal="admin"] .auth-tag {
 .guide-sec > summary {
   display: flex; align-items: center; gap: var(--s-3);
   padding: var(--s-4) var(--s-5);
-  cursor: pointer; font-weight: 700;
+  cursor: pointer; font-weight: var(--w-bold);
   list-style: none;                 /* المثلّث الافتراضي يظهر في الجهة الخطأ تحت RTL */
   min-block-size: var(--tap);
 }
@@ -1280,7 +1351,7 @@ body[data-portal="admin"] .auth-tag {
   display: grid; place-items: center;
   border-radius: var(--r-full);
   background: var(--brand-soft); color: var(--brand-text);
-  font-size: var(--t-xs); font-weight: 800;
+  font-size: var(--t-xs); font-weight: var(--w-bold);
 }
 .guide-caret { flex: none; color: var(--text-faint); transition: transform .2s var(--ease); }
 .guide-caret svg { transform: rotate(-90deg); }

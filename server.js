@@ -47,7 +47,12 @@ const chatLimiter = createRateLimiter({ windowMs: 60_000, max: 20 });
 
 // ——————————————————— الملفات الساكنة ———————————————————
 
-const MIME = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = {
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+};
 const staticCache = new Map();
 
 function serveStatic(res, pathname) {
@@ -62,9 +67,14 @@ function serveStatic(res, pathname) {
     body = readFileSync(file);
     staticCache.set(file, body);
   }
+  // الخطوط لا تتغيّر أبدًا بعد شحنها، بخلاف CSS و JS اللذين نعدّلهما.
+  // ساعة واحدة لهما تكفي، وسنة للخط توفّر تنزيله في كل زيارة.
+  const immutable = ext === '.woff2';
   res.writeHead(200, {
     'Content-Type': MIME[ext],
-    'Cache-Control': process.env.NODE_ENV === 'production' ? 'public, max-age=3600' : 'no-store',
+    'Cache-Control': process.env.NODE_ENV === 'production'
+      ? (immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=3600')
+      : 'no-store',
   });
   res.end(body);
   return true;

@@ -351,6 +351,10 @@ const HEAD = (title) => `<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <title>${esc(title)} — ${APP_NAME}</title>
 <link rel="stylesheet" href="/app.css">
+<!-- الوزنان اللذان تبدأ بهما كل صفحة. بلا التحميل المسبق يُرسم النص بخط
+     احتياطي ثم يقفز إلى Tajawal بعد وصول الملف — وميض يراه العميل كل زيارة. -->
+<link rel="preload" href="/fonts/tajawal-400-ar.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/tajawal-700-ar.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d7a6f'/><text x='16' y='23' font-size='17' font-family='Georgia,serif' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
 </head>`;
 
