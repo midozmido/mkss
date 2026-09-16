@@ -163,3 +163,14 @@ test('صفحة الدخول تعمل بلا جافاسكربت', async () => {
   assert.match(html, /<form method="POST" action="\/login"/, 'النموذج لا يُرسَل بلا JS');
   assert.ok(!/<script(?![^>]*src=)/.test(html), 'سكربت مضمّن يحجبه CSP');
 });
+
+test('موقع أُضيف للتوّ لا يُقال عنه «شغّال من 0 ساعة»', async () => {
+  // أول ما يقرؤه كل عميل جديد عن موقعه. صفر ساعة ليست مدّة، والجملة مكسورة.
+  const { narrative } = await import('../src/views/pages.js');
+  const fresh = narrative({ site: { last_ok: 1 }, streak: { days: 0, hours: 0 }, uptime: {} });
+  assert.ok(!/0 ساعة|٠ ساعة/.test(fresh), `ظهرت صفر ساعة: ${fresh}`);
+  assert.match(fresh, /شغّال/);
+  // والحالات الأطول تبقى كما هي
+  assert.match(narrative({ site: { last_ok: 1 }, streak: { days: 0, hours: 5 }, uptime: {} }), /5 ساعات/);
+  assert.match(narrative({ site: { last_ok: 1 }, streak: { days: 3, hours: 80 }, uptime: {} }), /3 أيام/);
+});

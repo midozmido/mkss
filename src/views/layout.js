@@ -199,6 +199,37 @@ export function platformBadge(site) {
   return `<span class="badge badge-brand" title="اكتُشفت من الفحص الخارجي${esc(conf)}">${icon('grid')} ${esc(label + v)}</span>`;
 }
 
+/**
+ * ما اكتُشف **فوق** المنصّة: إضافة متجر، بانٍ صفحات، شبكة توزيع، خادم.
+ *
+ * كان الفحص يكتشف هذا كلّه ويخزّنه في ‎sites.platform_extras‎ ثم **لا يقرؤه
+ * أحد**: عميلٌ على ووكومرس يرى «ووردبريس ٦٫٤» ولا يرى أننا عرفنا أن عنده
+ * متجرًا أصلًا. عملٌ يُدفع ثمنه ولا يُعرَض.
+ *
+ * والثقة تظهر نصًّا لا في ‎title‎ وحده: التلميحة لا تُفتح بالإصبع، ومقال
+ * «كيف عرفتم منصة موقعي؟» يَعِد العميل بأننا نعرض له النسبة.
+ */
+export function platformExtras(site) {
+  let data = null;
+  try { data = JSON.parse(site.platform_extras || 'null'); } catch { /* صفٌّ قديم أو تالف */ }
+  if (!data) return '';
+
+  const chips = [];
+  for (const a of data.addons || []) {
+    const v = a.version ? ` ${a.version}` : '';
+    chips.push(`<span class="badge badge-brand">${icon('grid')} ${esc((a.label || a.en || a.key) + v)}</span>`);
+  }
+  for (const e of data.extras || []) chips.push(`<span class="badge">${esc(e.label || e.key)}</span>`);
+  if (data.cdn) chips.push(`<span class="badge">${icon('globe')} ${esc(data.cdn)}</span>`);
+  if (data.server) chips.push(`<span class="badge">${esc(data.server)}</span>`);
+  if (!chips.length) return '';
+
+  return `<div class="row" style="margin-block-start:var(--s-3)">
+    <span class="faint small">اكتُشف أيضًا${site.platform_confidence ? ` — ثقة ${esc(site.platform_confidence)}%` : ''}:</span>
+    ${chips.join('')}
+  </div>`;
+}
+
 /** حلقة درجة الصحة — SVG، بلا مكتبة */
 export function healthRing(score, size = 64) {
   const g = GRADES[gradeOf(score)];

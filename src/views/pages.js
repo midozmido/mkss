@@ -1,7 +1,7 @@
 // صفحات العميل — الواجهة تحكي حالة الموقع بجُمل، لا تعرض نسبًا مجردة.
 import {
   esc, safeUrl, icon, layout, fmtDate, ago, plural,
-  statusBadge, gradeBadge, platformBadge, healthRing, uptimeBar, sparkline, gradeOf, bidi, incidentLabel, humanMinutes,
+  statusBadge, gradeBadge, platformBadge, healthRing, uptimeBar, sparkline, gradeOf, bidi, incidentLabel, humanMinutes, platformExtras,
 } from './layout.js';
 import { money } from '../repo.js';
 
@@ -20,8 +20,12 @@ export function narrative({ site, streak, uptime, lastMaintenance, tlsDays }) {
     bits.push('<b>الموقع لا يفتح حاليًا</b> وفريقنا يتابع المشكلة.');
   } else if (streak?.days >= 1) {
     bits.push(`موقعك شغّال من <b>${plural(streak.days, 'يوم', 'يومين', 'أيام', 'يوم')}</b> بدون انقطاع.`);
-  } else if (streak) {
+  } else if (streak?.hours >= 1) {
     bits.push(`موقعك شغّال من <b>${plural(streak.hours, 'ساعة', 'ساعتين', 'ساعات', 'ساعة')}</b>.`);
+  } else {
+    // موقع أُضيف قبل دقائق: ‎streak.hours‎ يساوي صفرًا، فكانت الجملة «موقعك
+    // شغّال من ٠ ساعة» — وهي أول ما يقرؤه **كل** عميل جديد عن موقعه.
+    bits.push('موقعك شغّال الآن.');
   }
 
   if (lastMaintenance) bits.push(`آخر صيانة ${ago(lastMaintenance)}.`);
@@ -164,6 +168,7 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
           ${check ? gradeBadge(check.health_score) : ''}
           ${platformBadge(site)}
         </div>
+        ${platformExtras(site)}
       </div>
     </div>
     <div style="margin-block-start:var(--s-5)">
