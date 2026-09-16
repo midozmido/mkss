@@ -1513,7 +1513,8 @@ body.is-auth {
   /* صفّان: العلامة مثبّتة أعلى اللوحة، والكلام في وسطها. العلامة داخل كتلة
      الكلام كانت تطفو عند ثلث الارتفاع بلا شيء فوقها — فتُقرأ سطرًا من
      الكلام لا مرساةً للهوية. */
-  display: grid; grid-template-rows: auto 1fr; align-items: start;
+  display: grid; grid-template-rows: auto 1fr;
+  align-items: start;
   gap: var(--s-6);
   padding: clamp(var(--s-5), 4vh, var(--s-7)) clamp(var(--s-5), 3.5vw, var(--s-7));
   /* أغمق من الصفحة بدرجة واحدة لا بلون ثانٍ: الانقسام يُقرأ عمقًا لا
@@ -1532,6 +1533,7 @@ body.is-auth {
 .auth-aside-in {
   position: relative; z-index: 1;
   align-self: center;
+  align-self: safe center;
   display: grid; justify-items: start;
   gap: clamp(var(--s-4), 3.2vh, var(--s-6));
   /* ‎100%‎ لا مقاسٌ ثابت: اللوحة عرضها نسبةٌ من الشاشة، وسقفٌ ثابت يجعل
@@ -1569,8 +1571,19 @@ body.is-auth {
 /* ——— عمود النموذج ——— */
 .auth-main {
   position: relative;
-  display: grid; align-content: center; justify-items: center;
+  display: grid; justify-items: center;
   isolation: isolate;
+  /* ‎safe center‎ لا ‎center‎ وحدها.
+     التوسيط مع الفيضان يدفع المحتوى إلى ما **قبل** بداية الحاوية، وهناك لا
+     يصل إليه التمرير: ‎scrollTop‎ يساوي صفرًا وهو أقصى ما يمكن، والرأس فوقه
+     مقصوص إلى الأبد. قِيس على ‎1280×440‎: أعلى الترويسة عند ‎-18px‎ من أعلى
+     العمود، وعلى ‎900×400‎ عند ‎-79‎ — أي أن «أهلًا بعودتك» لا يُقرأ ولا
+     يُستخرج بأي حيلة. ‎safe‎ تجعل المحاذاة تسقط إلى ‎start‎ عند الفيضان وحده،
+     فيبقى التوسيط حيث يتّسع ويظهر الرأس حيث لا يتّسع.
+     والسطر المكرّر قبله سندٌ لمتصفّح لا يعرف ‎safe‎: يقرأ الأولى ويُسقط
+     الثانية، فيعود إلى التوسيط بدل أن تسقط الخاصيّة كلّها. */
+  align-content: center;
+  align-content: safe center;
   gap: clamp(var(--s-4), 3vh, var(--s-6));
   padding: clamp(var(--s-5), 4vh, var(--s-7)) clamp(var(--s-4), 4vw, var(--s-7));
   /* المسرح وحده هو ما يتمرّر لا الصفحة: على شاشة قصيرة (هاتف مستلقٍ، أو
