@@ -164,6 +164,30 @@
     }
   }
 
+  // ——————————————————— الطباعة ———————————————————
+  // كان الزرّ يحمل ‎onclick="window.print()"‎ مضمّنًا، و‎script-src 'self'‎
+  // في سياستنا نفسها تحجب المعالِجات المضمّنة — فكان العميل يضغط «طباعة»
+  // على فاتورته فلا يحدث شيء، بلا رسالة ولا أثر. ودليل الاستخدام يطلب منه
+  // أن يضغطه. المعالج هنا يمرّ من السياسة لأنه في ملف خارجي.
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest('[data-print]')) {
+      e.preventDefault();
+      window.print();
+    }
+  });
+
+  // مزامنة مبلغ التحويل مع الفاتورة المختارة. الخادم يملأ القيمة الأولى
+  // صحيحة أصلًا، فمن يعطّل الجافاسكربت يجد نموذجًا سليمًا لا مكسورًا —
+  // هذا تحسين فوق الصحيح لا شرطٌ له.
+  document.addEventListener('change', function (e) {
+    var sel = e.target;
+    if (!sel || sel.tagName !== 'SELECT' || !sel.hasAttribute('data-sync-amount')) return;
+    var field = document.getElementById(sel.getAttribute('data-sync-amount'));
+    var due = sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].getAttribute('data-due');
+    if (field && due) field.value = due;
+  });
+
   // ——————————————————— إظهار كلمة السر ———————————————————
   // نبدّل النوع لا نعرض النص في عنصر آخر: الحقل يبقى هو نفسه، فلا يفقد
   // مدير كلمات السر تتبّعه ولا يضيع ما كُتب فيه.
@@ -389,6 +413,9 @@
   var status = document.getElementById('chat-status');
   var typing = document.getElementById('typing');
   var viewer = chat.getAttribute('data-viewer');        // client | admin
+  // اسم البوت يأتي من الإعدادات فلا يجوز تثبيته هنا: كان كل ردّ يصل حيًّا
+  // يوقَّع بـ«النظام» بينما يوقّعه الخادم باسم سامي بعد تحديث الصفحة.
+  var botName = chat.getAttribute('data-bot-name') || 'سامي';
   var convId = chat.getAttribute('data-chat-conv');
   var lastId = lastSeenId();
 
@@ -423,18 +450,84 @@
     return d.getDate() + '/' + (d.getMonth() + 1) + ' — ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  /**
+   * يرسم رسالة واصلة من البثّ الحيّ **بنفس بنية الخادم بالضبط**.
+   *
+   * كان يرسمها ببنية ثانية: بلا ‎.msg-wrap‎، وبلا صورة سامي، والتوقيع داخل
+   * الفقاعة لا تحتها، وبلا صنف المجموعة. النتيجة أن الرسالة تبدو شكلًا
+   * أثناء المحادثة وشكلًا آخر بعد تحديث الصفحة — وهو أظهر تناقض ممكن،
+   * لأنه يحدث أمام عين المستخدم في الثانية نفسها.
+   */
   function render(m) {
     if (!log || Number(m.id) <= lastId) return;   // لا نكرّر رسالة وصلت مرتين
     if (log.querySelector('.empty')) log.innerHTML = '';
 
     var mine = m.author_role === viewer;
-    var who = m.author_role === 'client' ? 'العميل' : m.author_role === 'admin' ? 'فريق الدعم' : 'النظام';
+    var isBot = m.author_role === 'bot';
+    var isSystem = m.author_role === 'system';
+    var who = m.author_role === 'client' ? 'العميل'
+      : m.author_role === 'admin' ? 'فريق الدعم'
+      : isBot ? botName : 'النظام';
+
+    // هل تكمل هذه الرسالة مجموعة سابقة؟ نفس شرط الخادم: نفس المرسِل وأقل
+    // من خمس دقائق. لو نعم، تتحوّل الفقاعة السابقة من نهاية مجموعة إلى وسطها.
+    var prevWrap = log.lastElementChild;
+    var prev = prevWrap && prevWrap.classList.contains('msg-wrap') ? prevWrap.querySelector('.msg') : null;
+    var joins = false;
+    if (prev && prev.getAttribute('data-role') === m.author_role) {
+      var gap = Math.abs(Date.parse(m.created_at) - Date.parse(prev.getAttribute('data-at') || ''));
+      joins = !isNaN(gap) && gap < 5 * 60 * 1000;
+    }
+    if (joins) {
+      prev.classList.remove('msg-group-only', 'msg-group-last');
+      prev.classList.add(prev.classList.contains('msg-group-first') ? 'msg-group-mid' : 'msg-group-first');
+      var oldMeta = prevWrap.querySelector('.msg-meta');
+      if (oldMeta) oldMeta.remove();                       // التوقيع لآخر المجموعة وحدها
+      var oldAva = prev.querySelector('.msg-ava');
+      if (oldAva) {                                        // والصورة كذلك
+        var spacer = document.createElement('span');
+        spacer.className = 'msg-ava-spacer';
+        prev.replaceChild(spacer, oldAva);
+      }
+    }
+
+    var wrap = document.createElement('div');
+    wrap.className = 'msg-wrap';
+
     var div = document.createElement('div');
-    div.className = 'msg msg-new' + (mine ? ' msg-mine' : '') + (m.author_role === 'system' ? ' msg-system' : '');
+    div.className = ['msg', 'msg-new', mine ? 'msg-mine' : '', isBot ? 'msg-bot' : '',
+      isSystem ? 'msg-system' : '', joins ? 'msg-group-last' : 'msg-group-only'].filter(Boolean).join(' ');
     div.setAttribute('data-id', m.id);
-    div.innerHTML = '<div class="msg-body">' + esc(m.body) + '</div>' +
-      '<div class="msg-meta">' + esc(mine ? 'أنت' : who) + ' · <time>' + esc(fmt(m.created_at)) + '</time></div>';
-    log.appendChild(div);
+    div.setAttribute('data-role', m.author_role);
+    div.setAttribute('data-at', m.created_at);
+
+    // صورة سامي رسمةٌ من الخادم: ننسخ أول واحدة في السجلّ بدل تكرار الـSVG هنا.
+    if (isBot && !mine) {
+      var proto = log.querySelector('.msg-ava');
+      if (proto) div.appendChild(proto.cloneNode(true));
+      else {
+        var sp = document.createElement('span');
+        sp.className = 'msg-ava-spacer';
+        div.appendChild(sp);
+      }
+    }
+
+    var inner = document.createElement('div');
+    var body = document.createElement('div');
+    body.className = 'msg-body';
+    body.textContent = m.body;                  // نصّ لا HTML — لا مجال للحقن
+    inner.appendChild(body);
+    div.appendChild(inner);
+    wrap.appendChild(div);
+
+    if (!isSystem) {
+      var meta = document.createElement('div');
+      meta.className = 'msg-meta' + (mine ? ' mine' : '');
+      meta.innerHTML = esc(mine ? 'أنت' : who) + ' · <time>' + esc(fmt(m.created_at)) + '</time>';
+      wrap.appendChild(meta);
+    }
+
+    log.appendChild(wrap);
     lastId = Number(m.id);
     scrollToEnd();
   }

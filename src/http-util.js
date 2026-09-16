@@ -57,8 +57,11 @@ export function readBody(req) {
     req.on('data', (c) => {
       size += c.length;
       if (size > MAX_BODY_BYTES) {
+        // إيقاف القراءة لا هدم المقبس: الهدم يقطع الاتصال قبل أي رد، فيرى
+        // المستخدم صفحة «تعذّر الاتصال» من المتصفّح بدل رسالة تقول ما جرى.
+        // المعالج العام يقرأ e.status ويردّ ٤١٣ نظيفًا.
+        req.pause();
         reject(Object.assign(new Error('حجم الطلب كبير جدًا'), { status: 413 }));
-        req.destroy();
         return;
       }
       chunks.push(c);
@@ -92,7 +95,20 @@ export function securityHeaders({ secure = false, nonce } = {}) {
   const csp = [
     "default-src 'self'",
     `script-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}`,
-    "style-src 'self'",
+    /**
+     * ‎'unsafe-inline'‎ للأنماط وحدها — قرار مقصود لا تساهل.
+     *
+     * ‎style-src 'self'‎ يحجب **سمات** ‎style="…"‎ أيضًا لا عناصر ‎<style>‎ فقط،
+     * وكانت النتيجة أن كل قيمة ديناميكية في الواجهة تُسقَط بصمت: مقاس حلقة
+     * الصحة، ولون الحالة على الرقم، ومقاس صورة سامي، و**لون المحادثة الذي
+     * يختاره العميل**. صفحة الدخول وحدها كانت تفقد ٤٤ سمة.
+     *
+     * والمخاطرة هنا دنيا: لا يوجد في المشروع عنصر ‎<style>‎ واحد (كل الأنماط
+     * في app.css)، وكل مُخرَج يمرّ على esc()، ولون المحادثة يُطابَق بقائمة
+     * بيضاء قبل كتابته. أما ‎script-src‎ فيبقى صارمًا بلا ‎unsafe-inline‎ —
+     * وهناك تقع الخطورة الحقيقية.
+     */
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
     "connect-src 'self'",

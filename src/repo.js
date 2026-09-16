@@ -268,9 +268,16 @@ export function dashboard(userId) {
   const sites = listSites(userId);
   const due = outstanding(userId);
 
+  // التصنيف بدرجة الصحة **وحدها** كان يناقض ما تقوله البطاقة تحته مباشرة:
+  // موقع متوقّف الآن ودرجته ‎70‎ (لأنه كان يعمل أغلب الأسبوع) يُحسب «يحتاج
+  // انتباه»، فيقرأ العميل «فيها مشاكل: ٠» بينما بطاقتا موقعيه تقولان «لا
+  // يفتح». الحالة الآنيّة تسبق التاريخ: موقع لا يفتح أو عليه عطل مفتوح هو
+  // موقع فيه مشكلة مهما كان سجلّه.
   const counts = { excellent: 0, good: 0, attention: 0, problems: 0, critical: 0, unknown: 0 };
   for (const s of sites) {
-    if (s.health_score == null) counts.unknown++;
+    const down = s.last_ok === 0 || s.last_ok === false;
+    if (s.health_score == null && !down) counts.unknown++;
+    else if (down || s.open_incidents > 0) counts.problems++;
     else if (s.health_score >= 90) counts.excellent++;
     else if (s.health_score >= 75) counts.good++;
     else if (s.health_score >= 60) counts.attention++;

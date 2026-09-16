@@ -359,9 +359,12 @@ router.post('/billing/claim', async (ctx) => {
     chat.notify(ctx.user.id, {
       role: 'system',
       visibility: 'internal',
+      // «#» محايد اتجاهيًّا: بجوار رقم في نصّ عربي يرتدّ إلى يمين الرقم فيظهر
+      // «رقم الإشعار 1#». والنصّ يُخزَّن في قاعدة البيانات بلا وسوم فلا سبيل
+      // لعزله بـ‎<bdi>‎ — فالنقطتان تؤدّيان المعنى بلا رمز يتبعثر.
       body: `أبلغ العميل بتحويل ${(cents / 100).toFixed(2)} ج.م عبر ${
         { instapay: 'إنستا باي', vodafone: 'فودافون كاش', other: 'طريقة أخرى' }[f.method] || f.method
-      }${f.senderRef ? ` من الرقم ${f.senderRef}` : ''}. رقم الإشعار #${id}`,
+      }${f.senderRef ? ` من الرقم ${f.senderRef}` : ''}. رقم الإشعار: ${id}`,
     });
     admin.audit(ctx.user.id, 'payment_claim', `claim#${id}`, f.method, ctx.ip);
     redirect(ctx.res, '/billing', {
@@ -1000,6 +1003,15 @@ export function createApp() {
     } catch (e) {
       if (e?.name === 'OwnershipError') {
         return sendHtml(res, pages.errorPage({ status: 404, message: 'الصفحة غير موجودة' }), { status: 404 });
+      }
+      // خطأ يحمل حالته الخاصة يُردّ بها لا بـ٥٠٠. الجسم الضخم مثالٌ حيّ:
+      // كان المقبس يُهدم قبل أي رد، فيرى المستخدم «تعذّر الاتصال» من
+      // المتصفّح ويظنّ الشبكة عنده — بلا إشارة إلى أن ما أرسله تجاوز الحدّ.
+      if (Number.isInteger(e?.status) && e.status >= 400 && e.status < 500) {
+        if (!res.headersSent) {
+          sendHtml(res, pages.errorPage({ status: e.status, message: e.message || 'طلب غير مقبول' }), { status: e.status });
+        }
+        return;
       }
       console.error(`✗ ${req.method} ${pathname}:`, e.message);
       if (!res.headersSent) {

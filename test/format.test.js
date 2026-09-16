@@ -14,12 +14,12 @@ test('صيغ العدد العربية صحيحة', () => {
 });
 
 test('الوقت النسبي يستخدم المثنى لا «2 دقيقة»', () => {
-  assert.equal(ago(minutesAgo(2)), 'من دقيقتين');
-  assert.equal(ago(minutesAgo(1)), 'من دقيقة');
-  assert.equal(ago(minutesAgo(5)), 'من 5 دقائق');
-  assert.equal(ago(minutesAgo(120)), 'من ساعتين');
-  assert.equal(ago(daysAgo(2)), 'من يومين');
-  assert.equal(ago(daysAgo(60)), 'من شهرين');
+  assert.equal(ago(minutesAgo(2)), 'منذ دقيقتين');
+  assert.equal(ago(minutesAgo(1)), 'منذ دقيقة');
+  assert.equal(ago(minutesAgo(5)), 'منذ 5 دقائق');
+  assert.equal(ago(minutesAgo(120)), 'منذ ساعتين');
+  assert.equal(ago(daysAgo(2)), 'منذ يومين');
+  assert.equal(ago(daysAgo(60)), 'منذ شهرين');
   assert.ok(!/من 2 /.test(ago(minutesAgo(2))), 'ظهرت صيغة «من 2» الخاطئة');
 });
 

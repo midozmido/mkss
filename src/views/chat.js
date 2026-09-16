@@ -7,7 +7,9 @@ export const CHAT_COLORS = [
   { key: 'blue', hex: '#1d6ff2', label: 'أزرق' },
   { key: 'violet', hex: '#7c3aed', label: 'بنفسجي' },
   { key: 'rose', hex: '#e11d6b', label: 'وردي' },
-  { key: 'amber', hex: '#d97706', label: 'برتقالي' },
+  // ‎#d97706‎ مع الأبيض = ‎3.19:1‎ — لونٌ يستطيع العميل اختياره فتصير رسائله
+  // هو نفسه غير مقروءة. الأغمق يعطي ‎5.05:1‎ ويبقى برتقاليًّا في العين.
+  { key: 'amber', hex: '#b45309', label: 'برتقالي' },
   { key: 'green', hex: '#15803d', label: 'أخضر' },
   { key: 'slate', hex: '#475569', label: 'رمادي' },
 ];
@@ -86,8 +88,10 @@ export function bubble(m, viewerRole, { csrf = '', group = 'only', convId = null
     `msg-group-${group}`,
   ].filter(Boolean).join(' ');
 
+  // ‎data-role‎ و‎data-at‎ ليسا زينة: سكربت البث الحيّ يقرأهما ليعرف هل الرسالة
+  // الواصلة تكمل مجموعة سابقة، فيرسمها بنفس بنية الخادم بدل بنية ثانية.
   return `<div class="msg-wrap">
-    <div class="${classes}" data-id="${m.id}">
+    <div class="${classes}" data-id="${m.id}" data-role="${esc(m.author_role)}" data-at="${esc(m.created_at)}">
       ${avatar}
       <div>
         ${isInternal ? `<div class="msg-tag">${icon('shield')} ملاحظة داخلية — لا يراها العميل</div>` : ''}
@@ -156,7 +160,7 @@ export function supportHome({ user, conversations, botName = 'سامي', color, 
     user,
     active: '/chat',
     flash,
-    body: `<div class="stack support-home" style="--chat-accent:${esc(accent)}">
+    body: `<div class="stack support-home" style="--chat-accent:${esc(accent)};--chat-accent-text:#fff">
   <section class="card hero-support">
     ${sami(64)}
     <div class="grow">
@@ -245,7 +249,10 @@ export function conversationPage({ user, conv, messages, topics, greeting, hours
     flash,
     body: `<div class="stack">
   <div class="row-between">
-    <a class="btn btn-sm" href="/chat">${icon('arrow')} كل المحادثات</a>
+    <div class="row">
+      <a class="btn btn-sm" href="/chat">${icon('arrow')} كل المحادثات</a>
+      <h1 class="title-sm">${esc(conv.title || 'محادثة')}</h1>
+    </div>
     <div class="row">
       ${isLive
         ? `<span class="badge badge-ok">${icon('chat')} فريق الدعم${hours.open ? ' — متاح الآن' : ''}</span>`
@@ -259,14 +266,15 @@ export function conversationPage({ user, conv, messages, topics, greeting, hours
   </div></div>` : ''}
 
   ${!messages.length
-    ? `<div class="card bot-intro" style="--chat-accent:${esc(accent)}">
+    ? `<div class="card bot-intro" style="--chat-accent:${esc(accent)};--chat-accent-text:#fff">
         ${sami(56)}
         <p>${esc(greeting)}</p>
       </div>`
     : ''}
 
   <section class="chat" data-chat-conv="${conv.id}" data-viewer="client" data-mode="${esc(conv.mode)}"
-           style="--chat-accent:${esc(accent)}">
+           data-bot-name="${esc(botName)}"
+           style="--chat-accent:${esc(accent)};--chat-accent-text:#fff">
     <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-label="سجل المحادثة">
       ${log(messages, 'client', user.csrf, conv.id)}
     </div>
@@ -392,7 +400,7 @@ export function adminChatThread({ user, client, conv, messages, state, replies =
       <div class="row">
         <div class="thread-avatar" aria-hidden="true">${esc((client.name || '?').trim().charAt(0))}</div>
         <div>
-          <h1 style="font-size:var(--t-md)">${esc(client.name)}</h1>
+          <h1 class="title-sm">${esc(client.name)}</h1>
           <div class="faint small">${esc(conv.title || 'محادثة')}</div>
           <div class="faint small ltr">${esc(client.email)}${client.whatsapp ? ` · ${esc(client.whatsapp)}` : ''}</div>
         </div>
@@ -407,7 +415,7 @@ export function adminChatThread({ user, client, conv, messages, state, replies =
         <a class="btn btn-sm" href="/admin/client/${client.id}">ملف العميل</a>
         <form method="POST" action="/admin/chat/${conv.id}/snooze" class="row" style="gap:var(--s-1)">
           <input type="hidden" name="_csrf" value="${esc(user.csrf)}">
-          <select name="hours" style="inline-size:auto;min-block-size:30px;padding-block:2px">
+          <select class="snooze-select" name="hours" aria-label="تأجيل المحادثة">
             <option value="4">أجّل 4 ساعات</option>
             <option value="24">أجّل يومًا</option>
             <option value="72">أجّل 3 أيام</option>
@@ -425,7 +433,8 @@ export function adminChatThread({ user, client, conv, messages, state, replies =
     </div>
   </section>
 
-  <section class="chat" data-chat-conv="${conv.id}" data-viewer="admin" data-mode="${esc(conv.mode)}">
+  <section class="chat" data-chat-conv="${conv.id}" data-viewer="admin" data-mode="${esc(conv.mode)}"
+           data-bot-name="${esc(BOT_NAME)}">
     <div class="chat-log" id="chat-log" role="log" aria-live="polite">
       ${log(messages, 'admin', user.csrf, conv.id)}
     </div>

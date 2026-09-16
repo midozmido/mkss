@@ -95,7 +95,21 @@ export function plural(n, one, two, few, many) {
   return `${n} ${many}`;
 }
 
-/** «من 3 أيام» — أقرب للفهم من تاريخ مطلق */
+/**
+ * مدّة مقروءة من عدد دقائق. «لم نكن نراقب لمدة 2413 دقيقة» رقمٌ لا يقرؤه
+ * إنسان: عليه أن يقسمه على ستين ثم على أربع وعشرين ليعرف أنها يومان.
+ */
+export function humanMinutes(mins) {
+  const m = Math.max(0, Math.round(Number(mins) || 0));
+  if (m < 60) return plural(m, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة');
+  const h = Math.round(m / 60);
+  if (h < 24) return plural(h, 'ساعة', 'ساعتين', 'ساعات', 'ساعة');
+  const d = Math.round(h / 24);
+  if (d < 30) return plural(d, 'يوم', 'يومين', 'أيام', 'يومًا');
+  return plural(Math.round(d / 30), 'شهر', 'شهرين', 'شهور', 'شهرًا');
+}
+
+/** «منذ ٣ أيام» — أقرب للفهم من تاريخ مطلق */
 export function ago(iso) {
   if (!iso) return '—';
   const ms = Date.now() - new Date(iso).getTime();
@@ -103,13 +117,15 @@ export function ago(iso) {
   // العربية فيها مثنى وجمع قلة وجمع كثرة — «2 دقيقة» خطأ يلاحظه أي قارئ عربي
   const m = Math.floor(ms / 60000);
   if (m < 1) return 'الآن';
-  if (m < 60) return `من ${plural(m, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة')}`;
+  // «منذ» لا «من»: الثانية حرف ابتداء مكان، والأولى ظرف زمن — و«آخر فحص من
+  // أربع دقائق» جملة مكسورة في الفصحى يقرؤها العميل في كل بطاقة وكل جدول.
+  if (m < 60) return `منذ ${plural(m, 'دقيقة', 'دقيقتين', 'دقائق', 'دقيقة')}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `من ${plural(h, 'ساعة', 'ساعتين', 'ساعات', 'ساعة')}`;
+  if (h < 24) return `منذ ${plural(h, 'ساعة', 'ساعتين', 'ساعات', 'ساعة')}`;
   const d = Math.floor(h / 24);
-  if (d < 30) return `من ${plural(d, 'يوم', 'يومين', 'أيام', 'يوم')}`;
+  if (d < 30) return `منذ ${plural(d, 'يوم', 'يومين', 'أيام', 'يوم')}`;
   const mo = Math.floor(d / 30);
-  return `من ${plural(mo, 'شهر', 'شهرين', 'شهور', 'شهرًا')}`;
+  return `منذ ${plural(mo, 'شهر', 'شهرين', 'شهور', 'شهرًا')}`;
 }
 
 // ——————————————————— مكوّنات الحالة ———————————————————
@@ -131,6 +147,21 @@ export function gradeOf(score) {
   if (score >= 40) return 'problems';
   return 'critical';
 }
+
+/**
+ * اسم عربي لنوع العطل.
+ * كان الجدول يطبع قيمة العمود كما هي: ‎down‎ و‎ssl‎ و‎server_error‎ — كلمات
+ * إنجليزية داخل جدول عربي، بجانب عمودٍ يقول «لا يفتح» بالعربية. وتظهر عند
+ * العميل أيضًا في صفحة موقعه حين يكون التفصيل فارغًا.
+ */
+const INCIDENT_LABELS = {
+  down: 'لا يفتح',
+  server_error: 'خطأ في الخادم',
+  blocked: 'محجوب عنّا',
+  ssl: 'شهادة الأمان',
+  slow: 'بطء شديد',
+};
+export const incidentLabel = (kind) => INCIDENT_LABELS[kind] || kind || '—';
 
 /** شارة الحالة — أيقونة + نص + لون، لا لون وحده */
 export function statusBadge(site) {
@@ -198,12 +229,15 @@ export function uptimeBar(checks, max = 40) {
       return `<span class="${c.ok ? 'up-ok' : 'up-bad'}" title="${esc(t)}"></span>`;
     }),
   ];
-  return `<div class="uptime-bar" role="img" aria-label="سجل آخر ${slice.length} فحص">${cells.join('')}</div>`;
+  return `<div class="uptime-bar" role="img" aria-label="سجل آخر ${slice.length} فحص">${cells.join('')}</div>
+  <div class="row-between faint small" style="margin-block-start:var(--s-2)"><span>الأقدم</span><span>الأحدث</span></div>`;
 }
 
 /** منحنى زمن الاستجابة — SVG مولّد، بلا Chart.js */
 export function sparkline(checks, { width = 640, height = 120 } = {}) {
-  const pts = checks.filter((c) => c.response_ms != null);
+  // الفحص الفاشل يسجّل زمنًا ضئيلًا لأن الاتصال يُرفض فورًا، فإدخاله في
+  // منحنى الأداء يرسم هبوطًا يبدو تحسّنًا — وهو في الحقيقة انقطاع.
+  const pts = checks.filter((c) => c.response_ms != null && c.ok !== 0 && c.ok !== false);
   if (pts.length < 2) {
     return `<p class="faint center">لا توجد قياسات كافية لرسم المنحنى بعد.</p>`;
   }
@@ -231,10 +265,15 @@ export function sparkline(checks, { width = 640, height = 120 } = {}) {
       <path class="chart-area" d="${area}"/>
       <path class="chart-line" d="${line}"/>
     </svg>
+    <!-- الترتيب هنا ترتيبُ ما يراه المستخدم لا ترتيب الكتابة: ‎.row-between‎
+         حاوية ‎flex‎ داخل صفحة ‎RTL‎، فأول ابن يظهر على **اليمين**. وكانت
+         «الأحدث» أولًا فتُرسم يمينًا بينما أحدث نقطة في المنحنى على اليسار —
+         تسميةٌ تكذّب الرسم الذي تحتها. والأسهم حُذفت: سهمٌ في سياق ‎RTL‎
+         يحتمل القراءتين، والكلمة في مكانها الصحيح لا تحتمل إلا واحدة. -->
     <figcaption class="row-between faint" style="margin-block-start:var(--s-2)">
-      <span>الأحدث ←</span>
+      <span>الأقدم</span>
       <span>المتوسط <b class="num">${avg}ms</b></span>
-      <span>→ الأقدم</span>
+      <span>الأحدث</span>
     </figcaption>
   </figure>`;
 }
@@ -476,9 +515,14 @@ export function authLayout({ title, body, variant = 'client', nonce = '' }) {
       <a class="auth-mark" href="/login" aria-label="${esc(APP_NAME)}">${wordmark()}</a>
       ${body}
     </div>
+    <!-- الفاصل عنصر مستقل لا حرفًا داخل النص: عند ‎12px‎ تنكمش المسافتان حول
+         ‎·‎ حتى يلتصق الطرفان فيُقرأ «مشفّر٠الجلسة». الفجوة من ‎flex‎ لا من
+         محارف مسافة، فلا تتأثر بمقاس الخط. -->
     <p class="auth-foot">
       ${icon('shield')}
-      <span>اتصال مشفّر · الجلسة تنتهي تلقائيًّا</span>
+      <span>اتصال مشفّر</span>
+      <span aria-hidden="true">·</span>
+      <span>الجلسة تنتهي تلقائيًّا</span>
     </p>
   </main>
 

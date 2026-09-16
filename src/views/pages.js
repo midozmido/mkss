@@ -1,7 +1,7 @@
 // صفحات العميل — الواجهة تحكي حالة الموقع بجُمل، لا تعرض نسبًا مجردة.
 import {
   esc, safeUrl, icon, layout, fmtDate, ago, plural,
-  statusBadge, gradeBadge, platformBadge, healthRing, uptimeBar, sparkline, gradeOf, bidi,
+  statusBadge, gradeBadge, platformBadge, healthRing, uptimeBar, sparkline, gradeOf, bidi, incidentLabel, humanMinutes,
 } from './layout.js';
 import { money } from '../repo.js';
 
@@ -34,7 +34,7 @@ export function narrative({ site, streak, uptime, lastMaintenance, tlsDays }) {
   }
 
   if (uptime?.hasGaps) {
-    bits.push(`<span class="muted">(لم نكن نراقب لمدة ${uptime.gapMinutes} دقيقة في هذه الفترة، ولم نحسبها وقت تشغيل.)</span>`);
+    bits.push(`<span class="muted">(لم نكن نراقب مدّة ${humanMinutes(uptime.gapMinutes)} في هذه الفترة، ولم نحسبها وقت تشغيل.)</span>`);
   }
 
   return `<p class="narrative">${bits.join(' ')}</p>`;
@@ -132,6 +132,12 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
   const findings = detail?.findings || [];
   const tlsDays = check?.ssl_days_left ?? null;
 
+  // الفحص الفاشل يسجّل زمنًا ضئيلًا (الاتصال يُرفض فورًا)، فعرضه في بطاقة
+  // «زمن الاستجابة» يقول للعميل «‎4ms‎ — ممتاز» عن موقع لا يفتح أصلًا.
+  // نعرض آخر استجابة **ناجحة** ونسمّيها باسمها.
+  const lastOkCheck = [...(checks || [])].reverse().find((c) => c.ok && c.response_ms != null);
+  const respMs = check?.ok ? check.response_ms : lastOkCheck?.response_ms;
+
   const findingIcon = (level) =>
     level === 'critical' ? icon('x', 'finding-icon') : level === 'warn' ? icon('alert', 'finding-icon') : icon('shield', 'finding-icon');
   const findingColor = (level) =>
@@ -168,19 +174,20 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
   <div class="stats">
     <div class="stat">
       <div class="stat-value">${uptime.percent == null ? '—' : uptime.percent + '%'}</div>
-      <div class="stat-label">تشغيل آخر ${uptime.days} يوم</div>
+      <div class="stat-label">تشغيل آخر ${plural(uptime.days, 'يوم', 'يومين', 'أيام', 'يومًا')}</div>
     </div>
     <div class="stat">
-      <div class="stat-value">${check?.response_ms ?? '—'}<span class="faint" style="font-size:var(--t-sm)">ms</span></div>
-      <div class="stat-label">زمن الاستجابة</div>
+      <div class="stat-value">${respMs ?? '—'}<span class="faint" style="font-size:var(--t-sm)">ms</span></div>
+      <div class="stat-label">${check && !check.ok ? 'آخر استجابة ناجحة' : 'زمن الاستجابة'}</div>
     </div>
     <div class="stat">
       <div class="stat-value">${tlsDays == null ? '—' : tlsDays}</div>
       <div class="stat-label">يوم لانتهاء الشهادة</div>
     </div>
     <div class="stat">
-      <div class="stat-value">${check?.sec_score ?? '—'}</div>
-      <div class="stat-label">درجة هيدرات الأمان</div>
+      <!-- موقع لا يفتح لا تُقرأ ترويساته، فالدرجة غير معلومة لا صفرًا: -->
+      <div class="stat-value">${check && !check.ok ? '—' : (check?.sec_score ?? '—')}</div>
+      <div class="stat-label">درجة ترويسات الأمان</div>
     </div>
   </div>
 
@@ -241,7 +248,7 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
               (i) => `<div class="finding">
           <span style="color:${i.resolved ? 'var(--ok)' : 'var(--danger)'}">${icon(i.resolved ? 'check' : 'alert', 'finding-icon')}</span>
           <div class="grow">
-            <div class="finding-problem">${esc(i.detail || i.kind)}</div>
+            <div class="finding-problem">${esc(i.detail || incidentLabel(i.kind))}</div>
             <div class="finding-fix">
               بدأ ${esc(fmtDate(i.started_at, true))}
               ${i.ended_at ? ` — انتهى ${esc(fmtDate(i.ended_at, true))}` : ' — <b>ما زال مفتوحًا</b>'}
@@ -326,7 +333,7 @@ export function invoicePage({ user, invoice, flash }) {
         <h1>فاتورة <span class="mono">${esc(invoice.number)}</span></h1>
         <p class="muted small" style="margin:0">صدرت ${esc(fmtDate(invoice.issued_at))}</p>
       </div>
-      <button class="btn btn-sm no-print" type="button" onclick="window.print()">طباعة</button>
+      <button class="btn btn-sm no-print" type="button" data-print>طباعة</button>
     </div>
     <div class="stats" style="margin-block-start:var(--s-5)">
       <div class="stat"><div class="stat-value">${esc(money.format(invoice.amount_cents, invoice.currency))}</div><div class="stat-label">إجمالي الفاتورة</div></div>

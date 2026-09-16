@@ -1,5 +1,5 @@
 // لوحة الأدمن — كل الإعداد يتم هنا، فلا يُطلب من العميل أي خطوة.
-import { esc, safeUrl, icon, layout, fmtDate, ago, plural, statusBadge, platformBadge, healthRing, gradeBadge } from './layout.js';
+import { esc, safeUrl, icon, layout, fmtDate, ago, plural, statusBadge, platformBadge, healthRing, gradeBadge, incidentLabel } from './layout.js';
 import { money } from '../repo.js';
 
 export function adminHome({ user, sites, stats, openIncidents, pendingResets, openTickets, flash }) {
@@ -35,7 +35,7 @@ export function adminHome({ user, sites, stats, openIncidents, pendingResets, op
             (i) => `<tr>
           <td><a href="/admin/site/${i.site_id}">${esc(i.site_name)}</a></td>
           <td>${esc(i.client_name)}</td>
-          <td><span class="badge badge-danger">${esc(i.kind)}</span></td>
+          <td><span class="badge badge-danger">${esc(incidentLabel(i.kind))}</span></td>
           <td class="small">${esc(i.detail || '—')}</td>
           <td>${esc(ago(i.started_at))}</td>
         </tr>`
@@ -307,7 +307,7 @@ export function adminSite({ user, site, client, check, maintenance, incidents, f
         ? incidents
             .map(
               (i) => `<div class="finding"><span style="color:${i.resolved ? 'var(--ok)' : 'var(--danger)'}">${icon(i.resolved ? 'check' : 'alert', 'finding-icon')}</span>
-        <div><div class="finding-problem">${esc(i.detail || i.kind)}</div>
+        <div><div class="finding-problem">${esc(i.detail || incidentLabel(i.kind))}</div>
         <div class="finding-fix">${esc(fmtDate(i.started_at, true))}${i.ended_at ? ` — ${esc(fmtDate(i.ended_at, true))}` : ' — مفتوح'}</div></div></div>`
             )
             .join('')

@@ -182,6 +182,9 @@ export function billingPage({ user, st, cfg, link, claims = [], flash }) {
 }
 
 function claimForm(st, cfg) {
+  const first = st.invoices[0];
+  const firstDue = first ? first.amount_cents - (first.paid_cents || 0) : st.dueCents;
+
   return `<section class="card">
     <h2>أبلغنا بالتحويل</h2>
     <p class="faint">إنستا باي وفودافون كاش لا يبلّغاننا تلقائيًا — أخبرنا بالتحويل ليُفعَّل حسابك أسرع.</p>
@@ -190,8 +193,11 @@ function claimForm(st, cfg) {
       ${st.invoices.length
         ? `<div class="field">
         <label for="cinv">الفاتورة</label>
-        <select id="cinv" name="invoiceId">
-          ${st.invoices.map((i) => `<option value="${i.id}">${esc(i.number)} — ${esc(money.format(i.amount_cents - (i.paid_cents || 0), i.currency))}</option>`).join('')}
+        <select id="cinv" name="invoiceId" data-sync-amount="camount">
+          ${st.invoices.map((i) => {
+            const remaining = i.amount_cents - (i.paid_cents || 0);
+            return `<option value="${i.id}" data-due="${(remaining / 100).toFixed(2)}">${esc(i.number)} — ${esc(money.format(remaining, i.currency))}</option>`;
+          }).join('')}
         </select>
       </div>`
         : ''}
@@ -206,8 +212,11 @@ function claimForm(st, cfg) {
         </div>
         <div class="field">
           <label for="camount">المبلغ المحوَّل</label>
+          <!-- المبلغ الافتراضي = متبقّي **الفاتورة المختارة** لا مجموع المستحقّ:
+               القائمة تختار أول فاتورة تلقائيًّا، وكان الحقل يُملأ بالمجموع،
+               فيقرأ العميل «فاتورة ٤٠٠٠» ويحوّل ٦٥٠٠ ثم يتأخّر المطابقة. -->
           <input id="camount" name="amount" type="number" step="0.01" min="0.01" required dir="ltr"
-                 value="${(st.dueCents / 100).toFixed(2)}">
+                 value="${(firstDue / 100).toFixed(2)}">
         </div>
       </div>
       <div class="field">
