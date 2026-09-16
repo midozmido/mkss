@@ -59,7 +59,10 @@ test('حدّ التباين في التوكنات الفاتحة يمرّ على
   const pick = (name) => (css.match(new RegExp(`\\s--${name}:\\s*(#[0-9a-f]{6})`, 'i')) || [])[1];
   const faint = pick('text-faint'), sunk = pick('surface-sunk'), soft = pick('brand-soft');
   assert.ok(faint && sunk && soft, 'توكنات مفقودة');
-  for (const [bg, label] of [[sunk, 'surface-sunk'], [soft, 'brand-soft'], ['#ffffff', 'surface']]) {
+  // أرضية صفحة الدخول سطحٌ رابع: النموذج صار يجلس عليها مباشرةً بلا بطاقة،
+  // فكل لون نصّ يُستعمل هناك يجب أن يمرّ عليها كما يمرّ على الأبيض.
+  const authPage = (css.match(/:root\s+\{\s*--auth-page:\s*(#[0-9a-f]{6})/i) || [])[1];
+  for (const [bg, label] of [[sunk, 'surface-sunk'], [soft, 'brand-soft'], ['#ffffff', 'surface'], [authPage, 'auth-page']]) {
     const r = contrast(faint, bg);
     assert.ok(r >= 4.5, `‎--text-faint‎ فوق ‎${label}‎ = ${r.toFixed(2)}:1`);
   }
@@ -187,4 +190,18 @@ test('موقع أُضيف للتوّ لا يُقال عنه «شغّال من 0 
   // والحالات الأطول تبقى كما هي
   assert.match(narrative({ site: { last_ok: 1 }, streak: { days: 0, hours: 5 }, uptime: {} }), /5 ساعات/);
   assert.match(narrative({ site: { last_ok: 1 }, streak: { days: 3, hours: 80 }, uptime: {} }), /3 أيام/);
+});
+
+test('‎--warn‎ يمرّ على أرضية صفحة الدخول لا على الأبيض وحده', () => {
+  // تنبيه ‎Caps Lock‎ يجلس على أرضية الصفحة منذ أن خرج النموذج من بطاقته،
+  // وكان التوكن يمرّ على الأبيض (‎5.17‎) ويسقط هناك (‎4.48‎). العيب لم يتغيّر
+  // فيه سطر — تغيّر السطح تحته. لذلك يُقاس على السطحين معًا.
+  const pick = (name) => (css.match(new RegExp(`\\s--${name}:\\s*(#[0-9a-f]{6})`, 'i')) || [])[1];
+  const warn = pick('warn');
+  const authPage = (css.match(/:root\s+\{\s*--auth-page:\s*(#[0-9a-f]{6})/i) || [])[1];
+  assert.ok(warn && authPage, 'توكنات مفقودة');
+  for (const [bg, label] of [[authPage, 'auth-page'], ['#ffffff', 'surface']]) {
+    const r = contrast(warn, bg);
+    assert.ok(r >= 4.5, `‎--warn‎ فوق ‎${label}‎ = ${r.toFixed(2)}:1`);
+  }
 });

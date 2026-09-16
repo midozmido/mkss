@@ -22,7 +22,7 @@
   var SPEED = 108;         // بكسل/ثانية
   var TURN = 0.3;          // احتمال الانعطاف عند مركز نجمة
   var TRAIL = 9;           // عدد المواضع المحفوظة للذيل
-  var MIN_WIDTH = 600;     // تحت هذا العرض لا تعمل الطبقة أصلًا
+  var MIN_WIDTH = 260;     // تحت هذا العرض لا تعمل الطبقة أصلًا — يُقاس على اللوحة لا على النافذة
 
   var ctx = canvas.getContext('2d', { alpha: true });
   var reduce = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
@@ -34,7 +34,7 @@
   var raf = 0, last = 0;
 
   // ——— اللون من الورقة لا من ثابت هنا ———
-  // ‎.auth-bg‎ لونه ‎var(--brand)‎، فيتبع بوابة العميل أو الإدارة والوضع
+  // ‎.auth-aside-bg‎ لونه ‎var(--brand)‎، فيتبع بوابة العميل أو الإدارة والوضع
   // الليلي معًا. قراءته من المحسوب تعني أن تغيير التوكن يغيّر النقاط بلا
   // سطر واحد هنا.
   function readInk() {
@@ -98,12 +98,10 @@
     return true;
   }
 
-  /** مركز البطاقة — نحوها تنعطف النقاط، فتُقرأ الحركة وصولًا لا تشتّتًا */
+  /** مركز اللوحة — نحوه تنعطف النقاط، فتُقرأ الحركة تجمّعًا لا تشتّتًا.
+   *  الإحداثيات نسبيّة للوحة لأن الكانفس يملؤها هي لا الصفحة. */
   function target() {
-    var card = document.querySelector('.auth-card');
-    if (!card) return { x: (W / dpr) / 2, y: (H / dpr) / 2 };
-    var r = card.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    return { x: (W / dpr) / 2, y: (H / dpr) / 2 };
   }
 
   function step(d, dt, t) {
@@ -177,7 +175,7 @@
   function start() {
     stop();
     if (!resize()) return;
-    if (window.innerWidth < MIN_WIDTH) { ctx.clearRect(0, 0, W, H); return; }
+    if (W / dpr < MIN_WIDTH) { ctx.clearRect(0, 0, W, H); return; }
     makeDots();
     if (reduce.matches) {
       // إطار واحد ساكن: النقاط موجودة على الشبكة ولا تتحرّك. إخفاؤها تمامًا
@@ -197,7 +195,7 @@
 
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) stop();
-    else if (!reduce.matches && window.innerWidth >= MIN_WIDTH) { last = 0; raf = requestAnimationFrame(frame); }
+    else if (!reduce.matches && W / dpr >= MIN_WIDTH) { last = 0; raf = requestAnimationFrame(frame); }
   });
 
   // تبديل الوضع الليلي يغيّر ‎--brand‎، والنقاط تقرأ لونها من المحسوب —

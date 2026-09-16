@@ -547,19 +547,29 @@ export function khatam(S = 112) {
 }
 
 /**
- * قالب الدخول — مستوًى واحد منقوش، والبطاقة عليه كالكوّة المضاءة.
+ * تخطيط صفحتَي الدخول — عمودان: لوحة الهوية، والنموذج.
  *
- * لماذا لا عمودان: الانقسام الأبيض/الملوّن هو التخطيط الذي يجعل أي صفحة دخول
- * تُقرأ قالبًا. هنا مستوًى واحد متّصل من الحافة إلى الحافة، والبطاقة في
- * وسطه، والضوء خلفها هو ما يرفعها — لا حدّ ولا عمود ثانٍ.
+ * **مراجعة لقرار سابق**: كان هنا تعليقٌ يرفض العمودين بحجّة أن الانقسام
+ * «الأبيض/الملوّن» يجعل الصفحة تُقرأ قالبًا. الحجّة صحيحة في نسختها
+ * الشائعة — لوحةٌ مصبوغة بلون واحد وبطاقةٌ بيضاء بجوارها — وخاطئة كقاعدة.
+ * والنسخة الموحّدة لم تنجُ منها أصلًا: بطاقةٌ معوّمة في وسط شاشة منقوشة هي
+ * القالب الآخر بعينه. فبقي القرار الحقيقي: أيّ العمودين نبنيه.
  *
- * والترتيب مقصود: العلامة، ثم جملة واحدة تقول ما هذا النظام (من يهبط هنا
- * غريبًا يجب أن يفهم في خمس ثوانٍ)، ثم البطاقة، ثم ثلاث حقائق قصيرة لا
- * وعود. لا رقائق مزخرفة ولا جدار بيانات مُدَّعى.
+ * ما يُبعده هنا عن القالب، بندًا بندًا:
+ *  • النسبة ليست نصفين. اللوحة أضيق (‎0.78fr‎ مقابل ‎1fr‎) فتُقرأ حاشيةً
+ *    للنموذج لا ندًّا له. النصفان المتساويان هما ما يصنع «الشاشة المشطورة».
+ *  • اللوحة ليست لونًا مصبوغًا بل **مادّة**: النقش محبوس فيها بحوافّه،
+ *    وهذا هو الفرق بين نقشٍ يزيّن ونقشٍ له مكان.
+ *  • لا بطاقة في عمود النموذج. الحقول تجلس على السطح مباشرةً — البطاقةُ
+ *    داخل عمودٍ داخل صفحة ثلاثةُ صناديق متداخلة، وهي العلامة الأوضح على
+ *    تخطيطٍ لم يُقرَّر بل جُمِّع.
+ *  • الفاصل خيطٌ بسُمك بكسل لا حدّ لونيّ حادّ.
+ *
+ * وعلى الهاتف ينهار العمودان إلى واحد: شريط علامة قصير ثم النموذج. اللوحة
+ * شرحٌ لمن يملك المساحة، ومن لا يملكها يحتاج الحقلين والزرّ.
  *
  * @param {'client'|'admin'} variant يعيد توجيه ‎--brand‎ نفسه، فيتلوّن الزرّ
- *   والعلامة وحلقة التركيز والنقش والنقاط بلون البوابة معًا — لا خلفية
- *   مصبوغة فوق واجهة واحدة.
+ *   والعلامة وحلقة التركيز والنقش والنقاط بلون البوابة معًا.
  */
 export function authLayout({ title, body, variant = 'client', nonce = '' }) {
   const isAdmin = variant === 'admin';
@@ -569,36 +579,44 @@ export function authLayout({ title, body, variant = 'client', nonce = '' }) {
 
   return `${HEAD(title)}
 <body class="is-auth" data-portal="${esc(variant)}">
-<div class="auth-bg" aria-hidden="true">
-  ${khatam()}
-  <canvas class="probes" id="probes"></canvas>
-  <span class="auth-veil"></span>
-  <span class="auth-glow"></span>
+<div class="auth-split">
+
+  <aside class="auth-aside">
+    <div class="auth-aside-bg" aria-hidden="true">
+      ${khatam()}
+      <canvas class="probes" id="probes"></canvas>
+      <span class="auth-veil"></span>
+    </div>
+
+    <a class="auth-mark" href="${isAdmin ? '/admin/login' : '/login'}" aria-label="${esc(APP_NAME)}">${wordmark()}</a>
+
+    <div class="auth-aside-in">
+      <p class="auth-thesis">${isAdmin
+        ? 'أدوات تشغيل النظام: عملاؤك ومواقعهم ومحادثاتهم ومستحقّاتهم في شاشة واحدة.'
+        : 'نراقب موقعك على مدار الساعة، ونخبرك قبل أن يسألك زبونك.'}</p>
+
+      <ul class="auth-facts">
+        ${facts.map(([b, t]) => `<li><b>${esc(b)}</b><span>${esc(t)}</span></li>`).join('')}
+      </ul>
+    </div>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-form-wrap">${body}</div>
+
+    <p class="auth-foot">
+      ${icon('shield')}
+      <span>اتصال مشفّر</span>
+      <span aria-hidden="true">·</span>
+      <span>الجلسة تنتهي تلقائيًّا</span>
+    </p>
+  </main>
+
 </div>
-
-<main class="auth-stage">
-  <a class="auth-mark" href="${isAdmin ? '/admin/login' : '/login'}" aria-label="${esc(APP_NAME)}">${wordmark()}</a>
-
-  <p class="auth-thesis">${isAdmin
-    ? 'أدوات تشغيل النظام: عملاؤك ومواقعهم ومحادثاتهم ومستحقّاتهم في شاشة واحدة.'
-    : 'نراقب موقعك على مدار الساعة، ونخبرك قبل أن يسألك زبونك.'}</p>
-
-  <div class="auth-card">${body}</div>
-
-  <ul class="auth-facts">
-    ${facts.map(([b, t]) => `<li><b>${esc(b)}</b><span>${esc(t)}</span></li>`).join('')}
-  </ul>
-
-  <p class="auth-foot">
-    ${icon('shield')}
-    <span>اتصال مشفّر</span>
-    <span aria-hidden="true">·</span>
-    <span>الجلسة تنتهي تلقائيًّا</span>
-  </p>
-</main>
 <script src="/auth.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
 <script src="/app.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
 </body>
 </html>`;
 }
+
 export { esc, safeUrl, GRADES, PLATFORM_LABELS };
