@@ -259,7 +259,15 @@ body {
 /* لا ‎letter-spacing‎ على عنوان عربي: التضييق السالب عادة لاتينية، وفي
    العربية يقرّب أطراف الحروف المتّصلة حتى تكاد تلتحم — وأثره يزداد مع
    كبر الحجم، أي حيث يُستعمل بالضبط. */
-h1, h2, h3 { margin: 0; line-height: 1.35; font-weight: var(--w-bold); }
+h1, h2, h3 {
+  margin: 0; line-height: 1.35; font-weight: var(--w-bold);
+  /* عنوانٌ من مُدخل مستخدم — اسم موقع أو اسم عميل — لا يُعرف طوله سلفًا.
+     بلا كسر يخرج من صندوقه على الشاشة الضيّقة فيُقصّ بلا أثر: لا نقاط ولا
+     تمرير، فيقرأ الأدمن نصف الاسم ويظنّه الاسم. أمسكه الكنس على صفحة موقع
+     في الإدارة عند ‎360px‎، حيث تزاحم حلقةُ الصحة وزرُّ «افحص الآن» العنوانَ
+     على العرض نفسه. */
+  overflow-wrap: anywhere;
+}
 h1 { font-size: var(--t-xl); }
 /* عنوان صفحة ثانوي: رأس محادثة مثلًا، حيث يسبق العنوانَ زرُّ رجوع وشارات.
    يبقى ‎h1‎ ليصحّ تسلسل العناوين، ويصغر بالصنف لا بسمة ‎style‎ مضمّنة. */
@@ -304,6 +312,9 @@ a:focus-visible, button:focus-visible, summary:focus-visible,
 /* ——— التخطيط ——— */
 .stack > * + * { margin-block-start: var(--s-4); }
 .row { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; min-inline-size: 0; }
+/* داخل صفّ، الكتلةُ النامية تحتاج أرضيةً لا تنزل تحتها: بلا ‎basis‎ تضغطها
+   العناصرُ الجامدة (حلقة، زرّ) حتى تصير أضيق من كلمة. */
+.row > .grow { flex: 1 1 12rem; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
 .grow { flex: 1; min-inline-size: 0; }
 .muted { color: var(--text-muted); }
@@ -471,8 +482,16 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 /* ——— المحتوى ——— */
 .app-main { min-inline-size: 0; }   /* بدونه يرفض عمود الشبكة الانكماش فيمتدّ الجدول العريض بالصفحة كلها */
 .page {
-  max-inline-size: 1180px;
-  margin-inline: auto;
+  /* ‎1420‎ لا ‎1180‎، و‎margin-inline: 0 auto‎ لا ‎auto‎:
+     الكتلة كانت تُوسَّط في عمود المحتوى، فعلى شاشة عريضة تبتعد عن الحافة
+     التي تبدأ منها القراءة. قِيس على لوحة العميل: أول كلمة تبعد ‎270px‎ عن
+     الشريط عند ‎1920‎، و‎590px‎ عند ‎2560‎ — شريطٌ ميّت بين الشريط والكلام،
+     والعين العربية تبدأ من اليمين فتجد فراغًا.
+     الآن تلتصق الكتلة ببداية السطر (اليمين في RTL) ويسقط الفائض في آخره.
+     والسقف أوسع كي تُستعمل الشاشة العريضة فعلًا — ولا يطول سطرُ نثر بذلك،
+     لأن النثر مقيَّد بـ‎34em‎ في قاعدته الخاصة أصلًا. */
+  max-inline-size: 1420px;
+  margin-inline: 0 auto;
   padding-inline: var(--s-4);
   padding-block: var(--s-5) var(--s-8);
 }
@@ -518,6 +537,26 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
     block-size: 100dvh;
     transform: none; visibility: visible;
     box-shadow: none;
+    /* السطح انتقل إلى عمود الشبكة (‎.app::before‎): العنصر لاصقٌ بارتفاع
+       الشاشة، فلو حمل هو اللونَ انتهى اللون عند الطيّة. */
+    background: transparent;
+    border-inline-end: 0;
+  }
+
+  /* ——— عمود الشريط: سطحٌ متّصل بطول المستند ———
+     العيب: ‎.sidenav‎ لاصقٌ ارتفاعه ‎100dvh‎، فخليّتُه في الشبكة بارتفاعه هو
+     لا بارتفاع الصفحة. على أي صفحة أطول من الشاشة كان التمرير يكشف أرضية
+     ‎body‎ تحت الشريط — خطٌّ أفقي يشطر الجانب. ظهر في لوحة العميل: المحتوى
+     ‎1049px‎ والشريط ‎900px‎، فآخر ‎149px‎ بلا سطح.
+     الإصلاح يرسم السطح على العمود نفسه، والعنصر يبقى لاصقًا فوقه. */
+  .app { position: relative; }
+  .app::before {
+    content: ''; position: absolute; z-index: 0;
+    inset-block: 0; inset-inline-start: 0;
+    inline-size: var(--nav-w-mini);
+    background: var(--surface);
+    border-inline-end: 1px solid var(--border);
+    pointer-events: none;
   }
   .sidenav-close { display: none; }   /* لا درج يُغلق حين يكون الشريط ثابتًا */
   .page { padding-inline: var(--s-5); }
@@ -591,6 +630,7 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 /* ——— ‎1024px‎ فأعلى: الشريط كامل بأسمائه ——— */
 @media (min-width: 1024px) {
   .app { grid-template-columns: var(--nav-w) minmax(0, 1fr); }
+  .app::before { inline-size: var(--nav-w); }
   .page { padding-inline: var(--s-6); padding-block: var(--s-6) var(--s-8); }
 }
 
@@ -606,22 +646,30 @@ body.nav-open .scrim { display: block; opacity: 1; pointer-events: auto; }
 .card-head { padding: var(--s-4) var(--s-5); border-block-end: 1px solid var(--border); }
 .card-body { padding: var(--s-5); }
 
-/* ——— بطاقة المنتج (MVP) — أبرز عنصر في الصفحة ——— */
+/* ——— بطاقة المنتج (MVP) — أبرز عنصر في الصفحة ———
+   كانت كتلةً مصمتة بتدرّج ‎--brand‎ بعرض الصفحة كلّها. و‎--brand‎ في الوضع
+   الليلي فيروزٌ لامع، فصارت أكبر مساحة لون في اللوحة وأشدَّها — تسحب العين
+   قبل عدّادات المواقع وقبل شريط المستحقّ، وهما سبب فتح الصفحة.
+   البروز يأتي الآن من حافة ملوّنة وسطحٍ خفيف: تبقى أبرز بطاقة، ولا تبقى
+   لافتة. والحبر نصٌّ عادي فيُقرأ على كل سمة بلا حسابٍ خاص. */
 .mvp {
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 100%);
-  color: var(--on-accent); border: none; box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--brand) 14%, var(--surface)) 0%,
+    var(--surface) 62%);
+  border: 1px solid color-mix(in srgb, var(--brand) 34%, var(--border));
+  /* الشريط على حافة البداية — يمين الصفحة في RTL، حيث تبدأ القراءة */
+  border-inline-start: 3px solid var(--brand);
+  box-shadow: var(--shadow);
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--s-5); flex-wrap: wrap;
 }
-.mvp h2 { color: var(--on-accent); font-size: var(--t-lg); }
-.mvp .mvp-meta { color: color-mix(in srgb, var(--on-accent) 85%, transparent); font-size: var(--t-sm); }
+.mvp h2 { font-size: var(--t-lg); }
+.mvp .mvp-meta { color: var(--text-muted); font-size: var(--t-sm); }
 .mvp .btn-light {
-  /* كان ‎#fff‎ ثابتًا وحبره ‎--brand-strong‎: في الوضع الداكن يصير الحبر
-     فيروزًا فاتحًا فوق أبيض. السطح والحبر معًا من التوكنات فينقلبان معًا. */
-  background: var(--surface); color: var(--brand-text); border: none; font-weight: var(--w-bold);
+  background: var(--brand); color: var(--on-accent); border: none; font-weight: var(--w-bold);
   min-block-size: var(--tap); padding-inline: var(--s-5);
 }
-.mvp .btn-light:hover { background: rgb(255 255 255 / .9); }
+.mvp .btn-light:hover { background: var(--brand-strong); }
 
 /* ——— السرد: الجملة التي تحكي حالة الموقع ——— */
 .narrative {
