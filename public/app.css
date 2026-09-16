@@ -1564,6 +1564,7 @@ body.is-auth {
 .auth-main {
   position: relative;
   display: grid; align-content: center; justify-items: center;
+  isolation: isolate;
   gap: clamp(var(--s-4), 3vh, var(--s-6));
   padding: clamp(var(--s-5), 4vh, var(--s-7)) clamp(var(--s-4), 4vw, var(--s-7));
   /* المسرح وحده هو ما يتمرّر لا الصفحة: على شاشة قصيرة (هاتف مستلقٍ، أو
@@ -1572,9 +1573,28 @@ body.is-auth {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* ——— نقشٌ يُحسّ ولا يُقرأ ———
+   العمود كان أسود مصمتًا، فيُقرأ فراغًا لا سطحًا. النقش نفسه هنا بعُشر
+   شدّته في اللوحة تقريبًا: يعطي المادّة ملمسًا ولا ينازع الحقول. ويتلاشى
+   نحو مركز النموذج فيبقى محيطًا لا أرضيةً تحت النصّ. */
+.auth-main-bg {
+  position: absolute; inset: 0; z-index: -1;
+  pointer-events: none;
+  color: var(--brand);
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(ellipse 62% 54% at 50% 50%, transparent 0%, #000 78%);
+  mask-image: radial-gradient(ellipse 62% 54% at 50% 50%, transparent 0%, #000 78%);
+}
+.auth-main-bg .khatam { opacity: .055; }
+:root[data-theme="dark"] .auth-main-bg .khatam,
+:root:not([data-theme="light"]) .auth-main-bg .khatam { opacity: .075; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .auth-main-bg .khatam { opacity: .055; }
+}
+
 /* لا بطاقة: الحقول على السطح مباشرةً. بطاقةٌ داخل عمودٍ داخل صفحة ثلاثةُ
    صناديق متداخلة، وهي أوضح علامة على تخطيطٍ جُمِّع لا قُرِّر. */
-.auth-form-wrap { inline-size: 100%; max-inline-size: 23rem; }
+.auth-form-wrap { inline-size: 100%; max-inline-size: 26rem; }
 
 /* ——— العلامة والجملة ——— */
 .auth-mark { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; justify-self: start; }
@@ -1585,7 +1605,7 @@ body.is-auth {
    بالمقاس وحده: ‎400‎ هنا مقابل ‎700‎ في العنوان. */
 .auth-thesis {
   margin: 0;
-  font-size: clamp(var(--t-md), 1.6vw, var(--t-lg));
+  font-size: clamp(var(--t-md), .9rem + .7vw, 1.6rem);
   font-weight: var(--w-body);
   line-height: 1.75; color: var(--text);
   text-wrap: balance;
@@ -1602,15 +1622,24 @@ body.is-auth {
   padding-inline-start: var(--s-4);
   border-inline-start: 2px solid color-mix(in srgb, var(--brand) 40%, transparent);
 }
-.auth-facts b { font-size: var(--t-base); font-weight: var(--w-bold); color: var(--text); }
-.auth-facts span { font-size: var(--t-xs); color: var(--text-muted); }
+.auth-facts b { font-size: clamp(var(--t-base), .8rem + .3vw, var(--t-md)); font-weight: var(--w-bold); color: var(--text); }
+.auth-facts span { font-size: clamp(var(--t-xs), .68rem + .2vw, var(--t-base)); color: var(--text-muted); }
 
 /* ——— ترويسة النموذج ——— */
 .auth-head { margin-block-end: clamp(var(--s-4), 3vh, var(--s-6)); }
-.auth-head h1 { font-size: var(--t-2xl); line-height: 1.3; margin-block-end: var(--s-3); }
+.auth-head h1 {
+  /* كان ‎--t-2xl‎ ثابتًا (‎32px‎) في كل مقاس. على سطح المكتب يبدو العنوان
+     كلمتين صغيرتين في مساحة واسعة، لأن المقاس لا يتبع الشاشة. يكبر الآن
+     مع العرض ويظلّ محدودًا بسقف يمنع السطر من الانكسار. */
+  font-size: clamp(2rem, 1.35rem + 1.5vw, 2.75rem);
+  line-height: 1.25; margin-block-end: var(--s-3);
+}
 /* ‎1.8‎ لا الافتراضي: السطر عربي فيه تشكيل ونقط تحت خطّ الأساس، والافتراضي
    المبنيّ للاتيني يجعلها تكاد تلامس السطر الذي تحتها. */
-.auth-head p  { margin: 0; color: var(--text-muted); line-height: 1.8; }
+.auth-head p  {
+  margin: 0; color: var(--text-muted); line-height: 1.8;
+  font-size: clamp(var(--t-base), .82rem + .35vw, var(--t-md));
+}
 
 .auth-tag {
   display: inline-flex; align-items: center; gap: var(--s-2);
@@ -1629,11 +1658,17 @@ body.is-auth {
 
 /* ——— الحقول ——— */
 .is-auth .field { display: grid; gap: var(--s-3); }
-.is-auth .field > label { font-size: var(--t-sm); font-weight: var(--w-medium); color: var(--text); }
+/* ‎13px‎ فوق حقلٍ ارتفاعه ‎46px‎: التسمية أصغر بكثير مما تصفه، فتُقرأ حاشية
+   لا عنوانًا للحقل. */
+.is-auth .field > label {
+  font-size: clamp(var(--t-base), .8rem + .3vw, var(--t-md));
+  font-weight: var(--w-medium); color: var(--text);
+}
 .is-auth input {
-  min-block-size: 46px;
+  min-block-size: clamp(46px, 42px + .7vw, 54px);
   padding: 0 var(--s-4);
-  font-size: var(--t-md);        /* دون ‎16px‎ يقرّب iOS الشاشة تلقائيًّا عند التركيز */
+  /* دون ‎16px‎ يقرّب iOS الشاشة تلقائيًّا عند التركيز — فالحدّ الأدنى ثابت */
+  font-size: clamp(var(--t-md), 1rem + .25vw, 1.2rem);
   border-radius: var(--r-sm);
   border: 1px solid var(--border-strong);
   background: var(--surface);
@@ -1656,8 +1691,8 @@ body.is-auth {
    مساحة لون في الصفحة — والزرّ فعلٌ لا لافتة. أغمق درجةً وأقصر، فيُقرأ
    زرًّا: الوزن يأتي من التباين لا من المساحة. */
 .is-auth .btn-primary {
-  min-block-size: 44px;
-  font-size: var(--t-base);
+  min-block-size: clamp(44px, 40px + .8vw, 54px);
+  font-size: clamp(var(--t-base), .82rem + .3vw, var(--t-md));
   border-radius: var(--r-sm);
   background: var(--auth-accent);
   border-color: var(--auth-accent);
@@ -1726,6 +1761,13 @@ body.is-auth {
   font-size: var(--t-sm); color: var(--text-muted); line-height: 1.9;
 }
 .auth-switch a { font-weight: var(--w-bold); }
+/* الأسطر الصغيرة تحت النموذج تكبر معه، وإلا صارت الفجوة بين مقاسَين
+   فجوةً بين نصٍّ يُقرأ ونصٍّ يُتخطّى. */
+@media (min-width: 1100px) {
+  .auth-switch, .auth-note, .auth-help > summary { font-size: var(--t-base); }
+  .auth-foot { font-size: var(--t-sm); }
+  .is-auth .hint { font-size: var(--t-sm); }
+}
 
 .auth-foot {
   display: flex; align-items: center; gap: var(--s-2);
@@ -1741,18 +1783,59 @@ body.is-auth {
    الحركة، والشاشات الضيّقة
    ============================================================ */
 
+/* ——— الدخول: تتابعٌ يُقرأ ترتيبًا ———
+   العناصر لا تظهر معًا بل بترتيب القراءة: اللوحة تعرّف، ثم النموذج يطلب.
+   والإزاحة من جهة البداية (اليمين في RTL) لا من الأسفل: الحركة تتبع اتجاه
+   الصفحة بدل أن تعاكسه. */
 @keyframes auth-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: none; }
 }
-.auth-mark   { animation: auth-in .45s var(--ease) both; }
-.auth-thesis { animation: auth-in .45s var(--ease) .07s both; }
-.auth-facts  { animation: auth-in .45s var(--ease) .14s both; }
-.auth-form-wrap { animation: auth-in .5s var(--ease) .1s both; }
-.auth-foot   { animation: auth-in .45s var(--ease) .26s both; }
+@keyframes auth-in-side {
+  from { opacity: 0; transform: translateX(-18px); }   /* RTL: من جهة الوسط */
+  to   { opacity: 1; transform: none; }
+}
+.auth-mark   { animation: auth-in .5s var(--ease) .05s both; }
+.auth-thesis { animation: auth-in-side .55s var(--ease) .16s both; }
+.auth-facts  { animation: auth-in-side .55s var(--ease) .26s both; }
+.auth-foot   { animation: auth-in .45s var(--ease) .5s both; }
+
+/* داخل النموذج يتتابع كل صفّ وحده — الترويسة، فالحقلان، فالزرّ، فما تحته.
+   ‎:nth-child‎ على الأبناء المباشرين كي يعمل في البوابتين بلا قائمة أسماء. */
+.auth-form-wrap > *          { animation: auth-in .5s var(--ease) both; }
+.auth-form-wrap > *:nth-child(1) { animation-delay: .14s; }
+.auth-form-wrap > *:nth-child(2) { animation-delay: .20s; }
+.auth-form-wrap > *:nth-child(3) { animation-delay: .26s; }
+.auth-form-wrap > *:nth-child(4) { animation-delay: .32s; }
+.auth-form-wrap > *:nth-child(5) { animation-delay: .38s; }
+/* ‎.auth-form-wrap >‎ يقصر التتابع على نموذج الدخول وحده. بدونها يرثه
+   نموذجُ «نسيت كلمة السر؟» داخل ‎<details>‎: عنصرٌ مطويّ لا يبدأ حركته إلا
+   حين يُعرض، فيضغط المستخدم فيجد الحقل شفّافًا ثم يظهر بعد ثلث ثانية —
+   حركةُ دخولِ صفحةٍ تُشغَّل على فتح لوحة. قِيس: ‎opacity 0‎ عند الفتح و‎1‎
+   بعد ‎900ms‎. */
+.auth-form-wrap > .auth-form .field            { animation: auth-in .45s var(--ease) both; }
+.auth-form-wrap > .auth-form .field:nth-of-type(1) { animation-delay: .28s; }
+.auth-form-wrap > .auth-form .field:nth-of-type(2) { animation-delay: .36s; }
+.auth-form-wrap > .auth-form > button          { animation: auth-in .45s var(--ease) .44s both; }
 
 @keyframes khatam-in { from { opacity: 0; } }
-.khatam { animation: khatam-in 1.1s var(--ease) both; }
+.khatam { animation: khatam-in 1.3s var(--ease) both; }
+
+/* ——— زحف النقش ———
+   دورةٌ واحدة كل ‎١٢٠‎ ثانية: إزاحةٌ بمقدار خليّة كاملة فتُغلق الحلقة بلا
+   قفزة. بطيئةٌ إلى حدّ أنها لا تُرى وهي تتحرّك — تُرى فقط أن السطح حيّ.
+   أسرع من هذا يصير السطح يتململ خلف نموذج يُكتب فيه. */
+@keyframes khatam-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(112px, 112px, 0); }
+}
+.auth-aside-bg .khatam { animation: khatam-in 1.3s var(--ease) both, khatam-drift 120s linear infinite; }
+/* النقش في عمود النموذج يزحف عكسها وأبطأ: الطبقتان لا تتحرّكان ككتلة. */
+.auth-main-bg .khatam { animation: khatam-drift 200s linear infinite reverse; }
+
+/* ——— الحقل عند التركيز: التسمية تتلوّن ———
+   إشارةٌ صغيرة تقول أين أنت الآن بلا حركة تُزيح شيئًا. */
+.is-auth .field:focus-within > label { color: var(--brand-text); }
 
 /* ——— الانهيار إلى عمود واحد ———
    اللوحة شرحٌ لمن يملك المساحة. تحت ‎900px‎ لا يبقى للعمودين عرضٌ يكفي
@@ -1784,7 +1867,9 @@ body.is-auth {
 @media (prefers-reduced-motion: reduce) {
   /* لا يكفي إيقاف الحركة: العناصر تبدأ من ‎opacity:0‎ في ‎both‎، فإيقاف
      الحركة وحده يخفيها إلى الأبد — محتوى يختفي بدل حركة تختفي. */
-  .auth-mark, .auth-thesis, .auth-facts, .auth-form-wrap, .auth-foot, .khatam {
+  .auth-mark, .auth-thesis, .auth-facts, .auth-foot, .khatam,
+  .auth-form-wrap, .auth-form-wrap > *,
+  .auth-form-wrap > .auth-form .field, .auth-form-wrap > .auth-form > button {
     animation: none !important; opacity: 1 !important; transform: none !important;
   }
 }

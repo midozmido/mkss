@@ -492,7 +492,7 @@ export function bareLayout({ title, body, nonce = '' }) {
  *
  * @param {number} S ضلع الخلية بالبكسل — ومقاس الشبكة كلها يتبعه
  */
-export function khatam(S = 112) {
+export function khatam(S = 112, { ref = false } = {}) {
   const c = S / 2;
   const R = S * 0.34;          // نصف قطر رؤوس النجمة
   const r = R * 0.7654;        // رؤوس الوديان — نسبة مربّعين متراكبين
@@ -530,6 +530,12 @@ export function khatam(S = 112) {
   // معيّن على كل ركن — أربعة أرباع تُكمِل بعضها عند التكرار
   const dm = (x, y) => `M${fix(x)},${fix(y - diam)} L${fix(x + diam)},${fix(y)} L${fix(x)},${fix(y + diam)} L${fix(x - diam)},${fix(y)} Z`;
   const diamonds = [dm(0, 0), dm(S, 0), dm(0, S), dm(S, S)].join(' ');
+
+  // طبقة تابعة: مستطيل يشير إلى النقش المعرَّف مرّةً واحدة. تكرار ‎<defs>‎
+  // يعني معرّفًا مكرّرًا في المستند — وهو ما يجعل السلوك رهنَ ترتيب الرسم.
+  if (ref) return `<svg class="khatam" aria-hidden="true" focusable="false">
+  <rect width="100%" height="100%" fill="url(#khatam)"/>
+</svg>`;
 
   return `<svg class="khatam" aria-hidden="true" focusable="false">
   <defs>
@@ -602,6 +608,10 @@ export function authLayout({ title, body, variant = 'client', nonce = '' }) {
   </aside>
 
   <main class="auth-main">
+    <!-- النقش نفسه، أخفت بمراتب: العمود كان أسود مصمتًا فيُقرأ فراغًا لا
+         سطحًا. هنا يُحسّ ولا يُقرأ — والنموذج يبقى هو البطل. -->
+    <div class="auth-main-bg" aria-hidden="true">${khatam(112, { ref: true })}</div>
+
     <div class="auth-form-wrap">${body}</div>
 
     <p class="auth-foot">
