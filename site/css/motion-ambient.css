@@ -637,3 +637,138 @@ html:not([data-mk-gsap="on"]) .scroll-indicator {
     opacity: 1;
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. CARD DECK — the phone layout for every card group
+   ----------------------------------------------------------------------------
+   Below 900px the five card groups were a horizontal rail: one card on screen
+   and a strip of the next. That works, but it hides the count — the visitor
+   swipes or does not, and either way sees one thing at a time.
+
+   They now STACK instead. Each card sticks under the one before it as the
+   column scrolls, so the group builds into a pile the visitor pushes through
+   — a file of cards rather than a row of them. Pure CSS: position:sticky does
+   the whole thing, there is no scroll handler and nothing to get out of sync.
+
+   This replaces the rail on phones, so the rail's scroller, its snap and its
+   scrub are all switched off here and js/rails.js finds nothing to claim.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 899.98px) {
+
+  .flick-rail {
+    display: flex;
+    flex-direction: column;
+    /* The deck needs room to travel under the sticky offset. */
+    gap: var(--space-lg);
+
+    /* Every rail declaration that made this a horizontal scroller, undone. */
+    overflow: visible;
+    scroll-snap-type: none;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
+  .flick-rail__item {
+    position: sticky;
+    /* Clears the fixed navbar, then each card settles a little lower than the
+       one before it so the stack shows its own depth. */
+    inset-block-start: calc(var(--nav-h) + var(--space-lg));
+    flex: 0 0 auto;
+    inline-size: 100%;
+  }
+
+  /* The staircase. Six steps is the largest group (expertise, services). */
+  .flick-rail__item:nth-child(1) { inset-block-start: calc(var(--nav-h) + var(--space-lg)); }
+  .flick-rail__item:nth-child(2) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 0.75rem); }
+  .flick-rail__item:nth-child(3) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 1.5rem); }
+  .flick-rail__item:nth-child(4) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 2.25rem); }
+  .flick-rail__item:nth-child(5) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 3rem); }
+  .flick-rail__item:nth-child(6) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 3.75rem); }
+  .flick-rail__item:nth-child(7) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 4.5rem); }
+  .flick-rail__item:nth-child(8) { inset-block-start: calc(var(--nav-h) + var(--space-lg) + 5.25rem); }
+
+  /* A card in the deck is a real surface: the one underneath has to read as
+     BEHIND, not beside. The shadow is what sells the pile. */
+  .flick-rail__item > .card,
+  .flick-rail__item.card {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* The rail's keyboard affordance belongs to a scroller. There is none here,
+     so the container must not be a tab stop that scrolls nothing — js/rails.js
+     removes the attribute when the element does not overflow, and it no longer
+     does. This covers the frame before that runs. */
+  .flick-rail:not([style*="overflow"]) {
+    outline-offset: var(--focus-offset);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   9. CARD ARRIVAL — the CSS half of js/cards.js
+   ----------------------------------------------------------------------------
+   js/cards.js gives every card its own ScrollTrigger: odd cards rise, even
+   cards drop, and they cross on the way in. That needs gsap + ScrollTrigger.
+
+   When those do not arrive, this plays the same alternating gesture from a
+   plain entrance animation, so the groups are never the still blocks they were
+   before. Gated on html:not([data-mk-cards="on"]) — cards.js sets that as soon
+   as it has both libraries, so the two never run together.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 900px) {
+
+  @keyframes mk-card-rise {
+    from {
+      opacity: 0;
+      translate: 0 70px;
+      scale: 0.95;
+    }
+
+    to {
+      opacity: 1;
+      translate: 0 0;
+      scale: 1;
+    }
+  }
+
+  @keyframes mk-card-drop {
+    from {
+      opacity: 0;
+      translate: 0 -70px;
+      scale: 0.95;
+    }
+
+    to {
+      opacity: 1;
+      translate: 0 0;
+      scale: 1;
+    }
+  }
+
+  html:not([data-mk-cards="on"]) .flick-rail__item {
+    animation: mk-card-rise var(--dur-slow) var(--ease-out) backwards;
+  }
+
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(even) {
+    animation-name: mk-card-drop;
+  }
+
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(1) { animation-delay: 0.05s; }
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(2) { animation-delay: 0.13s; }
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(3) { animation-delay: 0.21s; }
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(4) { animation-delay: 0.29s; }
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(5) { animation-delay: 0.37s; }
+  html:not([data-mk-cards="on"]) .flick-rail__item:nth-child(6) { animation-delay: 0.45s; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+
+  /* The deck is layout, not motion, so it stays. The arrival does not. */
+  html:not([data-mk-cards="on"]) .flick-rail__item {
+    animation: none;
+  }
+}

@@ -2309,7 +2309,20 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/SplitText.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollToPlugin.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js" defer></script>
+  <!-- Lenis is deliberately NOT loaded.
+
+       It hijacks the wheel and drives scrollTop from its own rAF loop, which
+       has to be reconciled with ScrollTrigger's pinning through a scrollerProxy
+       and with the browser's own smooth scrolling. Every one of those seams is
+       a place for the page to stutter, jump or stick — and that is exactly what
+       was reported. Native scrolling has none of those seams, behaves the same
+       in an iframe as on a page, and needs no proxy for ScrollTrigger to pin
+       against.
+
+       js/motion.js already treats Lenis as optional: HAS.Lenis goes false,
+       initLenis() returns null on its first check, and everything downstream
+       reads `lenis` as null and falls back to the real scroller. Nothing else
+       had to change to remove it. -->
   <script src="js/ui.js" defer></script>
   <script src="js/form.js" defer></script>
   <script src="js/motion.js" defer></script>
@@ -2317,6 +2330,9 @@
        and register nothing it has already registered. -->
   <script src="js/signature.js" defer></script>
   <script src="js/rails.js" defer></script>
+  <!-- After motion.js and rails.js: it takes data-anim off the card groups it
+       drives, so the two systems never animate the same nodes. -->
+  <script src="js/cards.js" defer></script>
 
   <!-- ═══ CURSOR ═══ one node, last in the body, hidden on a coarse pointer. -->
   <div class="mk-cursor mk-cursor-ring" aria-hidden="true"><i class="mk-cursor-dot"></i></div>
