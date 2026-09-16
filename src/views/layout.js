@@ -439,110 +439,134 @@ export function bareLayout({ title, body, nonce = '' }) {
 </body>
 </html>`;
 }
-
 /**
- * جدار المراقبة — الخلفية الحيّة لصفحة الدخول.
+ * الخاتَم — الشبكة التي تُبنى عليها صفحة الدخول.
  *
- * ليست زينة: هي أداة المنتج نفسها. شريط التشغيل الذي يراه العميل داخل
- * النظام (كل شرطة = فحص) مرسوم هنا بحجم اللوحة. صفحة دخول تُزيَّن بتدرّج
- * وكرتين ضوئيتين تصلح لأي منتج؛ وهذه لا تصلح إلا لمنتج يراقب مواقع.
+ * «خاتم سليماني»: نجمة ثمانية على شبكة مربّعة، وهي زخرفة المنابر والمشربيات
+ * في القاهرة المملوكية. اختيارها ليس تزيينًا ولا استعارة ثقافية:
  *
- * شرطة كهرمانية واحدة مقصودة: جدار كله أخضر ادّعاءٌ لا يصدّقه من شغّل
- * موقعًا يومًا، وصِدق الأداة يبدأ من صورتها.
+ *   • «خاتَم» في العربية هو الخَتْم — وهذه صفحة خَتْم: من يعرف الكلمة يدخل.
+ *   • والتغطية (tessellation) وعدٌ بلا فجوة: الشكل يملأ المستوى بلا فراغ
+ *     واحد. وهذا بالضبط ما نبيعه — مراقبة بلا انقطاع.
+ *   • وهي المقابل المصري المباشر لشبكة النقاط السيليكونية التي تُزيَّن بها
+ *     كل صفحة دخول في العالم.
+ *
+ * ولها فائدة هندسية تتجاوز الشكل: النقاط المضيئة في الطبقة العلوية تسير على
+ * **خطوط هذه الشبكة نفسها** لا في فراغ. الخطوط المحورية المرسومة هنا — من
+ * مركز كل نجمة إلى مراكز جاراتها — هي مسار الجسيمات حرفًا بحرف، وهو ما
+ * يمنع أن تصير «نقاطًا عائمة تربطها خطوط» كأي قالب.
+ *
+ * تُرسم بـ‎<pattern>‎ واحد يتكرّر، و‎currentColor‎ يجعلها تتبع لون البوابة
+ * (أخضر للعميل، نيلي للإدارة) وتنقلب مع الوضع الليلي بلا نسخة ثانية.
+ *
+ * @param {number} S ضلع الخلية بالبكسل — ومقاس الشبكة كلها يتبعه
  */
-function monitorWall(variant) {
-  // صفوف بأطوال مختلفة — التساوي التام يقرأ كزخرفة، والتفاوت يقرأ كقياس
-  // ثلاثة صفوف لا خمسة: صفّ حيّ بارز بينهما صفّان خافتان. الخمسة كانت
-  // تقرأ نقشًا، والثلاثة تقرأ قياسًا — وواحدٌ منها هو محلّ النظر.
-  const rows = [
-    { n: 44, live: false, dim: 0.34 },
-    { n: 36, live: true,  dim: 1.00 },
-    { n: 52, live: false, dim: 0.22 },
-  ];
-  const bars = rows.map((r, ri) => {
-    const ticks = Array.from({ length: r.n }, (_, i) => {
-      // موضع ثابت للشرطة الكهرمانية: عشوائية كل تحميل تبدو عطلًا لا تصميمًا
-      const warn = r.live && i === 23;
-      const delay = r.live ? ` style="animation-delay:${(i * 55)}ms"` : '';
-      return `<i class="${warn ? 'tk tk-warn' : 'tk'}"${delay}></i>`;
-    }).join('');
-    return `<div class="wall-row${r.live ? ' is-live' : ''}" style="--dim:${r.dim}">${ticks}</div>`;
-  }).join('');
+export function khatam(S = 112) {
+  const c = S / 2;
+  const R = S * 0.34;          // نصف قطر رؤوس النجمة
+  const r = R * 0.7654;        // رؤوس الوديان — نسبة مربّعين متراكبين
+  const inner = R * 0.34;      // المثمّن الداخلي
+  const diam = S * 0.115;      // معيّن الزاوية (الصليب بين النجوم)
+  const fix = (n) => Math.round(n * 100) / 100;
 
-  // منحنى زمن الاستجابة — مسار واحد يُرسم عند الدخول، بلا أرقام مزعومة
-  const curve = variant === 'admin'
-    ? 'M0,54 C40,54 52,20 92,20 C132,20 144,46 184,46 C224,46 236,14 276,14 C316,14 328,40 360,40'
-    : 'M0,46 C36,46 48,16 88,16 C128,16 138,50 178,50 C218,50 230,22 270,22 C310,22 324,44 360,44';
+  // نجمة ‎{8/2}‎: ستة عشر رأسًا تتناوب بين نصفَي القطر كل ‎22.5°‎
+  const star = Array.from({ length: 16 }, (_, i) => {
+    const a = (Math.PI / 8) * i;
+    const rad = i % 2 === 0 ? R : r;
+    return `${fix(c + rad * Math.cos(a))},${fix(c + rad * Math.sin(a))}`;
+  }).join(' ');
 
-  return `<div class="wall" aria-hidden="true">
-    <div class="wall-bars">${bars}</div>
-    <svg class="wall-curve" viewBox="0 0 360 68" preserveAspectRatio="none" fill="none">
-      <path d="${curve}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-  </div>`;
-}
+  // المثمّن الداخلي — ورَسْمُه يجعل مركز النجمة عقدةً حقيقية لا فراغًا
+  const oct = Array.from({ length: 8 }, (_, i) => {
+    const a = (Math.PI / 4) * i;
+    return `${fix(c + inner * Math.cos(a))},${fix(c + inner * Math.sin(a))}`;
+  }).join(' ');
 
-/** رقائق بمفردات المنتج نفسه — لا أرقام تُدَّعى، ولا وعود لا يفي بها */
-function authChips(variant) {
-  const items = variant === 'admin'
-    ? ['محادثات العملاء', 'تأكيد التحويلات', 'سجل الصيانة', 'قاعدة المعرفة']
-    : ['حالة الموقع', 'شهادة الأمان', 'زمن الاستجابة', 'سجل الأعطال', 'المستحقات'];
-  return `<ul class="auth-chips" aria-hidden="true">${
-    items.map((t, i) => `<li style="--i:${i}">${esc(t)}</li>`).join('')}</ul>`;
+  // الأشرطة المحورية: من رأس النجمة إلى رأس جارتها، ومن المثمّن إلى الرأس.
+  // بها يصير الخط الأفقي (والرأسي) المارّ بمراكز صفٍّ كامل مرسومًا بلا قطع —
+  // وعليه تحديدًا تسير النقاط.
+  const straps = [
+    `M${fix(c + inner)},${c} H${fix(c + R)}`,
+    `M${fix(c - inner)},${c} H${fix(c - R)}`,
+    `M${c},${fix(c + inner)} V${fix(c + R)}`,
+    `M${c},${fix(c - inner)} V${fix(c - R)}`,
+    `M${fix(c + R)},${c} H${S}`,
+    `M0,${c} H${fix(c - R)}`,
+    `M${c},${fix(c + R)} V${S}`,
+    `M${c},0 V${fix(c - R)}`,
+  ].join(' ');
+
+  // معيّن على كل ركن — أربعة أرباع تُكمِل بعضها عند التكرار
+  const dm = (x, y) => `M${fix(x)},${fix(y - diam)} L${fix(x + diam)},${fix(y)} L${fix(x)},${fix(y + diam)} L${fix(x - diam)},${fix(y)} Z`;
+  const diamonds = [dm(0, 0), dm(S, 0), dm(0, S), dm(S, S)].join(' ');
+
+  return `<svg class="khatam" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="khatam" width="${S}" height="${S}" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round">
+        <polygon points="${star}"/>
+        <polygon points="${oct}"/>
+        <path d="${straps}"/>
+        <path d="${diamonds}"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#khatam)"/>
+</svg>`;
 }
 
 /**
- * قالب الدخول — بلا شريط ولا تنقّل.
+ * قالب الدخول — مستوًى واحد منقوش، والبطاقة عليه كالكوّة المضاءة.
  *
- * الدخول أول ما يراه الداخل، فلا يصح أن يحمل عناصر لا يملك الوصول إليها.
- * والنموذج هو البطل: يقع في عمود البداية (يمين الشاشة في RTL) حيث تبدأ
- * العين العربية، واللوحة تأتي بعده لا قبله.
+ * لماذا لا عمودان: الانقسام الأبيض/الملوّن هو التخطيط الذي يجعل أي صفحة دخول
+ * تُقرأ قالبًا. هنا مستوًى واحد متّصل من الحافة إلى الحافة، والبطاقة في
+ * وسطه، والضوء خلفها هو ما يرفعها — لا حدّ ولا عمود ثانٍ.
  *
- * @param {'client'|'admin'} variant يغيّر ثلاثة أشياء معًا لا لونًا واحدًا:
- *   النطاق اللوني، ونصّ اللوحة، ومفردات الرقائق. وأهمّها أن ‎--brand‎ نفسه
- *   يُعاد توجيهه، فيتلوّن زرّ «دخول» والعلامة وحلقة التركيز بلون البوابة —
- *   تغيير الخلفية وحدها يجعل البوابتين واجهةً واحدة مصبوغة مرتين.
- *   (جدار المراقبة مشترك: الأدمن يراقب مواقع عملائه أيضًا.)
+ * والترتيب مقصود: العلامة، ثم جملة واحدة تقول ما هذا النظام (من يهبط هنا
+ * غريبًا يجب أن يفهم في خمس ثوانٍ)، ثم البطاقة، ثم ثلاث حقائق قصيرة لا
+ * وعود. لا رقائق مزخرفة ولا جدار بيانات مُدَّعى.
+ *
+ * @param {'client'|'admin'} variant يعيد توجيه ‎--brand‎ نفسه، فيتلوّن الزرّ
+ *   والعلامة وحلقة التركيز والنقش والنقاط بلون البوابة معًا — لا خلفية
+ *   مصبوغة فوق واجهة واحدة.
  */
 export function authLayout({ title, body, variant = 'client', nonce = '' }) {
   const isAdmin = variant === 'admin';
+  const facts = isAdmin
+    ? [['كل 5 دقائق', 'دورة فحص'], ['بوابة منفصلة', 'لا تُفتح بحساب عميل'], ['سجل كامل', 'لكل إجراء إداري']]
+    : [['كل 5 دقائق', 'نفحص موقعك'], ['6 أشهر', 'مجانية بالكامل'], ['فور التوقّف', 'يصلك إشعار']];
+
   return `${HEAD(title)}
 <body class="is-auth" data-portal="${esc(variant)}">
-<span class="auth-rule" aria-hidden="true"></span>
-<div class="auth-shell">
-  <main class="auth-main">
-    <div class="auth-card">
-      <a class="auth-mark" href="/login" aria-label="${esc(APP_NAME)}">${wordmark()}</a>
-      ${body}
-    </div>
-    <!-- الفاصل عنصر مستقل لا حرفًا داخل النص: عند ‎12px‎ تنكمش المسافتان حول
-         ‎·‎ حتى يلتصق الطرفان فيُقرأ «مشفّر٠الجلسة». الفجوة من ‎flex‎ لا من
-         محارف مسافة، فلا تتأثر بمقاس الخط. -->
-    <p class="auth-foot">
-      ${icon('shield')}
-      <span>اتصال مشفّر</span>
-      <span aria-hidden="true">·</span>
-      <span>الجلسة تنتهي تلقائيًّا</span>
-    </p>
-  </main>
-
-  <aside class="auth-aside">
-    <div class="auth-aside-in">
-      <p class="auth-eyebrow">${isAdmin ? 'أدوات التشغيل' : 'مراقبة ودعم'}</p>
-      <h2>${isAdmin
-        ? 'كل عميل، وكل موقع،<br>وكل مستحق — في مكان واحد.'
-        : 'موقعك تحت العين،<br>على مدار الساعة.'}</h2>
-      <p class="auth-lede">${isAdmin
-        ? 'طابور محادثات عملائك، وحالة مواقعهم، وما لم يُسدَّد بعد — بلا تنقّل بين أدوات.'
-        : 'نفحصه، ونخبرك قبل أن يسألك زبونك، ونحتفظ لك بسجل كل ما فعلناه.'}</p>
-      ${authChips(variant)}
-      ${monitorWall(variant)}
-    </div>
-  </aside>
+<div class="auth-bg" aria-hidden="true">
+  ${khatam()}
+  <canvas class="probes" id="probes"></canvas>
+  <span class="auth-glow"></span>
 </div>
+
+<main class="auth-stage">
+  <a class="auth-mark" href="${isAdmin ? '/admin/login' : '/login'}" aria-label="${esc(APP_NAME)}">${wordmark()}</a>
+
+  <p class="auth-thesis">${isAdmin
+    ? 'أدوات تشغيل النظام: عملاؤك ومواقعهم ومحادثاتهم ومستحقّاتهم في شاشة واحدة.'
+    : 'نراقب موقعك على مدار الساعة، ونخبرك قبل أن يسألك زبونك.'}</p>
+
+  <div class="auth-card">${body}</div>
+
+  <ul class="auth-facts">
+    ${facts.map(([b, t]) => `<li><b>${esc(b)}</b><span>${esc(t)}</span></li>`).join('')}
+  </ul>
+
+  <p class="auth-foot">
+    ${icon('shield')}
+    <span>اتصال مشفّر</span>
+    <span aria-hidden="true">·</span>
+    <span>الجلسة تنتهي تلقائيًّا</span>
+  </p>
+</main>
+<script src="/auth.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
 <script src="/app.js"${nonce ? ` nonce="${esc(nonce)}"` : ''} defer></script>
 </body>
 </html>`;
 }
-
 export { esc, safeUrl, GRADES, PLATFORM_LABELS };

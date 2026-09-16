@@ -129,3 +129,37 @@ test('الفحص الفاشل لا يُعرض زمنَ استجابة ولا ي�
   const avg = Number(html.match(/المتوسط <b class="num">(\d+)ms/)[1]);
   assert.equal(avg, 310, 'متوسط الأداء احتسب فحصًا فاشلًا');
 });
+
+// ——— صفحة الدخول: النقش والنقاط ———
+
+test('مقاس خلية النقش واحد في الرسم وفي الحركة', async () => {
+  // النقاط تسير على خطوط النقش، وموضعها يُحسب من ثابت في ‎public/auth.js‎
+  // بينما النقش يُرسم من وسيط في ‎khatam()‎. اختلافهما بمقدار بكسل واحد يُخرج
+  // النقاط عن الخطوط — بلا خطأ ولا رسالة، فقط حركة تبدو عشوائية.
+  const { khatam } = await import('../src/views/layout.js');
+  const drawn = Number(khatam().match(/<pattern id="khatam" width="(\d+)"/)[1]);
+  const js = readFileSync(new URL('../public/auth.js', import.meta.url), 'utf8');
+  const used = Number(js.match(/var CELL = (\d+);/)[1]);
+  assert.equal(used, drawn, `النقش ${drawn}px والنقاط تحسب على ${used}px`);
+});
+
+test('ذهبي VIP يمرّ على أرضية صفحة الدخول لا على الأبيض وحده', () => {
+  // العلامة خرجت من البطاقة البيضاء إلى المستوى المنقوش، فصار المرجع هو
+  // ‎--auth-page‎ لا ‎--surface‎. القيمة التي تمرّ على الأول وحده غشّ.
+  const pick = (name) => (css.match(new RegExp(`\\s--${name}:\\s*(#[0-9a-f]{6})`, 'i')) || [])[1];
+  const vip = pick('vip');
+  assert.ok(vip, 'التوكن مفقود');
+  for (const [bg, label] of [['#eaf0ee', 'auth-page'], ['#ffffff', 'surface']]) {
+    const r = contrast(vip, bg);
+    assert.ok(r >= 4.5, `‎--vip‎ فوق ‎${label}‎ = ${r.toFixed(2)}:1`);
+  }
+});
+
+test('صفحة الدخول تعمل بلا جافاسكربت', async () => {
+  // النقش في HTML والنموذج يُرسَل إلى الخادم: ‎/auth.js‎ يضيف حركة لا معلومة.
+  const { clientLoginPage } = await import('../src/views/auth.js');
+  const html = clientLoginPage({});
+  assert.match(html, /<svg class="khatam"/, 'النقش ليس في الـHTML');
+  assert.match(html, /<form method="POST" action="\/login"/, 'النموذج لا يُرسَل بلا JS');
+  assert.ok(!/<script(?![^>]*src=)/.test(html), 'سكربت مضمّن يحجبه CSP');
+});
