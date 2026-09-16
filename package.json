@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
     "seed": "node --disable-warning=ExperimentalWarning seed.js",
+    "doctor": "node doctor.cjs",
+    "check": "node --disable-warning=ExperimentalWarning cron/check.js",
     "reset": "rm -f data/mkss.db && node seed.js",
     "test": "rm -f data/test.db data/test.db-* && MKSS_DB=data/test.db node --disable-warning=ExperimentalWarning --test --test-concurrency=1"
   },

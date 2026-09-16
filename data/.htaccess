@@ -1,0 +1,15 @@
+# قاعدة البيانات لا تُنزَّل من المتصفّح.
+#
+# على cPanel قد يقع مجلد التطبيق داخل public_html أو تحت نطاق فرعي، وحينها
+# يصير data/mkss.db ملفًّا قابلًا للتنزيل: كلمات سر العملاء المجزّأة،
+# ومحادثاتهم، وفواتيرهم — بطلب HTTP واحد. هذا الملف يسدّ الباب على Apache.
+#
+# وهو حزام أمان لا بديل عن الصواب: **ضع مجلد التطبيق خارج public_html**.
+# راجع docs/CPANEL.md.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

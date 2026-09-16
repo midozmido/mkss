@@ -105,13 +105,19 @@ export function loginBlocked(key) {
 }
 
 export function noteLoginFailure(key) {
-  const rec = attempts.get(key);
-  if (!rec || Date.now() - rec.first > WINDOW_MS) {
-    attempts.set(key, { first: Date.now(), count: 1 });
-  } else {
-    rec.count++;
+  const now = Date.now();
+  // كنس المنتهي قبل الإضافة: سجلّ الفشل لا يُحذف إلا إن عاد صاحبه، فمن
+  // يجرّب آلاف الإيميلات يترك آلاف السجلات المقيمة في الذاكرة إلى الأبد.
+  if (attempts.size > 5_000) {
+    for (const [k, r] of attempts) if (now - r.first > WINDOW_MS) attempts.delete(k);
   }
+  const rec = attempts.get(key);
+  if (!rec || now - rec.first > WINDOW_MS) attempts.set(key, { first: now, count: 1 });
+  else rec.count++;
 }
+
+/** للاختبار والتشخيص */
+export const attemptsSize = () => attempts.size;
 
 export function clearLoginFailures(key) {
   attempts.delete(key);

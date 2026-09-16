@@ -174,11 +174,30 @@ export function createRouter() {
 }
 
 /** تحديد معدل عام في الذاكرة — للنماذج الحساسة */
-export function createRateLimiter({ windowMs = 15 * 60_000, max = 20 } = {}) {
+export function createRateLimiter({ windowMs = 15 * 60_000, max = 20, capacity = 20_000 } = {}) {
   const hits = new Map();
+  let lastSweep = Date.now();
+
+  /**
+   * تقليم المنتهي.
+   * بدونه ينمو الجدول بلا حدّ: مفتاح الدخول هو `ip|email`، ومن يجرّب ألف
+   * بريد من ألف عنوان يترك مليون سجل لا يُحذف أبدًا — والذاكرة على استضافة
+   * مشتركة ليست بلا قاع. السجل المنتهي لا يُستبدل إلا إن عاد صاحبه.
+   */
+  function sweep(now) {
+    for (const [k, rec] of hits) if (now - rec.first > windowMs) hits.delete(k);
+    lastSweep = now;
+  }
+
   return {
     check(key) {
       const now = Date.now();
+      // كنسة كل نافذة، أو فورًا إن بلغنا السقف (هجوم يملأ أسرع من الوقت)
+      if (now - lastSweep > windowMs || hits.size >= capacity) sweep(now);
+      // ما زال ممتلئًا بعد الكنس: كله حديث وحقيقي. نرفض الجديد بدل أن
+      // نستهلك ذاكرة بلا حدّ — ومن له سجل قائم يُخدم كالمعتاد.
+      if (hits.size >= capacity && !hits.has(key)) return { allowed: false, remaining: 0, saturated: true };
+
       const rec = hits.get(key);
       if (!rec || now - rec.first > windowMs) {
         hits.set(key, { first: now, count: 1 });
@@ -188,6 +207,7 @@ export function createRateLimiter({ windowMs = 15 * 60_000, max = 20 } = {}) {
       return { allowed: rec.count <= max, remaining: Math.max(0, max - rec.count) };
     },
     reset: (key) => hits.delete(key),
+    size: () => hits.size,
   };
 }
 

@@ -103,15 +103,44 @@ export function adminCreateInvoice(userId, { description, amount, currency = 'EG
   const at = nowISO();
   const cents = money.toCents(amount);
   if (!Number.isFinite(cents) || cents < 0) throw new Error('مبلغ غير صالح');
-  const seq = (get('SELECT COUNT(*) AS n FROM invoices')?.n || 0) + 1;
-  const number = `INV-${at.slice(0, 4)}-${String(seq).padStart(4, '0')}`;
-  const r = run(
-    `INSERT INTO invoices(user_id, site_id, number, description, amount, amount_cents, currency,
-                          issued_at, due_at, status, created_at)
-     VALUES(?,?,?,?,?,?,?,?,?,'unpaid',?)`,
-    userId, site_id, number, String(description || '').slice(0, 200),
-    cents / 100, cents, currency, at, due_at || null, at
-  );
+  /**
+   * ترقيم الفاتورة: أعلى رقم في سنتها زائد واحد.
+   *
+   * كان `COUNT(*) + 1` على كل الجدول، وفيه عطلان: حذفُ فاتورة واحدة يُنقص
+   * العدد فيعيد الرقم التالي رقمًا مستعملًا — وقيد التفرّد يرفض، فيرى
+   * الأدمن خطأ ٥٠٠ بلا تفسير. والثاني أن العدّ عالميّ لا سنويّ، فتبدأ سنة
+   * جديدة من حيث انتهت السابقة. الاشتقاق من أعلى رقم قائم يعالج الاثنين.
+   * ومع ذلك نعيد المحاولة: قراءةٌ ثم كتابةٌ ليستا ذرّيةً، وإصدارَان في
+   * اللحظة نفسها قد يقرآن الرقم نفسه.
+   */
+  const year = at.slice(0, 4);
+  const prefix = `INV-${year}-`;
+  const nextNumber = () => {
+    const top = get(
+      "SELECT number FROM invoices WHERE number LIKE ? ORDER BY LENGTH(number) DESC, number DESC LIMIT 1",
+      `${prefix}%`
+    )?.number;
+    const seq = top ? (parseInt(String(top).slice(prefix.length), 10) || 0) + 1 : 1;
+    return `${prefix}${String(seq).padStart(4, '0')}`;
+  };
+
+  let r, number;
+  for (let attempt = 0; ; attempt++) {
+    number = nextNumber();
+    try {
+      r = run(
+        `INSERT INTO invoices(user_id, site_id, number, description, amount, amount_cents, currency,
+                              issued_at, due_at, status, created_at)
+         VALUES(?,?,?,?,?,?,?,?,?,'unpaid',?)`,
+        userId, site_id, number, String(description || '').slice(0, 200),
+        cents / 100, cents, currency, at, due_at || null, at
+      );
+      break;
+    } catch (e) {
+      // التصادم وحده يستحق إعادة المحاولة؛ أي خطأ آخر يُرفع كما هو
+      if (attempt >= 5 || !/UNIQUE|constraint/i.test(e.message)) throw e;
+    }
+  }
   const id = Number(r.lastInsertRowid);
   // كود مرجعي يُكتب في ملاحظات التحويل — إنستا باي وفودافون كاش بلا API،
   // وهذا ما يجعل مطابقة التحويل بالفاتورة فورية بدل التخمين.

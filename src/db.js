@@ -22,8 +22,20 @@ if (process.env.NODE_TEST_CONTEXT && !/test/i.test(DB_PATH)) {
 
 export const db = new DatabaseSync(DB_PATH);
 
-// WAL يخلي القراءة والكتابة ما يتعارضوش وقت ما المراقب شغال مع الويب
-db.exec('PRAGMA journal_mode = WAL');
+/**
+ * WAL يجعل القراءة والكتابة لا تتعارضان بينما المراقب يعمل مع الويب.
+ *
+ * لكنه يحتاج ذاكرة مشتركة، وبعض أنظمة الملفات الشبكية على الاستضافات
+ * المشتركة لا تدعمها فترفض الـ PRAGMA. الرفض هنا كان يوقف الإقلاع كله،
+ * والحال أن النظام يعمل بلا WAL — أبطأ قليلًا تحت التزاحم، لا أكثر.
+ * ‎MKSS_JOURNAL=DELETE‎ يتخطّاه صراحةً لمن عرف أن استضافته لا تدعمه.
+ */
+const wanted = (process.env.MKSS_JOURNAL || 'WAL').toUpperCase();
+try {
+  db.exec(`PRAGMA journal_mode = ${wanted === 'DELETE' ? 'DELETE' : 'WAL'}`);
+} catch (e) {
+  console.warn(`⚠ تعذّر ضبط journal_mode=${wanted} (${e.message}) — نكمل بالوضع الافتراضي.`);
+}
 db.exec('PRAGMA foreign_keys = ON');
 db.exec('PRAGMA busy_timeout = 5000');
 

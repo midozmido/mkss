@@ -32,6 +32,17 @@ import * as support from './src/support.js';
 import * as supportViews from './src/views/support.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
+/**
+ * cPanel تشغّل تطبيقات Node خلف Phusion Passenger، وهو يمرّر المنفذ في
+ * ‎PORT‎ ويعترض ‎listen‎ ليربطه بمقبسه. نكتشفه لنعرف أمرين: ألّا نمرّر
+ * مضيفًا صريحًا، وألّا نشغّل المراقب داخل العملية (Passenger يوقف التطبيق
+ * عند الخمول، فيتوقّف المراقب معه بلا أن يدري أحد).
+ */
+const UNDER_PASSENGER = Boolean(
+  process.env.PASSENGER_APP_ENV || process.env.PASSENGER_BASE_URI ||
+  typeof globalThis.PhusionPassenger !== 'undefined'
+);
+
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
@@ -1004,26 +1015,41 @@ export function createApp() {
 
 // ——————————————————— التشغيل ———————————————————
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log('◆ Support VIP System — نظام دعم العملاء ومراقبة المواقع');
-  migrate();
+/**
+ * إقلاع كامل: هجرة، ثم خادم، ثم مراقب.
+ *
+ * دالة مُصدَّرة لا كتلة شرطية، لأن **Passenger** (وهو ما تشغّله cPanel خلف
+ * «Setup Node.js App») لا يشغّل الملف عبر ‎argv[1]‎ بل يستورده من محمّله.
+ * الشرط القديم ‎import.meta.url === argv[1]‎ كان لا يتحقّق هناك أبدًا:
+ * يُرفع النظام على الاستضافة، ويظهر التطبيق «يعمل» في اللوحة، ثم لا يستجيب
+ * — بلا رسالة خطأ واحدة تدلّ على السبب.
+ */
+export function start({ quiet = false, monitorInProcess = true } = {}) {
+  if (!quiet) console.log('◆ Support VIP System — نظام دعم العملاء ومراقبة المواقع');
+  migrate({ quiet });
 
   const adminCount = get("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'")?.n || 0;
-  if (!adminCount) {
-    console.log('\n⚠ لا يوجد حساب أدمن. شغّل:  node seed.js\n');
-  }
+  if (!adminCount && !quiet) console.log('\n⚠ لا يوجد حساب أدمن. شغّل:  node seed.js\n');
 
   const server = createApp();
-  server.listen(PORT, HOST, () => {
-    console.log(`▶ البوابة تعمل على ${BASE_URL}`);
-    // MONITOR=0 يشغّل الويب وحده — مفيد لفصل العمليتين، أو لتشغيل نسخة ويب
-    // إضافية خلف موازن حمل دون أن تتضاعف الفحوصات على مواقع العملاء.
-    if (process.env.MONITOR === '0') console.log('• المراقب معطّل (MONITOR=0)');
-    else monitor.start();
-  });
+
+  // تحت Passenger لا نمرّر المضيف: المحمّل يعترض listen ويربطه بمقبسه،
+  // وتمرير عنوان صريح يُربكه على بعض الإصدارات.
+  const onReady = () => {
+    if (!quiet) console.log(`▶ البوابة تعمل على ${BASE_URL}`);
+    if (!monitorInProcess) {
+      if (!quiet) console.log('• المراقب خارج العملية — شغّله من كرون (node cron/check.js)');
+    } else if (process.env.MONITOR === '0') {
+      if (!quiet) console.log('• المراقب معطّل (MONITOR=0)');
+    } else {
+      monitor.start();
+    }
+  };
+  if (UNDER_PASSENGER) server.listen(PORT, onReady);
+  else server.listen(PORT, HOST, onReady);
 
   const shutdown = () => {
-    console.log('\n◆ إيقاف...');
+    if (!quiet) console.log('\n◆ إيقاف...');
     monitor.stop();
     bot.cancelAllPending();
     server.close(() => { try { db.close(); } catch {} process.exit(0); });
@@ -1031,4 +1057,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+
+  return server;
 }
+
+// التشغيل المباشر من الطرفية يبقى كما هو: node server.js
+if (import.meta.url === `file://${process.argv[1]}`) start();

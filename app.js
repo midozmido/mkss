@@ -1,0 +1,17 @@
+// نقطة دخول cPanel — هذا هو «Application startup file» في «Setup Node.js App».
+//
+// لماذا ملف مستقل عن server.js: cPanel تشغّل Node خلف Phusion Passenger،
+// وهو **يستورد** ملف الإقلاع من محمّله ولا يشغّله كـ argv[1]. أي شرط من نوع
+// `import.meta.url === argv[1]` لا يتحقّق هناك، فيُرفع النظام ويظهر «يعمل»
+// في اللوحة ثم لا يستجيب — بلا سطر خطأ واحد يدلّ على السبب.
+//
+// وهنا **لا يُشغَّل المراقب داخل العملية**: Passenger يوقف التطبيق عند
+// الخمول (خمس دقائق افتراضًا)، فلو كان المراقب مؤقّتًا داخليًّا توقّف معه،
+// وظلّ العميل يرى بيانات قديمة يظنّها حيّة. المراقبة تأتي من كرون cPanel:
+//
+//     */5 * * * *  cd ~/mkss && /path/to/node cron/check.js >> data/cron.log 2>&1
+//
+// راجع docs/CPANEL.md للخطوات كاملة.
+import { start } from './server.js';
+
+start({ monitorInProcess: false });

@@ -5,3 +5,6 @@ data/*.db-wal
 data/*.db-shm
 .env
 .DS_Store
+
+# حارس المجلد يُتعقَّب رغم تجاهل محتوياته — بلا رفعه يصير المجلد مكشوفًا
+!data/.htaccess

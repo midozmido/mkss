@@ -112,10 +112,14 @@ test('المتأخرات لا تخصم دفعات فواتير مسدَّدة م
     run('INSERT INTO users(email, password_hash, name, role, created_at) VALUES(?,?,?,?,?)',
       `carol-${Date.now()}@test.local`, hashPassword('كلمة-سر-قوية-جدا-123'), 'كارول', 'client', at).lastInsertRowid
   );
+  // الرقم كان `T-${Date.now()}-${cents}`، وفاتورتان بنفس المبلغ في نفس
+  // المللي ثانية تنتجان الرقم نفسه فيفشل الاختبار متقطّعًا. عدّاد صريح
+  // يجعل التفرّد مضمونًا لا محكومًا بسرعة الجهاز.
+  let seq = 0;
   const mkInv = (cents, status) => Number(
     run(`INSERT INTO invoices(user_id, number, amount, amount_cents, currency, issued_at, status, created_at)
          VALUES(?,?,?,?,'EGP',?,?,?)`,
-      carol, `T-${Date.now()}-${Math.round(cents)}`, cents / 100, cents, at, status, at).lastInsertRowid
+      carol, `T-${Date.now()}-${++seq}`, cents / 100, cents, at, status, at).lastInsertRowid
   );
 
   // فاتورة مسدَّدة بالكامل + فاتورتان قائمتان

@@ -17,10 +17,14 @@
 ## التشغيل
 
 ```bash
+node doctor.cjs   # يفحص الاستضافة قبل أي شيء: نسخة Node، والأذونات، وWAL
 node seed.js      # يجهّز قاعدة البيانات ويطبع بيانات دخول الأدمن
 node server.js    # يشغّل البوابة والمراقب
-npm test          # 176 اختبارًا، تعمل كلها بلا إنترنت
+npm test          # 190 اختبارًا، تعمل كلها بلا إنترنت
 ```
+
+**على cPanel** المدخل مختلف: ملف الإقلاع `app.js` والمراقبة من كرون —
+راجع [`docs/CPANEL.md`](docs/CPANEL.md)، وابدأ بـ `node doctor.cjs`.
 
 المتطلب الوحيد: **Node 22.5 أو أحدث** (لأجل `node:sqlite` المدمجة).
 
@@ -144,6 +148,9 @@ sqlite3 data/mkss.db "VACUUM INTO '/backups/mkss-$(date +%F).db'"
 
 ```
 server.js              نقطة الدخول: HTTP + المراقب
+app.js                 نقطة إقلاع cPanel/Passenger
+doctor.cjs             فحص الاستضافة قبل الرفع (يعمل على أي نسخة Node)
+cron/check.js          دورة مراقبة واحدة — لكرون cPanel
 seed.js                بيانات تجريبية
 migrations/            هجرات SQL مرقّمة تُطبَّق عند الإقلاع
 src/
@@ -164,7 +171,7 @@ src/
                        guide (دليلا العميل والأدمن) · pages · admin · billing
                        · chat · kb · support
 public/                app.css · app.js  (بلا CDN وبلا خطوة بناء)
-test/                  176 اختبارًا تعمل بلا إنترنت
+test/                  190 اختبارًا تعمل بلا إنترنت
 ```
 
 ## حدود معروفة
