@@ -406,6 +406,12 @@
         </div>
 
         <div class="marquee-container" data-anim="fade">
+          <!-- The fade mask lives on this track, not on the container. A mask
+               applies to the whole subtree, so on the container it also erased
+               the pause button sitting 12px inside the right edge — exactly
+               where the gradient has reached transparent. The WCAG 2.2.2
+               control was invisible while the strip kept moving. -->
+          <div class="marquee-track">
 
           <ul class="marquee-content list-plain">
             <li class="marquee__item">210+ sites delivered since 2020<span class="marquee__sep"
@@ -440,6 +446,8 @@
                in-page stop. js/motion.js draws the glyph and rewrites the
                label and aria-pressed as the state changes; the values here are
                the correct starting state if it never gets the chance. -->
+          </div>
+
           <button class="mk-marquee-pause" type="button" data-marquee-toggle aria-pressed="false"
             aria-label="Pause the scrolling text"></button>
 

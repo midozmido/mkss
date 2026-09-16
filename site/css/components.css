@@ -212,6 +212,15 @@
   margin-block-end: var(--space-2xl);
 }
 
+/* Inside a .stack the parent already supplies the space, and a flex item's
+   margin does NOT collapse with the container's gap — the two add. Measured:
+   #process, #work, #testimonials and #timeline sat at 96px below their heading
+   while the six sections whose parent is a plain block sat at 48px, so the page
+   spaced itself inconsistently section to section. */
+.stack > .section-head {
+  margin-block-end: 0;
+}
+
 .section-head--center {
   align-items: center;
   text-align: center;
@@ -1045,10 +1054,18 @@
 
 .marquee-container {
   position: relative;
+  user-select: none;
+}
+
+/* The masked layer. A mask applies to an element's whole subtree, so while it
+   sat on .marquee-container it also faded the pause button positioned inside
+   the container's right edge — measured at 12px in, where --grad-fade-x has
+   already reached transparent. The button is now a sibling of this track and
+   paints at full strength. */
+.marquee-track {
   display: flex;
   gap: var(--marquee-gap);
   overflow: hidden;
-  user-select: none;
   mask-image: var(--grad-fade-x);
   -webkit-mask-image: var(--grad-fade-x);
 }

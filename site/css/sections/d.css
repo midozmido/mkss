@@ -333,8 +333,14 @@
   /* One card, and a strip of the next one showing. 100vw is the viewport, not
      a magic number: card = screen minus the gutter it starts at and the two
      gutters of the next card left peeking. Capped at the width the work rail
-     already uses, so a card is the same object in both places. */
-  --flick-item-w: min(var(--rail-card-w), calc(100vw - var(--container-pad) * 3));
+     already uses, so a card is the same object in both places.
+
+     At * 3 that strip measured 16px — narrower than one gutter, and on a card
+     whose content is centred inside its own padding those 16px are blank
+     surface. The stats row read as a single figure with nothing beside it, and
+     these rails have no scrollbar and no note to say otherwise. * 4 leaves a
+     visible slice of the next card at every phone width. */
+  --flick-item-w: min(var(--rail-card-w), calc(100vw - var(--container-pad) * 4));
 
   display: flex;
   gap: var(--gap-grid-lg);
