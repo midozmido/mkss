@@ -43,7 +43,6 @@
   <!-- Five deferred scripts come from these two origins. Without a preconnect
        the DNS, TCP and TLS round trips only start when the parser reaches the
        tags at the end of <body>. -->
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <!-- Loaded non-blocking. A stylesheet in <head> gates first paint, and this
        one is on a third-party host: measured here, the page painted at 176ms
@@ -76,6 +75,11 @@
   <link rel="stylesheet" href="css/sections/b.css">
   <link rel="stylesheet" href="css/sections/c.css">
   <link rel="stylesheet" href="css/sections/d.css">
+
+  <!-- Last, deliberately. The ambient motion layer is CSS-only, so the page
+       animates on the first frame with no CDN, no script and no framework —
+       and it stands down where js/motion.js takes over. See its header. -->
+  <link rel="stylesheet" href="css/motion-ambient.css">
 
   <!-- REQUIRED. Arms the flash guard in base.css; js/motion.js removes the
        class to reveal. If scripting is off this never runs, the guard never
@@ -364,9 +368,18 @@
 
   <!-- ══════════════════════════════════════════════════════════════════════
        03 · ABOUT — portrait and positioning.
-       The frame is a 1px hairline with a hard violet plate offset behind it.
-       No glow, no pulse, no animated border: .media-frame owns all of it, and
-       .about__media only gives the plate a stacking context to sit in.
+       The copy carries ONE claim. The method belongs to Process, the six job
+       types to Services and the reach to the Stats strip, so repeating any of
+       them here only made the section long enough to skip.
+
+       The portrait sits in a real frame (.about__portrait, styled in
+       css/motion-ambient.css §6): a window that clips the picture, an MK-angle
+       corner bracket, a light that travels the top edge, and a caption plate
+       attached to the picture rather than floating beside it. Every decorative
+       part is aria-hidden; the <img> keeps its own alt.
+
+       data-anim="media" still applies: mkMedia finds the picture with a plain
+       `img, video` descendant query, so the new wrapper does not hide it.
        ══════════════════════════════════════════════════════════════════════ -->
   <section class="section section--s1" id="about" aria-labelledby="about-title">
     <div class="container">
@@ -384,20 +397,18 @@
             <h2 class="section-head__title" id="about-title" data-anim="lines">
               Designed in Figma. Built in WordPress.
             </h2>
+            <!-- Two long paragraphs became one short one. The three facts they
+                 carried are already stated elsewhere on the page: the Figma →
+                 Elementor method is the Process section, the six job types are
+                 the Services section, and the reach is in the Stats strip. What
+                 is left here is the only claim this section alone makes. -->
             <p class="section-head__lede" data-anim="up" data-delay="0.06">
-              Every project starts as a Figma file, not a theme demo. Once the design is signed off I build it in
-              Elementor Pro with custom CSS, so the site that ships is the one you approved — and the pages stay
-              editable in the WordPress admin the day it becomes yours.
+              You approve the design in Figma before a line of it is built — and you can still edit
+              every page the day it becomes yours.
             </p>
           </div>
 
           <div class="stack stack--lg">
-            <p class="measure" data-anim="up" data-delay="0.12">
-              More than 210 projects since 2020, for clients across the Arab world, Europe and America. Most of them
-              are one of six jobs: a personal site, an online store, a course platform, a theme customisation, a
-              build from scratch, or a redesign of a site that already exists.
-            </p>
-
             <ul class="cluster list-plain" data-anim="fade" data-delay="0.18">
               <li><span class="badge badge--brand">210+ projects since 2020</span></li>
               <li><span class="badge">180 days of support</span></li>
@@ -412,12 +423,27 @@
 
         </div>
 
-        <figure class="split__b about__media media-frame" data-anim="media">
-          <span class="media-frame__plate" aria-hidden="true"></span>
-          <img class="media-frame__img" src="assets/images/mohamed-khaled-portrait.png"
-            alt="Mohamed Khaled, WordPress designer and developer, in a grey suit against a dark violet backdrop"
-            width="1024" height="1024"
-            loading="lazy" decoding="async">
+        <!-- The portrait frame. Was a flat plate behind a square image; it is
+             now a real frame: an MK-angle corner bracket, a light that travels
+             the border, and a caption plate that belongs to the picture instead
+             of floating beside it. All decoration is aria-hidden — the portrait
+             keeps its own alt and nothing new enters the accessibility tree. -->
+        <figure class="split__b about__portrait" data-anim="media">
+          <span class="about__portrait-bracket" aria-hidden="true"></span>
+          <div class="about__portrait-window">
+            <!-- Inside the window, which clips. Outside it the sheen's 300%
+                 travel extended the document's scroll width past the viewport
+                 at every size. -->
+            <span class="about__portrait-sheen" aria-hidden="true"></span>
+            <img class="about__portrait-img" src="assets/images/mohamed-khaled-portrait.png"
+              alt="Mohamed Khaled, WordPress designer and developer, in a grey suit against a dark violet backdrop"
+              width="1024" height="1024"
+              loading="lazy" decoding="async">
+          </div>
+          <figcaption class="about__portrait-plate">
+            <span class="about__portrait-name">Mohamed Khaled</span>
+            <span class="about__portrait-role">WordPress design &amp; build · Cairo</span>
+          </figcaption>
         </figure>
 
       </div>
@@ -2173,10 +2199,17 @@
        files. Every one is deferred, so they execute in this order after the
        document is parsed. js/motion.js loads last because it reads the DOM the
        other two have already wired. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/SplitText.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollToPlugin.min.js" defer></script>
+  <!-- gsap@3 on jsDelivr, not a pinned patch version on cdnjs. The build asked
+       for 3.15.0 by exact number; if that release does not exist on cdnjs every
+       one of these four files 404s, gsap is undefined, and the whole motion
+       system takes its bail-out path — which looks exactly like "the site has
+       no animation at all". A major-version range cannot 404: jsDelivr always
+       resolves @3 to the newest 3.x, which is also guaranteed to be >= 3.13,
+       the release that put SplitText in the public package. -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/SplitText.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollToPlugin.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.18/dist/lenis.min.js" defer></script>
   <script src="js/ui.js" defer></script>
   <script src="js/form.js" defer></script>

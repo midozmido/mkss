@@ -1,0 +1,639 @@
+/* ============================================================================
+   MK — AMBIENT MOTION
+   ----------------------------------------------------------------------------
+   The motion that must never depend on a CDN.
+
+   js/motion.js is the rich layer: scroll-driven reveals, the pinned rail, the
+   signature scene. All of it needs gsap + ScrollTrigger over the network, and
+   when those do not arrive the page is completely still — which is what "the
+   site has no animation at all" looks like.
+
+   Everything in this file is CSS. It runs on the first frame, with no script,
+   no network and no framework, and it is written so the JS layer can still
+   take over cleanly when it does load:
+
+     · AMBIENT (background glows, grid drift, scanner, marquee rules, the live
+       dot) animates the INDIVIDUAL `translate` / `scale` / `opacity` /
+       `filter` properties. Those compose with `transform` instead of
+       overwriting it, so js/motion.js keeps its parallax and its tweens and
+       the two layer rather than fight.
+
+     · ENTRANCE (hero badge, headline, lede, actions) is gated behind
+       `html:not([data-mk-gsap="on"])`. js/motion.js sets that attribute at the
+       top of start(), which it reaches only when gsap AND ScrollTrigger both
+       exist — so the CSS entrance plays only on the path where the JS one
+       never will. data-mk-motion is not usable for this: showAll() sets it on
+       the bail-out paths too.
+
+   Every value resolves through tokens.css. Reduced motion stops all of it at
+   the end of the file.
+   ========================================================================== */
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. HERO — the light in the background is alive
+   ----------------------------------------------------------------------------
+   Two blurred colour fields drift, breathe and cross-fade on long, prime-ish
+   periods (19s / 23s) so the loop never visibly repeats. `translate` and
+   `scale`, never `transform`: js/motion.js parallaxes these same nodes.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes mk-glow-drift-a {
+  0% {
+    translate: 0 0;
+    scale: 1;
+    opacity: 0.22;
+  }
+
+  50% {
+    translate: 12% 8%;
+    scale: 1.18;
+    opacity: 0.38;
+  }
+
+  100% {
+    translate: -6% 4%;
+    scale: 1.06;
+    opacity: 0.26;
+  }
+}
+
+@keyframes mk-glow-drift-b {
+  0% {
+    translate: 0 0;
+    scale: 1.1;
+    opacity: 0.3;
+  }
+
+  50% {
+    translate: -14% -10%;
+    scale: 0.92;
+    opacity: 0.18;
+  }
+
+  100% {
+    translate: 5% -3%;
+    scale: 1.14;
+    opacity: 0.34;
+  }
+}
+
+.side-glow-left {
+  animation: mk-glow-drift-a 19s var(--ease-in-out) infinite alternate;
+}
+
+.side-glow-right {
+  animation: mk-glow-drift-b 23s var(--ease-in-out) infinite alternate;
+}
+
+/* The grid breathes with the glows rather than sitting dead behind them. Only
+   the mask moves, so no layout and no paint of the lines themselves. */
+@keyframes mk-grid-breathe {
+  from {
+    opacity: 0.55;
+    background-position: 0 0;
+  }
+
+  to {
+    opacity: 1;
+    background-position: var(--space-4xl) var(--space-4xl);
+  }
+}
+
+.hero-grid {
+  animation: mk-grid-breathe 32s linear infinite alternate;
+}
+
+/* The scanner shipped at opacity 0 waiting for a tween that only exists in
+   js/motion.js, so with no script it was an invisible element. It now sweeps
+   on its own: a slow travel across the hero with a bright core, paused long
+   between passes so it reads as an occasional sweep, not a metronome. */
+@keyframes mk-scanner-sweep {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+
+  6% {
+    opacity: 0.9;
+  }
+
+  40% {
+    opacity: 0.55;
+  }
+
+  55% {
+    translate: 100vw 0;
+    opacity: 0;
+  }
+
+  100% {
+    translate: 100vw 0;
+    opacity: 0;
+  }
+}
+
+.hero-scanner {
+  animation: mk-scanner-sweep 11s var(--ease-in-out) infinite;
+}
+
+/* The sweep travels a full 100vw, which pushed the document's scroll width
+   past the viewport at every size — measured 1495px inside a 1440px window.
+   .layer-behind is inset:0 of the section, so clipping here bounds the sweep
+   without touching anything the visitor can see: the side glows already sit at
+   negative offsets, i.e. off-screen, before this clip applies. */
+.hero .layer-behind {
+  overflow: hidden;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. THE OPENING BADGE
+   ----------------------------------------------------------------------------
+   "WordPress design and build · since 2020" was a flat pill — the single most
+   template-looking element on the page. It now carries a live dot and a light
+   that travels across the glass, so it reads as a status chip on a working
+   studio site rather than a label dropped into a template.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.hero .badge--brand {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* The travelling light. A pseudo-element so no markup changes and nothing in
+   the accessibility tree moves. */
+.hero .badge--brand::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: -40%;
+  inline-size: 40%;
+  background-image: linear-gradient(
+    100deg,
+    transparent 0%,
+    var(--white-a18) 45%,
+    var(--white-a18) 55%,
+    transparent 100%);
+  animation: mk-badge-sheen 6.5s var(--ease-in-out) infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@keyframes mk-badge-sheen {
+  0% {
+    translate: 0 0;
+  }
+
+  45% {
+    translate: 350% 0;
+  }
+
+  100% {
+    translate: 350% 0;
+  }
+}
+
+/* The live dot in front of the text, drawn in CSS so the sentence itself is
+   untouched and still reads the same to a screen reader. */
+.hero .badge--brand::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--size-dot);
+  block-size: var(--size-dot);
+  margin-inline-end: var(--space-xs);
+  border-radius: var(--radius-pill);
+  background-color: currentColor;
+  animation: mk-badge-pulse 2.4s var(--ease-in-out) infinite;
+}
+
+@keyframes mk-badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+    scale: 0.7;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. HERO ENTRANCE — only when js/motion.js is not going to do it
+   ----------------------------------------------------------------------------
+   base.css hides every [data-anim] element behind the flash guard and waits
+   for the script. When the script never arrives the guard expires and the
+   content simply appears, with no entrance at all. These rules give it one.
+
+   Gated on html:not([data-mk-gsap="on"]) so that on the normal path GSAP owns
+   the opening and nothing here runs.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes mk-rise-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-xl);
+    filter: blur(6px);
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+    filter: blur(0);
+  }
+}
+
+/* The headline arrives a line at a time, each one cut on the MK angle and
+   sliding up out of its own mask — the same gesture the GSAP version makes. */
+@keyframes mk-line-in {
+  from {
+    opacity: 0;
+    translate: 0 110%;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+html:not([data-mk-gsap="on"]) .hero-title__line {
+  display: block;
+  animation: mk-line-in var(--dur-hero) var(--ease-out) backwards;
+}
+
+html:not([data-mk-gsap="on"]) .hero-title {
+  overflow: hidden;
+}
+
+html:not([data-mk-gsap="on"]) .hero-title__line:nth-child(1) {
+  animation-delay: 0.15s;
+}
+
+html:not([data-mk-gsap="on"]) .hero-title__line:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+html:not([data-mk-gsap="on"]) .hero .badge--brand {
+  animation: mk-rise-in var(--dur-slow) var(--ease-out) backwards;
+}
+
+html:not([data-mk-gsap="on"]) .hero-description {
+  animation: mk-rise-in var(--dur-slow) var(--ease-out) 0.45s backwards;
+}
+
+html:not([data-mk-gsap="on"]) .hero-actions {
+  animation: mk-rise-in var(--dur-slow) var(--ease-out) 0.6s backwards;
+}
+
+html:not([data-mk-gsap="on"]) .scroll-indicator {
+  animation: mk-rise-in var(--dur-slow) var(--ease-out) 0.85s backwards;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. PROMISE STRIP — the separators carry the light
+   ----------------------------------------------------------------------------
+   The strip's slanted rule between promises was a flat 55%-opacity bar. The
+   light now travels ALONG the row: each separator lights in turn, so the eye
+   is pulled in the direction the text is already moving.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.marquee__sep {
+  animation: mk-sep-ignite 3.2s var(--ease-in-out) infinite;
+}
+
+@keyframes mk-sep-ignite {
+  0%,
+  70%,
+  100% {
+    opacity: 0.35;
+    filter: none;
+  }
+
+  35% {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px var(--violet-400));
+  }
+}
+
+/* The stagger that makes it read as one light travelling rather than every
+   rule blinking at once. Seven promises per list, two identical lists. */
+.marquee__item:nth-child(7n + 1) .marquee__sep { animation-delay: 0s; }
+.marquee__item:nth-child(7n + 2) .marquee__sep { animation-delay: 0.16s; }
+.marquee__item:nth-child(7n + 3) .marquee__sep { animation-delay: 0.32s; }
+.marquee__item:nth-child(7n + 4) .marquee__sep { animation-delay: 0.48s; }
+.marquee__item:nth-child(7n + 5) .marquee__sep { animation-delay: 0.64s; }
+.marquee__item:nth-child(7n + 6) .marquee__sep { animation-delay: 0.8s; }
+.marquee__item:nth-child(7n + 7) .marquee__sep { animation-delay: 0.96s; }
+
+/* The promise passing the centre of the strip is the one being made, so it is
+   the one that gets the accent. The mask already darkens both ends; this
+   lifts the middle to full strength instead of leaving the row uniformly
+   grey. */
+.marquee-track {
+  --mk-strip-accent: var(--violet-400);
+}
+
+.marquee__item {
+  transition: color var(--dur-base) var(--ease-out);
+}
+
+.marquee-container:hover .marquee__item:hover {
+  color: var(--mk-strip-accent);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. REDUCED MOTION — all of the above, stopped
+   The visitor asked for stillness. Every element here is legible at rest: the
+   entrance keyframes end on the natural state, and the ambient ones are
+   decoration over content that never moved.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .side-glow-left,
+  .side-glow-right,
+  .hero-grid,
+  .hero-scanner,
+  .marquee__sep,
+  .hero .badge--brand::before,
+  .hero .badge--brand::after,
+  html:not([data-mk-gsap="on"]) .hero-title__line,
+  html:not([data-mk-gsap="on"]) .hero .badge--brand,
+  html:not([data-mk-gsap="on"]) .hero-description,
+  html:not([data-mk-gsap="on"]) .hero-actions,
+  html:not([data-mk-gsap="on"]) .scroll-indicator {
+    animation: none;
+  }
+
+  /* The scanner's only resting state in the keyframes is invisible, and the
+     glows' is dim. Put both back to something deliberate. */
+  .hero-scanner {
+    opacity: 0;
+  }
+
+  .side-glow-left,
+  .side-glow-right {
+    opacity: 0.28;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. ABOUT — the portrait frame
+   ----------------------------------------------------------------------------
+   The old .media-frame was a hairline with a flat violet plate offset behind
+   it: correct, but it framed nothing. This is a real frame — a window that
+   holds the picture, an MK-angle bracket that reads as a corner mark, a light
+   that travels the top edge, and a caption plate attached to the picture.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.about__portrait {
+  position: relative;
+  isolation: isolate;
+}
+
+/* The window. overflow:clip so the image can scale inside it without escaping
+   the rounded corner, and so the hover push has something to push against. */
+.about__portrait-window {
+  position: relative;
+  overflow: clip;
+  border: var(--border-w) solid var(--control-rule);
+  border-radius: var(--radius-xl);
+  background-color: var(--surface-2);
+  box-shadow: var(--shadow-card);
+}
+
+.about__portrait-img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  /* A slow, continuous drift so the one static photograph on the page is not
+     the thing that makes the section feel dead. `scale`, not `transform`. */
+  animation: mk-portrait-drift 24s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes mk-portrait-drift {
+  from {
+    scale: 1.04;
+    translate: -1% 0;
+  }
+
+  to {
+    scale: 1.1;
+    translate: 1% -1.5%;
+  }
+}
+
+/* The corner bracket, leaning at the MK angle like every other mark on the
+   page. Drawn from two borders on one box so it is a single element. */
+.about__portrait-bracket {
+  position: absolute;
+  inset-block-start: calc(var(--space-md) * -1);
+  inset-inline-start: calc(var(--space-md) * -1);
+  inline-size: var(--space-4xl);
+  block-size: var(--space-4xl);
+  border-block-start: var(--border-w-thick) solid var(--violet-400);
+  border-inline-start: var(--border-w-thick) solid var(--violet-400);
+  border-start-start-radius: var(--radius-lg);
+  transform: skewX(var(--mk-angle-neg));
+  opacity: 0.85;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* The light that travels the frame's top edge. It lives INSIDE the window so
+   the window's clip bounds its travel; unclipped, the 300% sweep pushed the
+   document's scroll width past the viewport at every width. */
+.about__portrait-sheen {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 35%;
+  block-size: var(--border-w-thick);
+  background-image: linear-gradient(90deg, transparent, var(--teal-400), transparent);
+  border-radius: var(--radius-pill);
+  animation: mk-frame-sheen 7s var(--ease-in-out) infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes mk-frame-sheen {
+  0% {
+    translate: -100% 0;
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  60% {
+    translate: 300% 0;
+    opacity: 0;
+  }
+
+  100% {
+    translate: 300% 0;
+    opacity: 0;
+  }
+}
+
+/* The caption plate. Attached to the picture's lower edge and overlapping it,
+   so it belongs to the portrait rather than sitting under it as a stray line. */
+.about__portrait-plate {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  /* A normal block inset by its own margins, NOT inline-size:max-content.
+     max-content plus a percentage cap does not bound anything when the parent
+     is auto-sized — measured, the plate pushed the document to 393px inside a
+     320px window. Margins on both sides cannot overflow whatever the text. */
+  margin-block-start: calc(var(--space-2xl) * -1);
+  margin-inline: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border: var(--border-w) solid var(--control-rule);
+  border-radius: var(--radius-lg);
+  background-color: rgba(var(--surface-2-rgb), .92);
+  backdrop-filter: blur(var(--blur-md));
+  box-shadow: var(--shadow-card-hover);
+}
+
+.about__portrait-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-h5);
+  font-weight: var(--fw-bold);
+  color: var(--text-1);
+}
+
+.about__portrait-role {
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--violet-400);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. STATS — the four figures, no longer a static row
+   ----------------------------------------------------------------------------
+   The markup prints the numbers and the old build deliberately never counted
+   them up, on the grounds that a counter makes the figure unreadable for its
+   first second. That reasoning holds, so the motion here is NOT a counter:
+   the figure stays legible from frame one and the CARD comes alive around it —
+   the tile lifts and leans, a rule under the number draws itself, and the
+   gradient in the numeral travels.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.stats__item {
+  position: relative;
+  padding-block: var(--space-lg);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+/* The gradient inside the numeral drifts, so the figure itself is alive
+   without a single digit ever changing. */
+.stat-number {
+  background-size: 220% 100%;
+  animation: mk-stat-gradient 9s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes mk-stat-gradient {
+  from {
+    background-position: 0% 50%;
+  }
+
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+/* A rule that draws itself under each figure, staggered across the row so the
+   four read left to right as one gesture rather than four separate cards. */
+.stats__item::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 50%;
+  inline-size: var(--space-4xl);
+  block-size: var(--border-w-thick);
+  border-radius: var(--radius-pill);
+  background-image: var(--grad-brand);
+  transform: translateX(-50%) skewX(var(--mk-angle-neg));
+  transform-origin: 50% 50%;
+  scale: 0 1;
+  animation: mk-stat-rule 4.5s var(--ease-in-out) infinite;
+}
+
+@keyframes mk-stat-rule {
+  0%,
+  80%,
+  100% {
+    scale: 0 1;
+    opacity: 0;
+  }
+
+  25%,
+  60% {
+    scale: 1 1;
+    opacity: 1;
+  }
+}
+
+.stats__item:nth-child(1)::after { animation-delay: 0s; }
+.stats__item:nth-child(2)::after { animation-delay: 0.35s; }
+.stats__item:nth-child(3)::after { animation-delay: 0.7s; }
+.stats__item:nth-child(4)::after { animation-delay: 1.05s; }
+
+/* The icon tile leans a little further and ignites on hover — the same single
+   hover gesture the cards use, so the row answers the pointer like the rest of
+   the page instead of being the one inert block. */
+.stats__item .icon-tile {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.stats__item:hover .icon-tile {
+  transform: skewX(var(--mk-angle-neg)) translateY(calc(var(--lift) * -1));
+  color: var(--teal-400);
+}
+
+.stats__item:hover {
+  transform: translateY(calc(var(--lift) * -1));
+}
+
+
+/* Reduced motion, part two — everything added below section 5. */
+@media (prefers-reduced-motion: reduce) {
+
+  .about__portrait-img,
+  .about__portrait-sheen,
+  .stat-number,
+  .stats__item::after {
+    animation: none;
+  }
+
+  .about__portrait-img {
+    scale: 1.04;
+    translate: 0 0;
+  }
+
+  /* The rule is a decoration whose only still state in the keyframes is
+     invisible. Draw it, once, and leave it. */
+  .stats__item::after {
+    scale: 1 1;
+    opacity: 1;
+  }
+}

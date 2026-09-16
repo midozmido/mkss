@@ -1316,6 +1316,13 @@
     var mm = gsap.matchMedia();
 
     function start() {
+        /* Reached only when gsap AND ScrollTrigger both exist, so this is the
+           one honest signal that the JS motion system is actually driving.
+           data-mk-motion is NOT that signal — showAll() sets it on the bail-out
+           paths too. The CSS entrance animations stand down against this, and
+           run on their own when it never appears. */
+        try { root.setAttribute('data-mk-gsap', 'on'); } catch (e) { }
+
         /* Teach ScrollTrigger about <body> BEFORE a single trigger exists. */
         module('scroller wiring', wireScroller);
 
