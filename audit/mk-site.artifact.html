@@ -1184,37 +1184,40 @@
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      10 — WORK   ·   depth: --s2 (surface-2)
-     Filter pills + eight real projects on the pinned rail.
+     ----------------------------------------------------------------------------
+     Rebuilt. What changed and why:
+
+     · The head is CENTRED. It introduces a horizontal journey, so anchoring it
+       to the left put the eye in the wrong place before the travel starts.
+
+     · NOTHING IS CROPPED. The old card put the screenshot inside .media-cut,
+       whose clip-path takes a wedge out of the top-right corner, and sized the
+       box at 16/10 against images that are 1100x688. Both are gone: the media
+       box now carries the images' own aspect-ratio, so the whole screenshot is
+       on screen at its true proportions.
+
+     · The project dialog is GONE, and with it the "Project brief" button. The
+       card already carried the same sentence as its own text, so the panel
+       existed to show the visitor something they had just read. One card, one
+       description, one action.
+
+     · The category filter is gone too. Three of the six categories matched a
+       single project, so it sorted almost nothing — and it resized the track
+       underneath a pinned ScrollTrigger, which is the most fragile thing that
+       can happen to a pinned horizontal rail.
+
+     · The rail ends on the studio mark: the last panel is the logo, which
+       ignites as it arrives and dissolves into a soft blur as the section
+       releases. js/work.js owns that; the CSS carries a fallback.
+
      JS hooks that must survive verbatim:
-       .pill-filter.filter-btn[data-filter]
        .rail.mk-rail[data-rail] > .rail__track.mk-rail-track[data-rail-track]
-       .project-card[data-category][data-brief] > .project-title
-                                                + .project-link
-                                                + .project-details-btn
-       #projectDialog with [data-dialog-title|body|link|close]
-     The dialog exists ONCE on the page and sits outside the section, because
-     motion.js pins the section and a pinned ancestor would trap a fixed panel.
-
-     Two things about the copy, both deliberate:
-
-     · Every line here is the owner's own description of the client, and
-       nothing more — no durations, no outcomes, no invented metrics. Where a
-       project needs sizing, use a public and checkable fact: SL Smarts is
-       sized by its 4,000+ live listings. Nothing commercial about a client
-       belongs on a public page.
-
-     · Laft is finished but still waiting on its production domain, so it
-       carries a "Launching soon" badge and deliberately has NO .project-link.
-       js/ui.js already handles that: open() hides [data-dialog-link] when the
-       card has no link, so the brief panel degrades on its own.
-
-     Image loading: the first two cards are what a visitor sees before any
-     scroll, so they load eagerly. The other six are lazy.
+       .work__outro[data-work-outro] > .work__mark[data-work-mark]
      ══════════════════════════════════════════════════════════════════════════ -->
 <section class="section section--s2" id="work" aria-labelledby="work-title">
   <div class="container container--wide stack stack--2xl">
 
-    <div class="section-head" data-anim="up">
+    <div class="section-head section-head--center" data-anim="up">
       <p class="chip">
         <span class="chip__mark" aria-hidden="true">
           <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
@@ -1222,79 +1225,56 @@
         Selected work
       </p>
       <h2 class="section-head__title" id="work-title" data-anim="lines">Eight builds across five sectors</h2>
-      <p class="section-head__lede">Seven of these are online now. The eighth is finished and waiting on its production domain.</p>
-    </div>
-
-    <div class="cluster" role="group" aria-label="Filter projects by category" data-anim="up">
-      <button class="pill-filter filter-btn is-active" type="button" data-filter="all" aria-pressed="true">All</button>
-      <button class="pill-filter filter-btn" type="button" data-filter="corporate" aria-pressed="false">Corporate</button>
-      <button class="pill-filter filter-btn" type="button" data-filter="marketplace" aria-pressed="false">Marketplace</button>
-      <button class="pill-filter filter-btn" type="button" data-filter="government" aria-pressed="false">Government</button>
-      <button class="pill-filter filter-btn" type="button" data-filter="education" aria-pressed="false">Education</button>
-      <button class="pill-filter filter-btn" type="button" data-filter="healthcare" aria-pressed="false">Healthcare</button>
+      <p class="section-head__lede">
+        Seven are online now. The eighth is finished and waiting on its production domain.
+      </p>
     </div>
 
     <div class="rail mk-rail" data-rail>
-      <div class="rail__track mk-rail-track" data-rail-track data-anim="stagger">
+      <div class="rail__track mk-rail-track" data-rail-track>
 
         <!-- 1 — Sakhaa Program -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="government"
-                 data-brief="Sakhaa Program, run by the Saudi Ministry of Human Resources and Social Development. I am the site's lead admin.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="government">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/sakhaa.jpg"
                  srcset="assets/projects/sakhaa-668.jpg 668w, assets/projects/sakhaa.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The Sakhaa Program home page, showing the Arabic navigation bar above a full-width carousel slide"
-                 width="1100" height="688"
-                 loading="lazy" decoding="async">
+                 width="1100" height="688">
           </div>
           <div class="card__body">
             <p class="card__meta">Government</p>
             <h3 class="project-title">Sakhaa Program</h3>
-            <p class="card__text">A Saudi ministry programme site, where I am the lead admin.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="https://sakhaaprogram.hrsd.gov.sa/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: Sakhaa Program">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: Sakhaa Program">Project brief</button>
-            </div>
+            <p class="card__text">A Saudi Ministry of Human Resources and Social Development programme. I am the site's lead admin.</p>
+            <a class="btn btn--quiet project-link" href="https://sakhaaprogram.hrsd.gov.sa/" target="_blank" rel="noopener"
+               aria-label="Visit the site: Sakhaa Program">Visit the site</a>
           </div>
         </article>
 
         <!-- 2 — SL Smarts -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="marketplace"
-                 data-brief="A classifieds marketplace in the Dubizzle mould, carrying more than 4,000 real listings. A large amount of the functionality is custom-coded rather than assembled from plugins.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="marketplace">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/slsmarts.jpg"
                  srcset="assets/projects/slsmarts-668.jpg 668w, assets/projects/slsmarts.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The SL Smarts home page, showing the listing search bar with fields for what and where, above a row of category shortcuts"
-                 width="1100" height="688"
-                 loading="lazy" decoding="async">
+                 width="1100" height="688">
           </div>
           <div class="card__body">
             <p class="card__meta">Marketplace</p>
             <h3 class="project-title">SL Smarts</h3>
-            <p class="card__text">A classifieds marketplace carrying more than 4,000 real listings.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="https://slsmarts.com/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: SL Smarts">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: SL Smarts">Project brief</button>
-            </div>
+            <p class="card__text">A classifieds marketplace carrying more than 4,000 real listings, with much of the functionality custom-coded rather than assembled from plugins.</p>
+            <a class="btn btn--quiet project-link" href="https://slsmarts.com/" target="_blank" rel="noopener"
+               aria-label="Visit the site: SL Smarts">Visit the site</a>
           </div>
         </article>
 
         <!-- 3 — Sharik -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="corporate"
-                 data-brief="Sharik is an integrated marketing services company in Saudi Arabia.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="corporate">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/sharikco.jpg"
                  srcset="assets/projects/sharikco-668.jpg 668w, assets/projects/sharikco.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The Sharik home page, showing the Arabic welcome headline, the main navigation and a scroll prompt"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1302,72 +1282,53 @@
             <p class="card__meta">Corporate</p>
             <h3 class="project-title">Sharik</h3>
             <p class="card__text">An integrated marketing services company in Saudi Arabia.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="https://sharikco.com/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: Sharik">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: Sharik">Project brief</button>
-            </div>
+            <a class="btn btn--quiet project-link" href="https://sharikco.com/" target="_blank" rel="noopener"
+               aria-label="Visit the site: Sharik">Visit the site</a>
           </div>
         </article>
 
         <!-- 4 — Dr Mohamed Osama -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="healthcare"
-                 data-brief="A site for Dr Mohamed Osama's dental practice. The interactions on it are hand-coded rather than driven by plugins.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="healthcare">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/drmo.jpg"
                  srcset="assets/projects/drmo-668.jpg 668w, assets/projects/drmo.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The Dr Mohamed Osama home page, showing a treatment-room photograph beside the Arabic headline and two contact buttons"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
           <div class="card__body">
             <p class="card__meta">Healthcare</p>
             <h3 class="project-title">Dr Mohamed Osama</h3>
-            <p class="card__text">A dental practice, with the interactions hand-coded rather than dropped in.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="https://drmo.dentx-agency.com/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: Dr Mohamed Osama">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: Dr Mohamed Osama">Project brief</button>
-            </div>
+            <p class="card__text">A dental practice, with the interactions hand-coded rather than driven by plugins.</p>
+            <a class="btn btn--quiet project-link" href="https://drmo.dentx-agency.com/" target="_blank" rel="noopener"
+               aria-label="Visit the site: Dr Mohamed Osama">Visit the site</a>
           </div>
         </article>
 
-        <!-- 5 — Laft.  No .project-link: the production domain is not live yet,
-             and a staging address is not a site to send a visitor to. The badge
-             says so in words, and ui.js hides the dialog's link by itself. -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="corporate"
-                 data-brief="Laft is a large Saudi B2B brand. The build is finished and waiting on its production domain, so there is no public address to link to yet.">
-          <div class="project-card__media media-cut">
+        <!-- 5 — Laft. No link: the production domain is not live yet, and a
+             staging address is not a site to send a visitor to. -->
+        <article class="card card--flush project-card rail__item" data-category="corporate">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/laft.jpg"
                  srcset="assets/projects/laft-668.jpg 668w, assets/projects/laft.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The Laft home page, showing the Arabic headline over a dark gradient with two calls to action"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
           <div class="card__body">
             <p class="card__meta">Corporate</p>
             <h3 class="project-title">Laft</h3>
-            <p class="card__text">A large Saudi B2B brand. The build is finished.</p>
-            <div class="project-card__actions">
-              <span class="badge badge--brand">Launching soon</span>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: Laft">Project brief</button>
-            </div>
+            <p class="card__text">A large Saudi B2B brand. The build is finished and waiting on its production domain.</p>
+            <span class="badge badge--brand">Launching soon</span>
           </div>
         </article>
 
         <!-- 6 — Dremora -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="marketplace"
-                 data-brief="Dremora sells children's stories online.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="marketplace">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/dremora.jpg"
                  srcset="assets/projects/dremora-668.jpg 668w, assets/projects/dremora.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The Dremora home page, showing an illustrated space scene with a headline and an order button"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1375,23 +1336,17 @@
             <p class="card__meta">Marketplace</p>
             <h3 class="project-title">Dremora</h3>
             <p class="card__text">Children's stories, sold online.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="http://dremora.fun/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: Dremora">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: Dremora">Project brief</button>
-            </div>
+            <a class="btn btn--quiet project-link" href="http://dremora.fun/" target="_blank" rel="noopener"
+               aria-label="Visit the site: Dremora">Visit the site</a>
           </div>
         </article>
 
         <!-- 7 — Rehal -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="corporate"
-                 data-brief="Rehal runs light-aviation transport services in Saudi Arabia.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="corporate">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/rehal.jpg"
                  srcset="assets/projects/rehal-668.jpg 668w, assets/projects/rehal.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The Rehal home page, showing the headline about urgent shipments beside a live operations panel"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1399,23 +1354,17 @@
             <p class="card__meta">Corporate</p>
             <h3 class="project-title">Rehal</h3>
             <p class="card__text">Light-aviation transport services in Saudi Arabia.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="https://rehal.sa/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: Rehal">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: Rehal">Project brief</button>
-            </div>
+            <a class="btn btn--quiet project-link" href="https://rehal.sa/" target="_blank" rel="noopener"
+               aria-label="Visit the site: Rehal">Visit the site</a>
           </div>
         </article>
 
         <!-- 8 — London Royal Academy -->
-        <article class="card card--flush project-card rail__item"
-                 data-category="education"
-                 data-brief="London Royal Academy works in education.">
-          <div class="project-card__media media-cut">
+        <article class="card card--flush project-card rail__item" data-category="education">
+          <div class="project-card__media">
             <img class="project-card__img" src="assets/projects/londonra.jpg"
                  srcset="assets/projects/londonra-668.jpg 668w, assets/projects/londonra.jpg 1100w"
-                 sizes="(min-width: 900px) 334px, 78vw"
+                 sizes="(min-width: 900px) 420px, 82vw"
                  alt="The London Royal Academy home page, showing a featured course with its dates and venues above a course search row"
                  width="1100" height="688" loading="lazy" decoding="async">
           </div>
@@ -1423,37 +1372,32 @@
             <p class="card__meta">Education</p>
             <h3 class="project-title">London Royal Academy</h3>
             <p class="card__text">An education provider.</p>
-            <div class="project-card__actions">
-              <a class="btn btn--quiet project-link" href="https://londonra.com/" target="_blank" rel="noopener"
-                 aria-label="Visit the site: London Royal Academy">Visit the site</a>
-              <button class="btn btn--quiet project-details-btn" type="button"
-                      aria-label="Project brief: London Royal Academy">Project brief</button>
-            </div>
+            <a class="btn btn--quiet project-link" href="https://londonra.com/" target="_blank" rel="noopener"
+               aria-label="Visit the site: London Royal Academy">Visit the site</a>
           </div>
         </article>
+
+        <!-- THE CLOSE. The last thing the horizontal travel arrives at is the
+             mark itself: it ignites as it comes in and dissolves into a soft
+             blur as the section lets go. Real content, not decoration — the
+             <img> keeps its alt and the line under it is the section's claim,
+             so a screen reader and a no-JS visitor both get something. -->
+        <div class="rail__item work__outro" data-work-outro>
+          <img class="work__mark" src="assets/images/logo-gradient.png" data-work-mark
+               alt="MK — Mohamed Khaled" width="512" height="135" loading="lazy" decoding="async">
+          <p class="work__outro-line">Eight of two hundred and ten.</p>
+          <a class="btn btn--primary" href="#contact">Start a project</a>
+        </div>
 
       </div>
     </div>
 
-    <p class="work__note" data-anim="fade">The row scrolls sideways. Use the filters above to narrow it to one sector.</p>
+    <p class="work__note" data-anim="fade">The row travels sideways as you scroll. Swipe it by hand at any time.</p>
 
   </div>
 </section>
 
-<!-- The project brief panel. One per page, never one per card. js/ui.js fills the
-     title from .project-title, the body from the card's data-brief and the link
-     from .project-link — it writes no copy of its own, and it hides the link on
-     a card that has none (Laft). -->
-<div class="dialog" id="projectDialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" aria-hidden="true">
-  <div class="dialog__panel">
-    <button class="dialog__close" type="button" data-dialog-close aria-label="Close the project brief">
-      <svg viewBox="0 0 24 24" aria-hidden="true" width="24" height="24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <h2 class="dialog__title" id="dialogTitle" data-dialog-title></h2>
-    <p class="dialog__body" data-dialog-body></p>
-    <a class="btn btn--primary" data-dialog-link href="#" target="_blank" rel="noopener">Visit the site</a>
-  </div>
-</div>
+
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      11 — TESTIMONIALS   ·   depth: --s1 (surface-1)
@@ -2333,6 +2277,10 @@
   <!-- After motion.js and rails.js: it takes data-anim off the card groups it
        drives, so the two systems never animate the same nodes. -->
   <script src="js/cards.js" defer></script>
+  <!-- Last. It takes data-rail off the Work rail at parse time, before
+       motion.js's initRail() can claim it — two pins on one element do not
+       degrade, they fight. -->
+  <script src="js/work.js" defer></script>
 
   <!-- ═══ CURSOR ═══ one node, last in the body, hidden on a coarse pointer. -->
   <div class="mk-cursor mk-cursor-ring" aria-hidden="true"><i class="mk-cursor-dot"></i></div>

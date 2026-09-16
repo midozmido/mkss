@@ -343,32 +343,12 @@
     update();
   }
 
-  /* ── 5. Portfolio filter ─────────────────────────────────── */
-  function initFilter() {
-    var btns = $$('.filter-btn');
-    var cards = $$('.project-card');
-    if (!btns.length || !cards.length) return;
-
-    btns.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var want = btn.getAttribute('data-filter');
-        btns.forEach(function (b) {
-          var on = b === btn;
-          b.classList.toggle('is-active', on);
-          b.setAttribute('aria-pressed', on ? 'true' : 'false');
-        });
-        cards.forEach(function (card) {
-          var cat = card.getAttribute('data-category');
-          var show = (want === 'all' || cat === want);
-          card.hidden = !show;
-        });
-        /* Filtering changes the rail's width, so the pinned scroll has to
-           re-measure or its end position is stale. */
-        if (window.ScrollTrigger) requestAnimationFrame(function () { ScrollTrigger.refresh(); });
-      });
-      btn.setAttribute('aria-pressed', btn.classList.contains('is-active') ? 'true' : 'false');
-    });
-  }
+  /* Sections 5 and 7 — the portfolio filter and the project dialog — were
+     removed with the Work section rebuild. The filter sorted eight projects
+     across six categories, three of which matched a single item, and it
+     resized the track underneath a pinned ScrollTrigger. The dialog showed the
+     visitor the same sentence the card had just shown them. Neither markup
+     exists any more, so neither module does. */
 
   /* ── 6. FAQ accordion ────────────────────────────────────── */
   function initFaq() {
@@ -397,67 +377,6 @@
         q.setAttribute('aria-expanded', String(!open));
       });
     });
-  }
-
-  /* ── 7. Project detail dialog ────────────────────────────── */
-  function initProjectDialog() {
-    var cards = $$('.project-card');
-    if (!cards.length) return;
-
-    var dialog = $('#projectDialog');
-    if (!dialog) return;
-
-    var titleEl = $('[data-dialog-title]', dialog);
-    var bodyEl = $('[data-dialog-body]', dialog);
-    var linkEl = $('[data-dialog-link]', dialog);
-    var closeEl = $('[data-dialog-close]', dialog);
-    var lastFocus = null;
-
-    function open(card) {
-      lastFocus = document.activeElement;
-      var t = $('.project-title', card);
-      var link = $('.project-link', card);
-      var brief = card.getAttribute('data-brief') || '';
-      if (titleEl) titleEl.textContent = t ? t.textContent.trim() : '';
-      if (bodyEl) bodyEl.textContent = brief;
-      if (linkEl && link) { linkEl.href = link.href; linkEl.hidden = false; }
-      else if (linkEl) linkEl.hidden = true;
-      dialog.classList.add('is-open');
-      dialog.setAttribute('aria-hidden', 'false');
-      lockScroll('dialog');
-      if (closeEl) closeEl.focus();
-    }
-    function close() {
-      dialog.classList.remove('is-open');
-      dialog.setAttribute('aria-hidden', 'true');
-      unlockScroll('dialog');
-      if (lastFocus && lastFocus.focus) lastFocus.focus();
-    }
-
-    cards.forEach(function (card) {
-      var btn = $('.project-details-btn', card);
-      if (btn) btn.addEventListener('click', function (e) { e.preventDefault(); open(card); });
-    });
-    if (closeEl) closeEl.addEventListener('click', close);
-    dialog.addEventListener('click', function (e) { if (e.target === dialog) close(); });
-    document.addEventListener('keydown', function (e) {
-      if (!dialog.classList.contains('is-open')) return;
-      if (e.key === 'Escape') { close(); return; }
-      /* The panel declares aria-modal="true", which promises the rest of the
-         page is inert — but nothing enforced it, so Tab walked straight out
-         into the page behind. Measured: of seven tabs from the open dialog,
-         six landed outside it. Same trap the menu already uses. */
-      if (e.key !== 'Tab') return;
-      var f = $$('a[href], button:not([disabled])', dialog).filter(function (el) {
-        return (el.offsetWidth || el.offsetHeight) && !el.hidden;
-      });
-      if (!f.length) return;
-      var first = f[0], last = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-      else if (!dialog.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
-    });
-    dialog.setAttribute('aria-hidden', 'true');
   }
 
   /* ── 8. Marquee pause — fallback only ────────────────────────
@@ -538,9 +457,7 @@
     module('anchors', function () { initAnchors(menu); });
     module('scroll-spy', initSpy);
     module('chrome', initChrome);
-    module('filter', initFilter);
     module('faq', initFaq);
-    module('project dialog', initProjectDialog);
     module('marquee fallback', initMarqueeFallback);
     module('rail fallback', initRailFallback);
   }

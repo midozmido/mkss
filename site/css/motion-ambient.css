@@ -772,3 +772,116 @@ html:not([data-mk-gsap="on"]) .scroll-indicator {
     animation: none;
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   10. WORK — the rebuilt rail and its closing mark
+   ----------------------------------------------------------------------------
+   The screenshots are the product here, so nothing is allowed to cut them.
+   Both of the old crops are undone below, and the rail carries a final panel:
+   the studio mark, which ignites as the travel reaches it and dissolves into a
+   soft blur as the section lets go.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* NOT .media-cut. That clip-path takes a wedge out of the top-right corner of
+   whatever it holds, and what it held here was the client's home page. And the
+   box carries the screenshots' OWN ratio — 1100x688 — instead of 16/10, so
+   object-fit has nothing left to trim. */
+.project-card__media {
+  aspect-ratio: 1100 / 688;
+  overflow: hidden;
+  border-start-start-radius: var(--radius-xl);
+  border-start-end-radius: var(--radius-xl);
+  background-color: var(--surface-2);
+}
+
+.project-card__img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  transition: scale var(--dur-slow) var(--ease-out);
+}
+
+/* The one hover gesture the cards already use, applied to the screenshot. */
+.project-card:hover .project-card__img {
+  scale: 1.04;
+}
+
+/* A wider card than the old 336px: these are screenshots of full web pages and
+   at 336 the client's own headline was unreadable. */
+@media (min-width: 900px) {
+
+  .rail__item {
+    inline-size: 26.25rem;         /* 420px */
+    max-inline-size: 80vw;
+  }
+}
+
+/* ── The closing panel ─────────────────────────────────────────────────────
+   Sized like a card so the rail's rhythm holds, but it is not a card: no
+   border, no surface, nothing to read as a ninth project. */
+.work__outro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-2xl);
+  text-align: center;
+}
+
+.work__mark {
+  inline-size: min(18rem, 60vw);
+  block-size: auto;
+  /* The resting state IS the lit state, so with no script the mark is simply
+     there. js/work.js takes it from dark to lit and then to blur; the CSS
+     fallback below does the same on its own. */
+  filter: drop-shadow(0 0 var(--space-lg) var(--violet-a28));
+}
+
+.work__outro-line {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  color: var(--text-1);
+  text-wrap: balance;
+}
+
+.work__note {
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* The CSS half: with gsap or ScrollTrigger missing, js/work.js never runs and
+   never sets data-mk-work. The mark then ignites and settles on its own, on a
+   long cycle, so the close is never a dead logo sitting at the end of a row.
+   The blur-out belongs to the scrubbed version only — dissolving something on
+   a timer, with no scroll to bring it back, would just hide it. */
+html:not([data-mk-work="on"]) .work__mark {
+  animation: mk-mark-ignite 6s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes mk-mark-ignite {
+  from {
+    filter: drop-shadow(0 0 var(--space-sm) var(--violet-a28));
+    opacity: 0.8;
+  }
+
+  to {
+    filter: drop-shadow(0 0 var(--space-2xl) var(--violet-400));
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  html:not([data-mk-work="on"]) .work__mark {
+    animation: none;
+  }
+
+  .project-card:hover .project-card__img {
+    scale: 1;
+  }
+}
