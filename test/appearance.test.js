@@ -65,6 +65,20 @@ test('حدّ التباين في التوكنات الفاتحة يمرّ على
   }
 });
 
+test('كل شارة حالة تمرّ ‎4.5‎ فوق خلفيتها الفاتحة', () => {
+  // العيب الذي أوجب هذا الاختبار: ‎--neutral‎ فوق ‎--neutral-soft‎ كان ‎4.20‎.
+  // ظلّ مختبئًا لأن الشارة المحايدة لم تحمل يومًا إلا كلمةً واحدة قصيرة —
+  // حتى صارت تحمل أسماء الإضافات المكتشَفة في صفحة الموقع. الشارات الخمس
+  // تُقاس معًا: أيّها انفرد عن العائلة سقط هنا لا في جولة فحص بعد شهور.
+  const pick = (name) => (css.match(new RegExp(`\\s--${name}:\\s*(#[0-9a-f]{6})`, 'i')) || [])[1];
+  for (const name of ['ok', 'warn', 'danger', 'info', 'neutral']) {
+    const fg = pick(name), bg = pick(`${name}-soft`);
+    assert.ok(fg && bg, `توكنا ‎${name}‎ مفقودان`);
+    const r = contrast(fg, bg);
+    assert.ok(r >= 4.5, `‎--${name}‎ فوق ‎--${name}-soft‎ = ${r.toFixed(2)}:1`);
+  }
+});
+
 // ——— عدّادات اللوحة: الرقم أعلى الصفحة يجب ألّا يناقض البطاقة تحته ———
 import { run, nowISO } from '../src/db.js';
 import { migrate } from '../src/migrations.js';

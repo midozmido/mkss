@@ -11,6 +11,13 @@ import { money } from '../repo.js';
  * الجملة التي تحكي حالة الموقع.
  * العميل غير التقني يفهم «شغّال من 47 يوم» ولا يفهم «Uptime 99.97%».
  */
+/** نسبة التشغيل كما تُقرأ: خانتان عشريتان قرب المئة حيث تحملان المعنى،
+ *  ورقم صحيح دونها — «‎66.67%‎» من ثلاثة فحوص ادّعاء دقّة لا سند له. */
+function uptimePercent(p) {
+  if (p == null) return '—';
+  return (p >= 99 ? Number(p.toFixed(2)) : Math.round(p)) + '%';
+}
+
 export function narrative({ site, streak, uptime, lastMaintenance, tlsDays }) {
   const bits = [];
 
@@ -178,7 +185,7 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
 
   <div class="stats">
     <div class="stat">
-      <div class="stat-value">${uptime.percent == null ? '—' : uptime.percent + '%'}</div>
+      <div class="stat-value">${uptimePercent(uptime.percent)}</div>
       <div class="stat-label">تشغيل آخر ${plural(uptime.days, 'يوم', 'يومين', 'أيام', 'يومًا')}</div>
     </div>
     <div class="stat">
@@ -268,7 +275,7 @@ export function sitePage({ user, site, check, checks, incidents, maintenance, up
 
   ${uptime.hasGaps
     ? `<div class="alert alert-info">${icon('clock')}<div>
-        <b>شفافية:</b> توقفت مراقبتنا ${uptime.gapMinutes} دقيقة خلال هذه الفترة
+        <b>شفافية:</b> توقفت مراقبتنا ${humanMinutes(uptime.gapMinutes)} خلال هذه الفترة
         (${plural(uptime.gaps.length, 'انقطاع واحد', 'انقطاعان', 'انقطاعات', 'انقطاعًا')}).
         لم نحسب هذه المدة وقت تشغيل، ولا ندّعي معرفة ما حدث فيها.
       </div></div>`
