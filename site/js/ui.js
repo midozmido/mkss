@@ -178,6 +178,14 @@
       var el = scroller();
       var dest = Math.max(0, target.getBoundingClientRect().top + scrollTop() - offset());
       if (reduced()) { el.scrollTop = dest; window.scrollTo(0, dest); return; }
+      /* When Lenis owns the scroll, hand it the move. A native smooth scroll
+         alongside Lenis means two animations writing the same scrollTop, which
+         is the same fight base.css now disarms for the wheel — js/motion.js
+         publishes this hook for exactly this caller. */
+      if (window.MKMotion && typeof window.MKMotion.scrollTo === 'function' &&
+          document.documentElement.getAttribute('data-mk-lenis') === 'on') {
+        if (window.MKMotion.scrollTo(dest) !== false) return;
+      }
       if (el.scrollTo) el.scrollTo({ top: dest, behavior: 'smooth' });
       else el.scrollTop = dest;
       /* If smooth scrolling is unavailable or refused, land anyway. */
@@ -498,6 +506,32 @@
     else window.addEventListener('load', function () { window.setTimeout(adopt, 0); });
   }
 
+  /* ── 9. Work rail fallback — only when ScrollTrigger never arrived ──
+     From 900px the work rail is pinned by ScrollTrigger and GSAP translates
+     the track, so components.css keeps the rail overflow:hidden — making it a
+     native scroll container would fight the pin.
+
+     But when GSAP is blocked (an ad blocker, a corporate proxy, a blocked
+     region) the pin never builds, the track keeps its full width, and the
+     cards past the rail's edge become unreachable by any means: measured
+     2869px of cards inside a 1344px rail, six of eight projects stranded.
+
+     So the rail is made scrollable ONLY on that path. The check runs after
+     load, by which point the deferred CDN scripts have either arrived or
+     failed, and it asks for ScrollTrigger specifically — that is what pins. */
+  function initRailFallback() {
+    var rails = $$('.mk-rail, .rail');
+    if (!rails.length) return;
+
+    function decide() {
+      var pinned = (typeof window.ScrollTrigger !== 'undefined') && !!window.ScrollTrigger;
+      rails.forEach(function (r) { r.classList.toggle('is-unpinned', !pinned); });
+    }
+
+    if (document.readyState === 'complete') window.setTimeout(decide, 0);
+    else window.addEventListener('load', function () { window.setTimeout(decide, 0); });
+  }
+
   /* ── boot ────────────────────────────────────────────────── */
   function boot() {
     var menu = module('menu', initMenu);
@@ -508,6 +542,7 @@
     module('faq', initFaq);
     module('project dialog', initProjectDialog);
     module('marquee fallback', initMarqueeFallback);
+    module('rail fallback', initRailFallback);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

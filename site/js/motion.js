@@ -999,6 +999,11 @@
         module('lenis construct', function () { instance = new L(opts); });
         if (!instance) return null;
 
+        /* base.css turns html{scroll-behavior:smooth} off against this marker.
+           Set only after a successful construct, so a failed Lenis leaves the
+           native smooth scroll it was going to replace. */
+        try { root.setAttribute('data-mk-lenis', 'on'); } catch (e) { }
+
         module('lenis sync', function () {
             instance.on('scroll', ScrollTrigger.update);
             /* Stored, not anonymous: an orphaned ticker callback would keep
@@ -1389,6 +1394,8 @@
                         if (lenis) {
                             module('lenis destroy', function () { lenis.destroy(); });
                             lenis = null;
+                            /* Hand native smooth scrolling back. */
+                            try { root.removeAttribute('data-mk-lenis'); } catch (e) { }
                             module('ticker reset', function () { gsap.ticker.lagSmoothing(500, 33); });
                         }
                         if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);

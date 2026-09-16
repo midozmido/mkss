@@ -40,6 +40,22 @@ html {
   color-scheme: dark;
 }
 
+/* Lenis drives scrolling by writing scrollTop from a rAF loop, once per frame.
+   With scroll-behavior:smooth on the scroll container the browser ANIMATES
+   every one of those writes, so its easing and Lenis's fight each other — the
+   position lags, overshoots and stutters, and a read-back returns a stale
+   value. This file's own detectScroller note in js/motion.js describes exactly
+   that hazard.
+
+   js/motion.js sets data-mk-lenis="on" only once Lenis has actually
+   constructed, and clears it on teardown, so native smooth scrolling stays for
+   every visitor who is NOT running Lenis — no JavaScript, a blocked CDN, or
+   reduced motion. */
+html[data-mk-lenis="on"] {
+  scroll-behavior: auto;
+}
+
+
 body {
   min-height: 100vh;
   font-family: var(--font-body);

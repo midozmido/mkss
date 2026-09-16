@@ -914,17 +914,25 @@
 
 @media (min-width: 900px) {
 
-  /* auto, not hidden. From 900px the rail is normally driven by a pinned
-     ScrollTrigger, and `hidden` was fine while that was guaranteed. It is not:
-     with GSAP blocked the pin never builds and the track keeps its full width
-     — measured 2869px of cards inside a 1344px rail, so six of eight projects
-     became unreachable by any means. `auto` shows a scrollbar only when the
-     pin is absent, and costs nothing when it is there. */
+  /* hidden, because from 900px this rail is pinned by ScrollTrigger and GSAP
+     translates the track itself. Making it a native scroll container fights
+     that pin: the visitor gets two competing scroll mechanisms and the pin
+     measures against a scrollport that now moves under it.
+
+     The no-GSAP case — where the pin never builds and 2869px of cards sit
+     unreachable inside a 1344px rail — is handled from js/ui.js instead, which
+     adds .is-unpinned only after confirming ScrollTrigger never arrived. */
   .rail,
   .mk-rail {
+    overflow: hidden;
+    scroll-snap-type: none;
+  }
+
+  /* Set by js/ui.js, and only when ScrollTrigger is absent. */
+  .rail.is-unpinned,
+  .mk-rail.is-unpinned {
     overflow-x: auto;
     overflow-y: hidden;
-    scroll-snap-type: none;
   }
 
   .rail__item {
