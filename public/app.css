@@ -765,7 +765,13 @@ tbody tr:last-child td { border-block-end: none; }
 .btn-block { inline-size: 100%; }
 
 /* ——— النماذج ——— */
+/* الهامش السفلي مكتوبٌ للتدفّق العادي، حيث ينهار مع هامش الجار فيبقى ‎16‎.
+   لكنّه **لا** ينهار داخل حاوية ‎grid‎ أو ‎flex‎: هناك يُجمع إلى ‎gap‎ الحاوية،
+   فتصير الفجوة ‎32‎ بين حقلين في «الإعدادات» و«العملاء» على الهاتف بينما هي
+   ‎16‎ في «الاشتراك» — العلاقةُ نفسها بمسافتين، والفارقُ صدفةُ الحاوية التي
+   كُتب بها النموذج. الفجوة تحكم حيث توجد، والهامش حيث لا توجد. */
 .field { display: block; margin-block-end: var(--s-4); }
+.grid > .field, .row > .field, .auth-form > .field { margin-block-end: 0; }
 .field > label { display: block; font-weight: var(--w-medium); font-size: var(--t-sm); margin-block-end: var(--s-2); }
 .field .hint { font-size: var(--t-xs); color: var(--text-faint); margin-block-start: var(--s-1); }
 /* قائمة الأنواع المعدودة كانت تترك خارجها كل ‎<input>‎ بلا سمة ‎type‎ — وهي
@@ -1654,15 +1660,26 @@ body.is-auth {
 /* تثبّت المسافة بين الترويسة والنموذج سواء ظهرت رسالة أو لم تظهر */
 .auth-slot { min-block-size: var(--s-2); }
 
-.auth-form { display: grid; gap: clamp(var(--s-3), 2.6vh, var(--s-5)); }
+.auth-form { display: grid; gap: clamp(var(--s-3), 2.2vh, 1.25rem); }
 
 /* ——— الحقول ——— */
-.is-auth .field { display: grid; gap: var(--s-3); }
+/* ‎margin-block-end: 0‎ ليس تنظيفًا بل إصلاح:
+   القاعدة العامة ‎.field‎ تحمل ‎margin-block-end: var(--s-4)‎ لأنها مكتوبة
+   لنماذج لا تستعمل ‎gap‎. وهنا النموذج شبكةٌ لها ‎gap‎ أصلًا، فكان البُعدان
+   يتراكمان: ‎23‎ من الفجوة + ‎16‎ من الهامش = ‎39px‎ بين حقلٍ وحقل، وهو ضعف
+   ما تقوله القاعدة المكتوبة. فجوةٌ واحدة تحكم، والهامش يُصفَّر.
+
+   والتسمية أقرب إلى حقلها (‎8px‎) من بُعد الحقل عن جاره (‎20px‎): التقارب هو
+   ما يجعل العين تقرأهما وحدةً واحدة بدل أربعة عناصر متساوية البعد. */
+.is-auth .field { display: grid; gap: var(--s-2); margin-block-end: 0; }
 /* ‎13px‎ فوق حقلٍ ارتفاعه ‎46px‎: التسمية أصغر بكثير مما تصفه، فتُقرأ حاشية
    لا عنوانًا للحقل. */
 .is-auth .field > label {
   font-size: clamp(var(--t-base), .8rem + .3vw, var(--t-md));
   font-weight: var(--w-medium); color: var(--text);
+  /* نفس تراكم القاعدة العامة مع ‎gap‎: ‎.field > label‎ تحمل هامشًا سفليًّا
+     قدره ‎8px‎، فكانت الفجوة ‎16‎ بينما القاعدة تقول ‎8‎. */
+  margin-block-end: 0;
 }
 .is-auth input {
   min-block-size: clamp(46px, 42px + .7vw, 54px);
@@ -1817,6 +1834,8 @@ body.is-auth {
 .auth-form-wrap > .auth-form .field:nth-of-type(1) { animation-delay: .28s; }
 .auth-form-wrap > .auth-form .field:nth-of-type(2) { animation-delay: .36s; }
 .auth-form-wrap > .auth-form > button          { animation: auth-in .45s var(--ease) .44s both; }
+/* الزرّ فعلٌ لا حقل، فيفصله بُعدٌ أكبر قليلًا من بُعد الحقول بعضها عن بعض */
+.auth-form-wrap > .auth-form > button { margin-block-start: var(--s-1); }
 
 @keyframes khatam-in { from { opacity: 0; } }
 .khatam { animation: khatam-in 1.3s var(--ease) both; }

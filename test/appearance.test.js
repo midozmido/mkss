@@ -205,3 +205,20 @@ test('‎--warn‎ يمرّ على أرضية صفحة الدخول لا على 
     assert.ok(r >= 4.5, `‎--warn‎ فوق ‎${label}‎ = ${r.toFixed(2)}:1`);
   }
 });
+
+test('هامش الحقل لا يُجمَع إلى فجوة الحاوية', () => {
+  // ‎.field‎ تحمل ‎margin-block-end‎ لأنها مكتوبة للتدفّق العادي، حيث ينهار
+  // الهامشان فتبقى المسافة واحدة. وداخل ‎grid/flex‎ لا انهيار: الهامش يُجمع
+  // إلى ‎gap‎ فتتضاعف الفجوة. قِيس فعلًا: ‎32px‎ بين حقلين في نماذج «الإعدادات»
+  // و«العملاء» على الهاتف مقابل ‎16px‎ في «الاشتراك» — العلاقة نفسها بمسافتين.
+  // الحارس هنا: كل حاوية ذات ‎gap‎ تحوي ‎.field‎ يجب أن تُصفّر هامشه.
+  const m = css.match(/\.field \{[^}]*margin-block-end:\s*([^;]+);/);
+  assert.ok(m, 'قاعدة ‎.field‎ أو هامشها مفقودة');
+  // القاعدة المصفِّرة موجودة وتغطّي الحاويات الثلاث المستعملة
+  const zero = css.match(/([^\n{]*)\{\s*margin-block-end:\s*0;\s*\}/g) || [];
+  const covering = zero.find((r) => /\.grid > \.field/.test(r));
+  assert.ok(covering, 'لا قاعدة تُصفّر هامش ‎.field‎ داخل حاوية ذات ‎gap‎');
+  for (const sel of ['.grid > .field', '.row > .field', '.auth-form > .field']) {
+    assert.ok(covering.includes(sel), `الحاوية ${sel} غير مغطّاة`);
+  }
+});
