@@ -10,6 +10,7 @@
 //     */5 * * * *  cd ~/mkss && /home/USER/nodevenv/mkss/22/bin/node cron/check.js >> data/cron.log 2>&1
 //
 // (استبدل المسار بمسار Node الذي تعرضه لك لوحة «Setup Node.js App».)
+import '../src/require-node.js';
 import { migrate } from '../src/migrations.js';
 import { setting, nowISO, db, get } from '../src/db.js';
 import { purgeExpiredSessions } from '../src/auth.js';

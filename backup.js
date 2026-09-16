@@ -9,6 +9,7 @@
 //
 // الجدولة:
 //     0 3 * * *  cd ~/mkss && /path/to/node backup.js >> data/backup.log 2>&1
+import './src/require-node.js';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readdirSync, statSync, unlinkSync, renameSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';

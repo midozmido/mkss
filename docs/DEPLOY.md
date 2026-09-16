@@ -227,7 +227,7 @@ sudo systemctl restart mkss
 | العرض | السبب الغالب |
 |---|---|
 | صفحة بيضاء أو «502» | التطبيق لا يعمل — `sudo journalctl -u mkss -n 50` |
-| «Cannot find module 'node:sqlite'» | نسخة Node أقدم من 22.5 |
+| «Cannot find module 'node:sqlite'» | نسخة Node أقدم من 22.13 |
 | روابط التفعيل تشير إلى localhost | `BASE_URL` غير مضبوط |
 | الشات لا يحدّث لحظيًا | `proxy_buffering off` ناقص في nginx |
 | «عنوان IP غير صحيح» في السجلات | `TRUST_PROXY=1` ناقص |

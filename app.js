@@ -18,6 +18,7 @@
 // (الخطوة ٥ في docs/HOSTINGER.md)، فإن ثبت العزل اضبط ‎MKSS_MONITOR=1‎ في
 // متغيّرات البيئة: يعود المراقب إلى داخل العملية فتملك عمليةٌ واحدة القاعدة
 // كلها. أبطأ في التعافي من الخمول، لكنه يعمل حيث لا يعمل الكرون.
+import './src/require-node.js';
 import { start } from './server.js';
 
 start({ monitorInProcess: process.env.MKSS_MONITOR === '1' });

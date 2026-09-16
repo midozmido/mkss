@@ -90,3 +90,36 @@ test('ترقيم الفواتير لا يتصادم بعد حذف فاتورة',
   const c = admin.adminCreateInvoice(uid, { description: 'بعد الحذف', amount: 300 });
   assert.notEqual(c.number, a.number, 'أعاد رقمًا مستعملًا بعد الحذف');
 });
+
+test('حارس نسخة Node يرفض ما دون ‎22.13‎ ويقبل ما فوقها', async () => {
+  // العطل الذي يحرسه: ‎node:sqlite‎ ظهرت في ‎22.5‎ لكنها ظلّت خلف راية حتى
+  // ‎22.13‎، ومدير التطبيقات المُدار لا يمرّر رايات. فنسخةٌ بينهما تبدو
+  // مطابقة للشرط وتعطي صفحةً بيضاء بلا سبب مفهوم.
+  const { execFileSync } = await import('node:child_process');
+  const root = new URL('..', import.meta.url).pathname;
+
+  const boot = (version) => {
+    try {
+      execFileSync(process.execPath, ['--input-type=module', '-e', `
+        Object.defineProperty(process.versions, 'node', { value: ${JSON.stringify(version)}, configurable: true });
+        await import(${JSON.stringify(new URL('../src/require-node.js', import.meta.url).href)});
+      `], { cwd: root, stdio: 'pipe' });
+      return 0;
+    } catch (e) { return e.status; }
+  };
+
+  for (const bad of ['20.11.0', '22.5.0', '22.12.0']) {
+    assert.equal(boot(bad), 1, `${bad} أقلع رغم أنه لا يشغّل node:sqlite`);
+  }
+  for (const good of ['22.13.0', '24.4.1']) {
+    assert.equal(boot(good), 0, `${good} رُفض وهو صالح`);
+  }
+});
+
+test('‎engines.node‎ يقول الحدّ الحقيقي لا حدّ ظهور الوحدة', () => {
+  // ‎>=22.5.0‎ كان مكتوبًا هنا، وهي النسخة التي ظهرت فيها الوحدة لا التي
+  // تشغّلها بلا راية. ومنصّات تقرأ هذا الحقل لتختار النسخة: الرقم الخاطئ
+  // يختار نسخةً لا تقلع.
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.engines.node, '>=22.13.0');
+});

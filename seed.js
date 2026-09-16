@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // بيانات تجريبية للتشغيل الأول — أدمن + عميل + مواقع + فواتير + صيانة.
+import './src/require-node.js';
 import { randomBytes } from 'node:crypto';
 import { db, get, run, nowISO } from './src/db.js';
 import { migrate } from './src/migrations.js';

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // نقطة الدخول — سيرفر HTTP + المراقب، على node:http وحده.
+import './src/require-node.js';
 import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
@@ -1032,7 +1033,11 @@ export function createApp() {
 
       // حماية المسارات
       if (!isPublic(pathname) && !user) {
-        return redirect(res, '/login');
+        // كلٌّ إلى بوابته. كان الجميع يُرسَل إلى ‎/login‎، فالأدمن الذي انتهت
+        // جلسته ثم فتح إشارةً محفوظة على ‎/admin/chat‎ يهبط في بوابة العملاء،
+        // ويكتب بياناته، فتُرفض بـ«هذه ليست بوابتك» — ثم يبدأ من جديد.
+        // وليس في ذلك سترٌ يُحفظ: ‎/admin/login‎ صفحة عامة يفتحها أي أحد.
+        return redirect(res, pathname.startsWith('/admin') ? '/admin/login' : '/login');
       }
       if (pathname.startsWith('/admin') && pathname !== '/admin/login' && user?.role !== 'admin') {
         // 404 لا 403: لا نؤكد لغير المخوَّل وجود لوحة أدمن

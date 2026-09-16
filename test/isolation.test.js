@@ -196,3 +196,25 @@ test('اسم إيصال لا يخرج بالمسار عن مجلّد الرفع'
     assert.equal(uploads.read(bad), null, `مرّ اسم خطر: ${bad}`);
   }
 });
+
+test('جلسة منتهية على مسار إدارة تعود إلى بوابة الإدارة لا بوابة العملاء', async () => {
+  // العطل: كل زائر بلا جلسة كان يُرسَل إلى ‎/login‎. فالأدمن الذي انتهت جلسته
+  // ثم فتح إشارةً محفوظة يهبط في بوابة العملاء، ويكتب بياناته، فتُرفض —
+  // ثم يبدأ من جديد. ولا سترَ يُفقد: ‎/admin/login‎ عامة أصلًا.
+  const { createApp } = await import('../server.js');
+  const server = createApp();
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    for (const [path, expected] of [
+      ['/admin', '/admin/login'],
+      ['/admin/chat', '/admin/login'],
+      ['/admin/payments', '/admin/login'],
+      ['/', '/login'],
+      ['/billing', '/login'],
+    ]) {
+      const res = await fetch(base + path, { redirect: 'manual' });
+      assert.equal(res.headers.get('location'), expected, `${path} أُرسل إلى ${res.headers.get('location')}`);
+    }
+  } finally { server.close(); }
+});
