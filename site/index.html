@@ -1307,10 +1307,27 @@
      content there is. The rating is spelled out in text as well as drawn, so
      nothing here depends on colour or on counting shapes.
      ══════════════════════════════════════════════════════════════════════════ -->
-<section class="section section--s1" id="testimonials" aria-labelledby="testimonials-title">
-  <div class="container stack stack--2xl">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     11 — CLIENT FEEDBACK   ·   depth: --s1
+     ----------------------------------------------------------------------------
+     A horizontal run, not a grid. The quotes travel right to left as the
+     section passes, driven by js/testimonials.js, and the track fades into the
+     page at both edges so the row reads as continuing past the screen rather
+     than stopping at it.
 
-    <div class="section-head" data-anim="up">
+     THREE quotes, not five. Two more slots were asked for and are deliberately
+     empty: a testimonial is a claim attributed to a named person, and writing
+     one that nobody said would be a fabricated review on a commercial site.
+     Add a fourth and fifth <figure> here, in the same shape, when the real
+     words exist — the rail, the edge fade and the scroll all size themselves
+     from however many are present.
+
+     JS hooks: .quote-rail[data-quote-rail] > .quote-rail__track[data-quote-track]
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section section--s1" id="testimonials" aria-labelledby="testimonials-title">
+  <div class="container container--wide stack stack--2xl">
+
+    <div class="section-head section-head--center" data-anim="up">
       <p class="chip">
         <span class="chip__mark" aria-hidden="true">
           <span class="chip__stroke"></span><span class="chip__stroke"></span><span class="chip__stroke"></span>
@@ -1318,93 +1335,105 @@
         Client feedback
       </p>
       <h2 class="section-head__title" id="testimonials-title" data-anim="lines">What clients said after launch</h2>
-      <p class="section-head__lede">Three people who hired me, in their own words.</p>
+      <p class="section-head__lede">People who hired me, in their own words.</p>
     </div>
 
-    <!-- flick-rail: the three quotes run sideways below 900px and sit in the
-         ordinary grid from 900px. Still no slider — no pagination, no autoplay
-         and no clone: one row, three cards, scrollable by hand at any moment.
-         See css/sections/d.css §17 and js/rails.js. -->
-    <div class="grid grid--3 flick-rail" data-anim="stagger" role="group" tabindex="0"
-      aria-label="What clients said after launch">
+    <div class="quote-rail" data-quote-rail>
+      <div class="quote-rail__track" data-quote-track role="group" tabindex="0"
+           aria-label="What clients said after launch">
+        <figure class="card quote quote-rail__item">
+          <span class="quote__glyph" aria-hidden="true">&rdquo;</span>
+          <p class="quote__rating">
+            <span class="quote__stars" aria-hidden="true">
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            </span>
+            <span class="quote__score">5 out of 5</span>
+          </p>
+          <blockquote class="quote__text">Mohamed understood what I needed from the first call. The site looks like a professional practice, and the process was calm from start to finish.</blockquote>
+          <figcaption class="quote__footer">
+            <span class="quote__monogram" aria-hidden="true">AH</span>
+            <span class="stack stack--xs">
+              <span class="quote__name">Ahmed Hassan</span>
+              <span class="quote__role">Business coach, Cairo</span>
+            </span>
+          </figcaption>
+        </figure>
 
-      <figure class="card quote flick-rail__item">
-        <p class="quote__rating">
-          <span class="quote__stars" aria-hidden="true">
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-          </span>
-          <span class="quote__score">5 out of 5</span>
-        </p>
-        <blockquote class="quote__text">Mohamed understood what I needed from the first call. The site looks like a professional practice, and the process was calm from start to finish.</blockquote>
-        <figcaption class="quote__footer">
-          <span class="quote__monogram" aria-hidden="true">AH</span>
-          <span class="stack stack--xs">
-            <span class="quote__name">Ahmed Hassan</span>
-            <span class="quote__role">Business coach, Cairo</span>
-          </span>
-        </figcaption>
-      </figure>
+        <figure class="card quote quote-rail__item">
+          <span class="quote__glyph" aria-hidden="true">&rdquo;</span>
+          <p class="quote__rating">
+            <span class="quote__stars" aria-hidden="true">
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            </span>
+            <span class="quote__score">5 out of 5</span>
+          </p>
+          <blockquote class="quote__text">My store looks the way I pictured it and the checkout simply works. He was patient with every change I asked for, and he explained why some of them were a bad idea.</blockquote>
+          <figcaption class="quote__footer">
+            <span class="quote__monogram" aria-hidden="true">SM</span>
+            <span class="stack stack--xs">
+              <span class="quote__name">Sara Mohamed</span>
+              <span class="quote__role">Boutique owner, Alexandria</span>
+            </span>
+          </figcaption>
+        </figure>
 
-      <figure class="card quote flick-rail__item">
-        <p class="quote__rating">
-          <span class="quote__stars" aria-hidden="true">
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-          </span>
-          <span class="quote__score">5 out of 5</span>
-        </p>
-        <blockquote class="quote__text">My store looks the way I pictured it and the checkout simply works. He was patient with every change I asked for, and he explained why some of them were a bad idea.</blockquote>
-        <figcaption class="quote__footer">
-          <span class="quote__monogram" aria-hidden="true">SM</span>
-          <span class="stack stack--xs">
-            <span class="quote__name">Sara Mohamed</span>
-            <span class="quote__role">Boutique owner, Alexandria</span>
-          </span>
-        </figcaption>
-      </figure>
-
-      <figure class="card quote flick-rail__item">
-        <p class="quote__rating">
-          <span class="quote__stars" aria-hidden="true">
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
-          </span>
-          <span class="quote__score">5 out of 5</span>
-        </p>
-        <blockquote class="quote__text">I asked for a course platform and got one. Students find their way around it without help, and I add a new lesson myself in a few minutes.</blockquote>
-        <figcaption class="quote__footer">
-          <span class="quote__monogram" aria-hidden="true">KA</span>
-          <span class="stack stack--xs">
-            <span class="quote__name">Karim Abdelrahman</span>
-            <span class="quote__role">Online educator, Dubai</span>
-          </span>
-        </figcaption>
-      </figure>
-
+        <figure class="card quote quote-rail__item">
+          <span class="quote__glyph" aria-hidden="true">&rdquo;</span>
+          <p class="quote__rating">
+            <span class="quote__stars" aria-hidden="true">
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            <svg class="quote__star" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.24 1.03 6-5.38-2.83L6.62 20.14l1.03-6L3.3 9.9l6-.9z"/></svg>
+            </span>
+            <span class="quote__score">5 out of 5</span>
+          </p>
+          <blockquote class="quote__text">I asked for a course platform and got one. Students find their way around it without help, and I add a new lesson myself in a few minutes.</blockquote>
+          <figcaption class="quote__footer">
+            <span class="quote__monogram" aria-hidden="true">KA</span>
+            <span class="stack stack--xs">
+              <span class="quote__name">Karim Abdelrahman</span>
+              <span class="quote__role">Online educator, Dubai</span>
+            </span>
+          </figcaption>
+        </figure>
+      </div>
     </div>
 
   </div>
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     12 — TIMELINE   ·   depth: --s3 (surface-3)
-     2020 to now, in order, so it is an <ol>. The spine runs down the left on a
-     phone and down the middle from 900px; the years alternate sides there.
-     Cards use .card--sunken because surface-4 is too close a step to the
-     surface-3 the section sits on.
+     12 — TIMELINE   ·   depth: --s3
+     ----------------------------------------------------------------------------
+     Horizontal, not vertical. The old column ran 3,400px down the page for
+     seven short entries — the visitor scrolled past six years of work to reach
+     one sentence about the seventh.
+
+     It is now one track the years travel along. js/timeline.js scrubs it: the
+     YEAR arrives first and settles, then its sentence follows, and a highlight
+     wipes across that sentence left to right as it lands. 2026 is the last
+     stop and gets the strongest arrival of the seven, because it is the one
+     the whole run is aiming at.
+
+     An <ol>, because seven years in order is a sequence and nothing about
+     making it horizontal changes that.
+
+     JS hooks: .timeline-h[data-timeline] > .timeline-h__track[data-tl-track]
+               .timeline-h__stop[data-tl-stop] > [data-tl-year] [data-tl-card]
+                                                 [data-tl-mark]
      ══════════════════════════════════════════════════════════════════════════ -->
 <section class="section section--s3" id="timeline" aria-labelledby="timeline-title">
-  <div class="container container--narrow stack stack--2xl">
+  <div class="container container--wide stack stack--2xl">
 
     <div class="section-head section-head--center" data-anim="up">
       <p class="chip">
@@ -1417,86 +1446,67 @@
       <p class="section-head__lede">One year at a time, and what each one added to how the work is done today.</p>
     </div>
 
-    <ol class="timeline__list list-plain" data-anim="stagger">
-
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2020</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">First WordPress builds</h3>
-            <p class="card__text">Learned WordPress properly rather than plugin by plugin, and shipped the first custom sites for real clients.</p>
+    <div class="timeline-h" data-timeline>
+      <span class="timeline-h__line" aria-hidden="true"></span>
+      <ol class="timeline-h__track list-plain" data-tl-track role="group" tabindex="0"
+          aria-label="From the first build in 2020 to now">
+        <li class="timeline-h__stop" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2020</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">First WordPress builds</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Learned WordPress properly rather than plugin by plugin, and shipped the first custom sites for real clients.</span></p>
           </div>
-        </article>
-      </li>
+        </li>
 
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2021</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">Stores and checkout</h3>
-            <p class="card__text">Moved into e-commerce: WooCommerce catalogues, payment setup and checkout flows a shop owner can run without help.</p>
+        <li class="timeline-h__stop" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2021</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">Stores and checkout</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Moved into e-commerce: WooCommerce catalogues, payment setup and checkout flows a shop owner can run without help.</span></p>
           </div>
-        </article>
-      </li>
+        </li>
 
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2022</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">Work beyond one market</h3>
-            <p class="card__text">Started building for clients across the Arab world, Europe and America, which meant handling different languages, currencies and time zones as a matter of routine.</p>
+        <li class="timeline-h__stop" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2022</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">Work beyond one market</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Started building for clients across the Arab world, Europe and America, which meant handling different languages, currencies and time zones as a matter of routine.</span></p>
           </div>
-        </article>
-      </li>
+        </li>
 
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2023</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">Course platforms</h3>
-            <p class="card__text">Added LMS work: lessons, enrolment and student access for educators who sell what they know online.</p>
+        <li class="timeline-h__stop" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2023</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">Course platforms</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Added LMS work: lessons, enrolment and student access for educators who sell what they know online.</span></p>
           </div>
-        </article>
-      </li>
+        </li>
 
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2024</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">Figma before Elementor</h3>
-            <p class="card__text">Settled the method still used today: design every screen in Figma, then build it in Elementor Pro with custom CSS, so the layout is decided before the build and the client can still edit it after.</p>
+        <li class="timeline-h__stop" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2024</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">Figma before Elementor</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Settled the method still used today: design every screen in Figma, then build it in Elementor Pro with custom CSS.</span></p>
           </div>
-        </article>
-      </li>
+        </li>
 
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2025</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">Speed and detail</h3>
-            <p class="card__text">Turned attention to what happens after launch: page weight, loading behaviour and the small interface details that separate a finished site from a live one.</p>
+        <li class="timeline-h__stop" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2025</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">Speed and detail</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Turned attention to what happens after launch: page weight, loading behaviour and the small interface details that separate a finished site from a live one.</span></p>
           </div>
-        </article>
-      </li>
+        </li>
 
-      <li class="timeline__item stack stack--sm">
-        <span class="timeline__dot" aria-hidden="true"></span>
-        <p class="timeline__year">2026</p>
-        <article class="card card--sunken timeline__card">
-          <div class="stack stack--sm">
-            <h3 class="card__title">Sites the owner can run</h3>
-            <p class="card__text">Where the work sits now: builds handed over with a walkthrough and 180 days of support, so the site keeps moving without waiting on me.</p>
+        <li class="timeline-h__stop timeline-h__stop--last" data-tl-stop>
+          <p class="timeline-h__year" data-tl-year>2026</p>
+          <div class="timeline-h__card" data-tl-card>
+            <h3 class="timeline-h__title">Sites the owner can run</h3>
+            <p class="timeline-h__text"><span class="timeline-h__mark" data-tl-mark>Where the work sits now: builds handed over with a walkthrough and 180 days of support, so the site keeps moving without waiting on me.</span></p>
           </div>
-        </article>
-      </li>
-
-    </ol>
+        </li>
+      </ol>
+    </div>
 
   </div>
 </section>
@@ -2182,6 +2192,8 @@
        motion.js's initRail() can claim it — two pins on one element do not
        degrade, they fight. -->
   <script src="js/work.js" defer></script>
+  <script src="js/testimonials.js" defer></script>
+  <script src="js/timeline.js" defer></script>
 
   <!-- ═══ CURSOR ═══ one node, last in the body, hidden on a coarse pointer. -->
   <div class="mk-cursor mk-cursor-ring" aria-hidden="true"><i class="mk-cursor-dot"></i></div>

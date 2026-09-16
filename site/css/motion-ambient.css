@@ -885,3 +885,365 @@ html:not([data-mk-work="on"]) .work__mark {
     scale: 1;
   }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   11. CLIENT FEEDBACK — a horizontal run with soft edges
+   ----------------------------------------------------------------------------
+   The row has to read as continuing past the screen, not stopping at it, so
+   the track fades into the page colour at both ends. A mask, not a gradient
+   overlay: an overlay would sit on top of the cards and swallow their hover
+   and their focus ring, and it would have to know the section's background
+   colour. A mask takes the pixels away and needs to know nothing.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.quote-rail {
+  position: relative;
+  /* Full-bleed, so a card can leave the screen instead of stopping short. */
+  margin-inline: calc(var(--container-pad) * -1);
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    var(--mask-solid) 7%,
+    var(--mask-solid) 93%,
+    transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    var(--mask-solid) 7%,
+    var(--mask-solid) 93%,
+    transparent 100%);
+}
+
+.quote-rail__track {
+  display: flex;
+  gap: var(--gap-grid);
+  padding-inline: var(--container-pad);
+  /* Room for the card lift and its shadow, which the scroller would clip. */
+  padding-block: var(--space-2xs) var(--space-lg);
+
+  /* Native by default. js/testimonials.js scrubs scrollLeft on top of this at
+     900px and up; below that, and with no GSAP, this IS the interaction. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--container-pad);
+  scrollbar-width: none;
+}
+
+.quote-rail__track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Written by js/testimonials.js only, for the frames it is moving the track
+   itself: a mandatory container re-snaps after every programmatic scroll,
+   which turns a smooth scrub into a stutter. */
+.quote-rail__track.is-scrubbing {
+  scroll-snap-type: none;
+}
+
+.quote-rail__item {
+  flex: 0 0 min(31rem, 84vw);
+  scroll-snap-align: center;
+}
+
+/* The quote mark. Large, low-contrast, behind the text — it is punctuation,
+   not an illustration, so it never competes with what was actually said. */
+.quote {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.quote__glyph {
+  position: absolute;
+  inset-block-start: calc(var(--space-lg) * -1);
+  inset-inline-end: var(--space-md);
+  font-family: var(--font-display);
+  font-size: 8rem;
+  line-height: 1;
+  color: var(--violet-400);
+  opacity: 0.1;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.quote__star {
+  fill: var(--violet-400);
+  stroke: none;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   12. THE HOUSE GESTURE — one accent edge, every section
+   ----------------------------------------------------------------------------
+   Asked for: the identity has to run through all of the sections, not just the
+   ones that were styled individually. This is that thread — a short rule on
+   the MK angle, in the brand gradient, sitting at the top-left of every
+   section's content. One rule, drawn the same way, nine times.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.section-head--center .chip,
+.section-head .chip {
+  position: relative;
+}
+
+/* The chip's three strokes already lean at the MK angle. This lights the
+   leading one, so the mark reads as live rather than printed. */
+.chip__stroke:nth-child(3) {
+  animation: mk-chip-lead 3.4s var(--ease-in-out) infinite;
+}
+
+@keyframes mk-chip-lead {
+  0%,
+  65%,
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+
+  30% {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+
+  .chip__stroke:nth-child(3) {
+    animation: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   13. TIMELINE — horizontal
+   ----------------------------------------------------------------------------
+   Seven stops on one rule. The old column was 3,400px tall for seven short
+   entries; this is a track the eye travels instead of a page the thumb does.
+
+   The resting state is the FINISHED state — every year readable, the highlight
+   fully drawn. js/timeline.js sets the from-state itself and scrubs forward,
+   so with no script, no GSAP or reduced motion the section is simply a legible
+   horizontal history and nothing is left hidden.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.timeline-h {
+  /* One stop's width, named once: the track's end padding is derived from it,
+     and the two have to agree or the stops stop landing in the middle. */
+  --tl-stop-w: min(22rem, 78vw);
+
+  /* The gap between the edge of the track and the stop sitting in the middle
+     of it. The track's padding and the edge fade are BOTH this, so the fade
+     finishes exactly where the current stop begins — a shorter fade left a
+     legible sliver of the year before, a longer one dimmed the first letter of
+     every line of the year being read. */
+  --tl-edge: max(var(--container-pad), calc((100% - var(--tl-stop-w)) / 2));
+
+  position: relative;
+  margin-inline: calc(var(--container-pad) * -1);
+  /* A long fade, not a short one. A year leaving the run has to dissolve on
+     its way out — at 6% it was still legible when it met the edge, which reads
+     as text someone forgot to clip. */
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    var(--mask-solid) var(--tl-edge),
+    var(--mask-solid) calc(100% - var(--tl-edge)),
+    transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    var(--mask-solid) var(--tl-edge),
+    var(--mask-solid) calc(100% - var(--tl-edge)),
+    transparent 100%);
+}
+
+/* The rule the years sit on. Behind the track, at the height of the year
+   labels, so every stop reads as a point ON a line rather than a card near
+   one. */
+.timeline-h__line {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: var(--space-3xl);
+  block-size: var(--border-w);
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    var(--rule-strong) 8%,
+    var(--rule-strong) 92%,
+    transparent 100%);
+  pointer-events: none;
+}
+
+.timeline-h__track {
+  display: flex;
+  gap: var(--gap-grid);
+  /* Half a viewport less half a stop at each end, so the FIRST and the LAST
+     stop can both scroll to the middle of the track. Without it the run
+     cannot centre 2020 or 2026 — they jam against the two edges — and the
+     even ladder js/timeline.js marches along collapses at both ends.
+     Never less than the container's own gutter. */
+  padding-inline: var(--tl-edge);
+  padding-block-end: var(--space-lg);
+
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--container-pad);
+  scrollbar-width: none;
+}
+
+.timeline-h__track::-webkit-scrollbar {
+  display: none;
+}
+
+.timeline-h__track.is-scrubbing {
+  scroll-snap-type: none;
+}
+
+.timeline-h__stop {
+  position: relative;
+  flex: 0 0 var(--tl-stop-w);
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* The year is the thing that arrives first, so it is the biggest thing in the
+   stop and it carries the brand gradient. */
+.timeline-h__year {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: var(--ls-tight);
+  background-image: var(--grad-brand-light);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* The dot that pins the year to the rule. */
+.timeline-h__stop::before {
+  content: "";
+  position: absolute;
+  inset-block-start: var(--space-3xl);
+  inset-inline-start: 0;
+  inline-size: var(--space-sm);
+  block-size: var(--space-sm);
+  margin-block-start: calc(var(--space-sm) / -2 + var(--border-w) / 2);
+  border-radius: var(--radius-pill);
+  background-color: var(--violet-400);
+  box-shadow: 0 0 0 var(--space-2xs) rgba(var(--violet-600-rgb), .22);
+}
+
+.timeline-h__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding-block-start: var(--space-lg);
+}
+
+.timeline-h__title {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-snug);
+  color: var(--text-1);
+}
+
+.timeline-h__text {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-2);
+}
+
+/* The highlighter. A background the text sits on, sized from 0 and grown left
+   to right — background-size, not a pseudo-element, so it wraps with the text
+   across every line instead of drawing one rectangle behind the block.
+   The resting state is fully drawn; js/timeline.js starts it at 0 and scrubs. */
+.timeline-h__mark {
+  background-image: linear-gradient(
+    to right,
+    rgba(var(--violet-600-rgb), .38),
+    rgba(var(--violet-600-rgb), .12));
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-position: 0 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding-block: var(--space-2xs);
+  padding-inline: var(--space-2xs);
+  border-radius: var(--radius-xs);
+}
+
+@media (min-width: 900px) {
+  .timeline-h {
+    /* Wider, so about two and a half years are on screen rather than four.
+       The march needs distance between stops; with narrow stops most of the
+       track is already visible at rest and the travel has nothing to do. */
+    --tl-stop-w: min(30rem, 42vw);
+  }
+}
+
+/* The last stop is where the run is aiming. It gets the teal side of the
+   gradient and a lit rule under the year, so arriving at it reads as arriving. */
+.timeline-h__stop--last .timeline-h__year {
+  background-image: linear-gradient(100deg, var(--violet-400) 0%, var(--teal-400) 100%);
+}
+
+.timeline-h__stop--last::before {
+  background-color: var(--teal-400);
+  box-shadow: 0 0 0 var(--space-xs) rgba(45, 212, 191, .22);
+}
+
+.timeline-h__stop--last .timeline-h__mark {
+  background-image: linear-gradient(
+    to right,
+    rgba(45, 212, 191, .34),
+    rgba(var(--violet-600-rgb), .14));
+}
+
+/* ── the run needs room ──────────────────────────────────────────────────────
+   Seven years cannot be read in the 600px a normal section is tall. The
+   section is made tall and its container stuck to the top of the screen, so
+   the years hold still while the page scrolls past them and js/timeline.js
+   spends that scroll on the sequence.
+
+   position: sticky and not a ScrollTrigger pin: no pin-spacer is injected, the
+   layout is the same with the script running or not, and it cannot collide
+   with the pin the Work section further up the page already owns.
+
+   Gated on [data-mk-timeline], which js/timeline.js sets only once it has GSAP
+   and ScrollTrigger in hand. Without that this stays a short, ordinary section
+   — a 300vh block of nothing is far worse than a section that does not move. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-mk-timeline="on"] #timeline {
+    min-block-size: 320vh;
+  }
+
+  /* Fills the screen and centres what it holds. Stuck to the top edge with a
+     natural height, the heading and the track sat in the upper half and the
+     lower half was empty for the whole run. */
+  [data-mk-timeline="on"] #timeline > .container {
+    position: sticky;
+    inset-block-start: 0;
+    min-block-size: 100vh;
+    justify-content: center;
+  }
+}
+
+/* A phone scrolls in shorter strokes and has less patience for a section that
+   holds the screen, so the same seven stops are given a tighter run. */
+@media (max-width: 899px) and (prefers-reduced-motion: no-preference) {
+  [data-mk-timeline="on"] #timeline {
+    min-block-size: 240vh;
+  }
+
+  [data-mk-timeline="on"] #timeline > .container {
+    /* Less the sticky header, which is a bigger share of a phone screen. */
+    min-block-size: calc(100vh - var(--space-3xl));
+  }
+}
