@@ -222,3 +222,32 @@ test('هامش الحقل لا يُجمَع إلى فجوة الحاوية', () 
     assert.ok(covering.includes(sel), `الحاوية ${sel} غير مغطّاة`);
   }
 });
+
+test('كل ملفّ خطّ تشير إليه الورقة موجود على القرص', async () => {
+  // إشارةٌ إلى ملفّ خطّ غير موجود لا تُصدر خطأً يراه أحد: المتصفّح يسقط
+  // بصمت إلى الوزن الأقرب، فيبدو السطر منفَّذًا وهو لم ينفَّذ. وهذا ما
+  // كان يحدث فعلًا قبل إضافة ‎900‎: ‎font-weight: 900‎ تُرسم ‎700‎ بلا فرق
+  // بكسل واحد — قِيس عرض النصّ نفسه فكان ‎431.9px‎ عند ‎700‎ و‎800‎ و‎900‎.
+  const { existsSync } = await import('node:fs');
+  const urls = [...css.matchAll(/url\('\/fonts\/([^']+)'\)/g)].map((m) => m[1]);
+  assert.ok(urls.length >= 8, `عدد ملفّات الخطّ المشار إليها ${urls.length} — أقلّ من المتوقّع`);
+  for (const f of urls) {
+    const p = new URL(`../public/fonts/${f}`, import.meta.url);
+    assert.ok(existsSync(p), `الورقة تشير إلى ملفّ غير موجود: ${f}`);
+  }
+});
+
+test('الأوزان الأربعة مسجَّلة بملفَّيها العربي واللاتيني', () => {
+  const faces = css.match(/@font-face\s*\{[^}]*\}/g) || [];
+  const byWeight = {};
+  for (const f of faces) {
+    const w = (f.match(/font-weight:\s*(\d+)/) || [])[1];
+    const u = (f.match(/url\('\/fonts\/([^']+)'\)/) || [])[1] || '';
+    if (w) (byWeight[w] ||= []).push(u.includes('-ar') ? 'ar' : 'la');
+  }
+  // ‎900‎ خصوصًا: أُضيف للجملة التعريفية، وبلا ملفّيه يعود العيب الصامت.
+  for (const w of ['400', '500', '700', '900']) {
+    assert.ok(byWeight[w], `الوزن ${w} غير مسجَّل`);
+    assert.deepEqual([...byWeight[w]].sort(), ['ar', 'la'], `الوزن ${w} ينقصه أحد النطاقين`);
+  }
+});

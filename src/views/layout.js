@@ -415,7 +415,7 @@ function sidenav(user, active) {
 
 // ——————————————————— القالب العام ———————————————————
 
-const HEAD = (title) => `<!DOCTYPE html>
+const HEAD = (title, preload900 = false) => `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -428,6 +428,10 @@ const HEAD = (title) => `<!DOCTYPE html>
      احتياطي ثم يقفز إلى Tajawal بعد وصول الملف — وميض يراه العميل كل زيارة. -->
 <link rel="preload" href="/fonts/tajawal-400-ar.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/tajawal-700-ar.woff2" as="font" type="font/woff2" crossorigin>
+${preload900 ? `<!-- ‎900‎ يُحمَّل مسبقًا في صفحتَي الدخول وحدهما: الجملة التعريفية
+     أوّل ما تقع عليه العين، وبلا تحميل مسبق تُرسم بوزن احتياطي ثم تقفز.
+     وهو ‎8.7KB‎ لا تلزم بقيّة الصفحات، فلا تُحمَّل فيها. -->
+<link rel="preload" href="/fonts/tajawal-900-ar.woff2" as="font" type="font/woff2" crossorigin>` : ''}
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230d7a6f'/><text x='16' y='23' font-size='17' font-family='Georgia,serif' font-weight='bold' fill='white' text-anchor='middle'>V</text></svg>">
 </head>`;
 
@@ -586,7 +590,7 @@ export function authLayout({ title, body, variant = 'client', nonce = '' }) {
     ? [['كل 5 دقائق', 'دورة فحص'], ['بوابة منفصلة', 'لا تُفتح بحساب عميل'], ['سجل كامل', 'لكل إجراء إداري']]
     : [['كل 5 دقائق', 'نفحص موقعك'], ['6 أشهر', 'مجانية بالكامل'], ['فور التوقّف', 'يصلك إشعار']];
 
-  return `${HEAD(title)}
+  return `${HEAD(title, true)}
 <body class="is-auth" data-portal="${esc(variant)}">
 <div class="auth-split">
 
