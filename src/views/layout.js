@@ -240,7 +240,10 @@ export function healthRing(score, size = 64) {
   const offset = c - (pct / 100) * c;
   return `<div class="ring" style="inline-size:${size}px;block-size:${size}px"
     role="img" aria-label="درجة الصحة ${score == null ? 'غير متاحة' : score + ' من 100'}">
-    <svg width="${size}" height="${size}" aria-hidden="true">
+    <!-- ‎viewBox‎ لا سمتا العرض والارتفاع وحدهما: بدونه لا يقبل الـSVG
+         تحجيمًا من CSS، بل يُقصّ. ظهر حين صغّرت الحلقةُ على الهاتف لتوفير
+         عرضٍ للاسم، فبانت الدائرة مقطوعة من جانبها. -->
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">
       <circle class="ring-track" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="5"/>
       <circle class="ring-fill" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="5"
         stroke="${color}" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"/>
