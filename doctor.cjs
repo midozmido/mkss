@@ -13,7 +13,11 @@ const { existsSync, mkdirSync, writeFileSync, unlinkSync } = require('node:fs');
 const { join } = require('node:path');
 const os = require('node:os');
 
-const NEED_NODE = [22, 5, 0];
+// ‎22.13.0‎ لا ‎22.5.0‎. الوحدة ‎node:sqlite‎ ظهرت في ‎22.5‎ لكنها ظلّت تحتاج
+// راية ‎--experimental-sqlite‎ حتى ‎22.13.0‎، وهناك رُفعت الراية. ومديرو التطبيقات
+// المُدارة (hPanel في هوستنجر، وPassenger في cPanel) لا يتيحون تمرير رايات
+// لسطر الأوامر — فنسخة بين ‎22.5‎ و‎22.12‎ تبدو مطابقة وهي لا تقلع.
+const NEED_NODE = [22, 13, 0];
 const rows = [];
 let fatal = 0;
 let warn = 0;
@@ -33,8 +37,10 @@ row(
   `نسخة Node: ${process.versions.node}`,
   okNode
     ? 'مناسبة.'
-    : `النظام يحتاج 22.5.0 فأحدث. من cPanel → Setup Node.js App اختر أحدث نسخة متاحة.
-     إن كان أقصى المتاح أقل من ذلك فهذه الاستضافة لا تصلح لهذا النظام — راجع docs/CPANEL.md.`
+    : `النظام يحتاج 22.13.0 فأحدث (والأأمن أن تختار 24).
+     هوستنجر: hPanel → المواقع → تطبيق Node.js → Node.js version.
+     cPanel: Setup Node.js App → Node.js version.
+     إن كان أقصى المتاح أقل من ذلك فهذه الاستضافة لا تصلح كما هي — راجع docs/HOSTINGER.md.`
 );
 
 // ——— ٢) node:sqlite ———
@@ -50,7 +56,7 @@ try {
   row(sqliteOk ? 'ok' : 'fail', 'node:sqlite', sqliteOk ? 'تعمل.' : 'موجودة لكنها لا تنفّذ استعلامًا بسيطًا.');
 } catch (e) {
   row('fail', 'node:sqlite', `غير متاحة: ${e.message}
-     هذه الوحدة مدمجة في Node 22.5 فأحدث. لا تُنصَّب بـ npm.`);
+     هذه الوحدة مدمجة في Node 22.13 فأحدث (بلا راية). لا تُنصَّب بـ npm.`);
 }
 
 // ——— ٣) الكتابة في data/ ———

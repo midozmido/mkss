@@ -12,6 +12,12 @@
 //     */5 * * * *  cd ~/mkss && /path/to/node cron/check.js >> data/cron.log 2>&1
 //
 // راجع docs/CPANEL.md للخطوات كاملة.
+//
+// **الاستثناء**: بعض المنصّات المُدارة تشغّل مهام الكرون في نظام ملفات معزول
+// عن نظام ملفات التطبيق، فلا يرى الخادمُ ما كتبه الكرون ولا العكس. اختبر ذلك
+// (الخطوة ٥ في docs/HOSTINGER.md)، فإن ثبت العزل اضبط ‎MKSS_MONITOR=1‎ في
+// متغيّرات البيئة: يعود المراقب إلى داخل العملية فتملك عمليةٌ واحدة القاعدة
+// كلها. أبطأ في التعافي من الخمول، لكنه يعمل حيث لا يعمل الكرون.
 import { start } from './server.js';
 
-start({ monitorInProcess: false });
+start({ monitorInProcess: process.env.MKSS_MONITOR === '1' });

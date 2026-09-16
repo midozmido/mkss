@@ -541,11 +541,13 @@
       .catch(function () {});
   }
 
+  var sseFails = 0;
   if (window.EventSource) {
     var streamUrl = viewer === 'admin' ? '/admin/chat/stream' : '/chat/stream';
     var es = new EventSource(streamUrl);
 
     es.addEventListener('open', function () {
+      sseFails = 0;
       setStatus('ok', '● متصل');
       syncMissed();
     });
@@ -576,8 +578,22 @@
       if (on && log) log.scrollTop = log.scrollHeight;
     });
 
+    /**
+     * السقوط إلى الاستطلاع بعد فشل متكرّر.
+     *
+     * ‎EventSource‎ يعيد المحاولة وحده إلى الأبد، وهذا يكفي حين تكون الشبكة
+     * هي المشكلة. لكن بعض الاستضافات المُدارة تمرّر الطلب عبر وسيط يخزّن
+     * الاستجابة مؤقّتًا أو يقطع الاتصالات الطويلة — وهناك لا ينجح الاتصال
+     * أبدًا مهما أُعيد، فيبقى العميل أمام «انقطع» ولا تصله رسالة فريق الدعم
+     * إلّا إن حدّث الصفحة بنفسه. بعد ثلاث محاولات نكفّ عن البثّ ونستطلع
+     * الجديد كل عشر ثوانٍ: أبطأ بثوانٍ، لكنه يعمل خلف أي وسيط.
+     */
     es.addEventListener('error', function () {
-      setStatus('bad', '○ انقطع — يعيد المحاولة');
+      if (++sseFails < 3) { setStatus('bad', '○ انقطع — يعيد المحاولة'); return; }
+      try { es.close(); } catch (e) {}
+      setStatus('', 'التحديث كل ١٠ ثوانٍ');
+      syncMissed();
+      setInterval(syncMissed, 10000);
     });
   } else {
     setStatus('', 'التحديث اللحظي غير مدعوم');
