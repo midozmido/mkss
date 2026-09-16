@@ -155,3 +155,44 @@ test('الأرقام تُعرض لاتينية (1234) لا هندية (١٢٣٤)
   assert.ok(/6[,٬]?500/.test(s.replace(/٬/g, ',')), `التنسيق غير متوقع: ${s}`);
   assert.ok(!/[٠-٩]/.test(s), `ظهرت أرقام هندية: ${s}`);
 });
+
+// ——— الإيصالات: أخطر ما أُضيف إلى النظام، لأنه أول ملفٍّ يرفعه مستخدم ———
+
+test('إيصال عميل لا يُفتح إلا لصاحبه أو لأدمن', async () => {
+  const at = nowISO();
+  const uploads = await import('../src/uploads.js');
+  const mkUser = (tag) => Number(
+    run('INSERT INTO users(email, password_hash, name, role, created_at) VALUES(?,?,?,?,?)',
+      `${tag}-${Date.now()}-${Math.random().toString(36).slice(2)}@test.local`,
+      hashPassword('كلمة-سر-قوية-جدا-123'), tag, tag === 'admin' ? 'admin' : 'client', at).lastInsertRowid
+  );
+  const owner = mkUser('owner'), stranger = mkUser('stranger'), boss = mkUser('admin');
+
+  const PNG = Buffer.from('89504e470d0a1a0a', 'hex');
+  const saved = uploads.save({ bytes: PNG, type: 'image/png', ext: 'png' });
+  run(`INSERT INTO payment_claims(user_id, at, method, amount_cents, receipt_name, receipt_type, receipt_bytes)
+       VALUES(?,?,'instapay',?,?,?,?)`, owner, at, 5000, saved.name, saved.type, saved.bytes);
+
+  try {
+    // القرار الذي يتّخذه المسار حرفًا بحرف: صفّ الإيصال + دور الطالب.
+    const row = get('SELECT user_id FROM payment_claims WHERE receipt_name = ?', saved.name);
+    const mayView = (user) => Boolean(row) && (user.role === 'admin' || row.user_id === user.id);
+
+    assert.equal(mayView({ id: owner, role: 'client' }), true, 'صاحب الإيصال مُنع منه');
+    assert.equal(mayView({ id: boss, role: 'admin' }), true, 'الأدمن مُنع من المراجعة');
+    // هذا هو السطر الذي يهمّ: عميل آخر، بجلسة صحيحة تمامًا، يعرف الاسم.
+    assert.equal(mayView({ id: stranger, role: 'client' }), false, 'تسرّب إيصال إلى عميل آخر');
+  } finally {
+    uploads.remove(saved.name);
+  }
+});
+
+test('اسم إيصال لا يخرج بالمسار عن مجلّد الرفع', async () => {
+  const uploads = await import('../src/uploads.js');
+  // ‎..‎ و‎/‎ و‎.php‎ و‎.svg‎: كلها أسماء لو قُرئت لصار المسار بابًا على الخادم
+  // بدل أن يكون نافذةً على ملفٍّ واحد معروف الشكل.
+  for (const bad of ['../../data/mkss.db', '../mkss.db', '/etc/passwd',
+                     `${'a'.repeat(32)}.php`, `${'0'.repeat(32)}.svg`, 'x.png']) {
+    assert.equal(uploads.read(bad), null, `مرّ اسم خطر: ${bad}`);
+  }
+});

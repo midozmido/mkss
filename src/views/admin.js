@@ -379,7 +379,7 @@ export function adminPayments({ user, claims, cfg, flash }) {
 
   ${claims.length
     ? `<div class="card card-flush"><div class="table-scroll"><table>
-    <thead><tr><th>العميل</th><th>الفاتورة</th><th>الطريقة</th><th>المبلغ</th><th>محوَّل من</th><th>الوقت</th><th></th></tr></thead>
+    <thead><tr><th>العميل</th><th>الفاتورة</th><th>الطريقة</th><th>المبلغ</th><th>الإيصال</th><th>محوَّل من</th><th>الوقت</th><th></th></tr></thead>
     <tbody>${claims
       .map(
         (c) => `<tr>
@@ -387,6 +387,11 @@ export function adminPayments({ user, claims, cfg, flash }) {
       <td class="mono small">${esc(c.invoice_number || '—')}</td>
       <td>${esc(method[c.method] || c.method)}</td>
       <td class="num">${esc(money.format(c.amount_cents))}</td>
+      <!-- الإيصال هو ما يُراجَع فعلًا: صورة التحويل تُغني عن مطابقة رقم برقم.
+           يُفتح في تبويب جديد لئلّا تضيع الصفوف التي لم تُراجَع بعد. -->
+      <td>${c.receipt_name
+        ? `<a class="btn btn-sm" href="/receipt/${esc(c.receipt_name)}" target="_blank" rel="noopener">${icon('receipt')} افتح</a>`
+        : '<span class="faint small">بلا إيصال</span>'}</td>
       <td class="ltr small mono">${esc(c.sender_ref || '—')}</td>
       <td class="small">${esc(ago(c.at))}</td>
       <td>
@@ -465,6 +470,11 @@ export function adminSettings({ user, cfg, flash }) {
         <div class="field">
           <label for="holder">اسم المستلم</label>
           <input id="holder" name="pay_holder" value="${esc(cfg.holder)}" maxlength="80">
+        </div>
+        <div class="field">
+          <label for="holder_latin">اسم المستلم بالحروف اللاتينية</label>
+          <input id="holder_latin" name="pay_holder_latin" value="${esc(cfg.holderLatin || '')}" maxlength="80" dir="ltr">
+          <div class="hint">بعض تطبيقات التحويل تعرض الاسم لاتينيًّا وحده.</div>
         </div>
         <div class="field">
           <label for="tm">فترة الدعم المجاني (شهور)</label>

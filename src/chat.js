@@ -138,7 +138,7 @@ export const failStreak = (conversationId) =>
 
 // ——————————————————— الرسائل ———————————————————
 
-export function sendMessage(conversationId, { body, role, authorId = null, channel = 'live', visibility = 'all', meta = null }) {
+export function sendMessage(conversationId, { body, role, authorId = null, channel = 'live', visibility = 'all', meta = null, alertAdmin = false }) {
   const conv = get('SELECT * FROM conversations WHERE id = ?', conversationId);
   if (!conv) throw new Error('المحادثة غير موجودة');
 
@@ -150,13 +150,18 @@ export function sendMessage(conversationId, { body, role, authorId = null, chann
   if (!['all', 'internal'].includes(visibility)) throw new Error('رؤية غير معروفة');
 
   const at = nowISO();
-  // رد المساعد لا يُحسب غير مقروء عند الأدمن وإلا امتلأت لوحته بضجيج آلي
+  // رد المساعد لا يُحسب غير مقروء عند الأدمن وإلا امتلأت لوحته بضجيج آلي.
+  //
+  // لكن ليس كل رسالة غير بشرية ضجيجًا: إشعار تحويل فعلٌ ينتظر مراجعة، وكان
+  // يهبط مقروءًا لأنه ليس من «عميل» — فلا يرتفع عدّاد ولا ينبّه شيء، ويكتشفه
+  // الأدمن حين يفتح المحادثة مصادفةً. ‎alertAdmin‎ تفصل «آلي» عن «لا يستحق
+  // انتباهًا»، ولا يمرّرها إلا من يعرف أن رسالته تستحقّه.
   const r = run(
     `INSERT INTO chat_messages(conversation_id, user_id, author_role, author_id, body, created_at,
                                read_by_admin, read_by_client, channel, visibility, meta)
      VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
     conversationId, conv.user_id, role, authorId, text, at,
-    role === 'client' ? 0 : 1,
+    role === 'client' || alertAdmin ? 0 : 1,
     role === 'client' || visibility === 'internal' ? 1 : 0,
     channel, visibility, meta ? JSON.stringify(meta) : null
   );

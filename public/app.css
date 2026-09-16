@@ -896,6 +896,58 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
   border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
 }
 .pay-number .mono { font-size: var(--t-md); font-weight: var(--w-bold); letter-spacing: .04em; }
+
+/* اسم المستلم: سطرٌ يُقرأ قبل التحويل لا بعده، فيأخذ صندوقًا لا هامشًا.
+   الاسمان العربي واللاتيني معًا لأن تطبيقات التحويل تعرض أحدهما لا كليهما،
+   ومن يرى اسمًا لا يطابق ما أمامه يتوقّف. */
+.pay-holder {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-1) var(--s-3);
+  padding: var(--s-3) var(--s-4); border-radius: var(--r-sm);
+  background: var(--surface-sunk); border: 1px solid var(--border);
+}
+.pay-holder b { font-size: var(--t-md); }
+
+/* ——— حقل الملفّ ———
+   زرّ المتصفّح الأصلي يكتب «Choose File» بالإنجليزية ومن اليسار، ونصّه لا
+   يُغيَّر بـCSS بأي حيلة. فالحقل يبقى — حيًّا وقابلًا للضغط — لكن شفافًا فوق
+   وجهٍ عربيّ نرسمه نحن. لا جافاسكربت في هذا: من عطّله يضغط الصندوق نفسه
+   ويفتح المنتقي كما لو لم نلمس شيئًا. */
+.filebox { position: relative; display: block; }
+.filebox input[type="file"] {
+  position: absolute; inset: 0; inline-size: 100%; block-size: 100%;
+  opacity: 0; cursor: pointer;
+  /* ‎z-index‎ فوق الوجه: الوجه ‎aria-hidden‎ ورسمٌ محض، والحقل هو ما يُضغط
+     ويُركَّز عليه بالكيبورد. */
+  z-index: 1;
+}
+.filebox-face {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border: 1px dashed var(--border-strong); border-radius: var(--r);
+  background: var(--surface-sunk);
+  min-block-size: 48px;
+}
+.filebox-btn {
+  display: inline-flex; align-items: center; gap: var(--s-2); flex: none;
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong); background: var(--surface);
+  font-size: var(--t-sm); font-weight: var(--w-bold); color: var(--text);
+}
+.filebox-btn svg { inline-size: 15px; block-size: 15px; }
+.filebox-name {
+  font-size: var(--t-sm); color: var(--text-faint);
+  min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.filebox-name[data-has-file] { color: var(--text); font-weight: var(--w-medium); }
+.filebox:hover .filebox-face { border-color: var(--brand); }
+.filebox:hover .filebox-btn { border-color: var(--brand); color: var(--brand-text); }
+/* الحلقة على الوجه لا على الحقل: الحقل شفاف فلا تُرى حلقته، ومن يتنقّل
+   بالكيبورد يحتاج أن يرى أين هو. */
+.filebox input[type="file"]:focus-visible + .filebox-face {
+  border-style: solid; border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+
 .pay-amount {
   display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); background: var(--brand-soft);
@@ -1345,11 +1397,14 @@ body[data-portal="admin"] {
 
 body.is-auth {
   background: var(--auth-page);
-  min-block-size: 100dvh;
-  /* المستوى المنقوش يملأ الشاشة ولا يتمرّر معها: الصفحة قصيرة، وتمريرُ
-     النقش خلف بطاقة ثابتة يجعله يبدو ملصقًا لا محفورًا. */
+  /* ارتفاع الصفحة = ارتفاع الشاشة بالضبط، فلا تمرير للصفحة إطلاقًا: البطاقة
+     كلّها في المشهد الأول، ومن يفتح الصفحة يرى الحقلين والزرّ بلا حركة واحدة.
+     ‎100vh‎ أولًا كسندٍ للمتصفّحات القديمة، و‎100dvh‎ فوقها لأن ‎vh‎ على الهاتف
+     يُحسب بارتفاعٍ لا يظهر منه شريطُ العنوان، فينزل الزرّ تحت الحافة. */
+  block-size: 100vh;
+  block-size: 100dvh;
+  overflow: hidden;
   position: relative;
-  overflow-x: clip;
 }
 
 /* ——— المستوى المنقوش ——— */
@@ -1376,9 +1431,28 @@ body.is-auth {
    شيء في الصفحة سوى أن النقش يسكن. */
 .probes { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 
+/* ——— الحجاب: يُخفي النقش من الجوانب الأربعة ———
+   النقش كان يصل إلى حافة الشاشة فيُقرأ ورقَ حائط ملصقًا: الحافة تقطعه في
+   منتصف نجمة، والعين تتبع القطع بدل أن تستقرّ على النموذج. طبقةٌ بلون
+   الأرضية نفسها تتدرّج من كل حافة إلى الشفافية تجعله يظهر من العدم في
+   الوسط ويعود إليه عند الأطراف — فلا حدّ يُرى ولا نجمة مبتورة.
+
+   أربعة تدرّجات لا واحد شعاعي: الشعاعي على شاشة عريضة يترك الزوايا أقوى من
+   منتصف الحواف، وهي أبعد ما تكون عن البطاقة. والنسب غير متساوية عمدًا —
+   الأعلى والأسفل أوسع لأن الصفحة أقصر منها عرضًا. */
+.auth-veil {
+  position: absolute; inset: 0; z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--auth-page) 0%, color-mix(in srgb, var(--auth-page) 55%, transparent) 12%, transparent 30%),
+    linear-gradient(to top,    var(--auth-page) 0%, color-mix(in srgb, var(--auth-page) 55%, transparent) 12%, transparent 30%),
+    linear-gradient(to right,  var(--auth-page) 0%, color-mix(in srgb, var(--auth-page) 55%, transparent) 10%, transparent 26%),
+    linear-gradient(to left,   var(--auth-page) 0%, color-mix(in srgb, var(--auth-page) 55%, transparent) 10%, transparent 26%);
+}
+
 /* الضوء خلف البطاقة — هو ما يرفعها عن المستوى، لا حدٌّ ولا عمود ثانٍ */
 .auth-glow {
-  position: absolute; inset-block-start: 50%; inset-inline-start: 50%;
+  position: absolute; z-index: 2; inset-block-start: 50%; inset-inline-start: 50%;
   /* ‎100vw‎ لا ‎120vw‎: الهالة أوسع من الإطار تُقصّ بـ‎overflow:hidden‎ على
      الأب فلا تُنتج تمريرًا، لكنها تبقى عنصرًا يتجاوز حدّ الشاشة في أي قياس
      آلي — وحدٌّ لا يُتجاوَز خيرٌ من استثناء يُكتب في الفاحص. */
@@ -1393,13 +1467,26 @@ body.is-auth {
 /* ——— المسرح ——— */
 .auth-stage {
   position: relative; z-index: 1;
-  min-block-size: 100dvh;
+  block-size: 100%;
+  /* المسرح وحده هو ما يتمرّر، لا الصفحة — وهذا هو الفرق بين «ارتفاع ثابت»
+     و«محتوى محبوس». على شاشة قصيرة (هاتف مستلقٍ، أو تكبير ‎200%‎) لا يتّسع
+     الحقلان والزرّ لارتفاع الشاشة مهما ضغطنا المسافات، وحبسُهما هناك يعني
+     زرَّ دخولٍ لا يُبلَغ. هنا يتمرّر ما بداخله ويبقى إطار الصفحة ثابتًا. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid; align-content: center; justify-items: center;
-  gap: var(--s-5);
-  padding: var(--s-7) var(--s-5);
-  /* توسيط بصري لا حسابي: الكتلة تجلس أعلى من المنتصف الرياضي بقليل،
-     لأن العين تقرأ المنتصف الحقيقي منخفضًا. */
-  padding-block-end: calc(var(--s-7) + 4vh);
+  /* المسافات بالارتفاع لا بقيمة ثابتة: الصفحة صار ارتفاعها ارتفاعَ الشاشة
+     بالضبط، فكل بكسل هامشٍ ثابت يُقتطع من البطاقة نفسها. على ‎900px‎ كان
+     المجموع يتجاوز الشاشة بـ‎68px‎ فيبدأ المسرح متمرّرًا وهو ما ينقض الغرض.
+     الحدّان يمنعان الطرفين: لا انهيارَ إلى صفر على شاشة قصيرة، ولا تبعثرَ
+     على شاشة طويلة. */
+  gap: clamp(var(--s-3), 2.2vh, var(--s-5));
+  padding-block: clamp(var(--s-4), 3vh, var(--s-7));
+  padding-inline: var(--s-5);
+  /* توسيط بصري لا حسابي: الكتلة تجلس أعلى من المنتصف الرياضي بقليل، لأن
+     العين تقرأ المنتصف الحقيقي منخفضًا. والفرق نسبةٌ من الارتفاع لا رقمٌ
+     ثابت، فيبقى الأثر نفسه على كل شاشة ولا يأكل ما ليس عنده. */
+  padding-block-end: clamp(var(--s-5), 5vh, calc(var(--s-7) + var(--s-4)));
 }
 
 .auth-mark { display: inline-flex; align-items: center; gap: var(--s-2); text-decoration: none; }
@@ -1409,9 +1496,9 @@ body.is-auth {
    المربّع، وهو المولِّد الهندسي للنجمة الثمانية نفسها: ‎13 · 15 · 18 · 26‎.
    والتباين بالوزن لا بالمقاس وحده: ‎400‎ هنا مقابل ‎700‎ في العنوان. */
 .auth-thesis {
-  margin: 0; max-inline-size: 30rem; text-align: center;
+  margin: 0; max-inline-size: 32rem; text-align: center;
   font-size: var(--t-md); font-weight: var(--w-body);
-  line-height: 1.85; color: var(--text-muted);
+  line-height: 1.75; color: var(--text-muted);
   text-wrap: balance;
 }
 
@@ -1420,7 +1507,8 @@ body.is-auth {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
-  padding: var(--s-6);
+  padding-block: clamp(var(--s-4), 3.2vh, var(--s-6));
+  padding-inline: var(--s-6);
   /* ظل مركّب: خيط قريب يرسم الحافة، وانتشار بعيد يرفع البطاقة عن المستوى.
      الظل الواحد الكبير يجعلها تطفو بلا حافة، والواحد الصغير يلصقها. */
   box-shadow:
@@ -1438,9 +1526,11 @@ body.is-auth {
   }
 }
 
-.auth-head { margin-block-end: var(--s-4); }
-.auth-head h1 { font-size: var(--t-2xl); line-height: 1.25; margin-block-end: var(--s-2); }
-.auth-head p  { margin: 0; color: var(--text-muted); }
+.auth-head { margin-block-end: clamp(var(--s-3), 2.6vh, var(--s-5)); }
+.auth-head h1 { font-size: var(--t-2xl); line-height: 1.3; margin-block-end: var(--s-3); }
+/* ‎1.8‎ لا الافتراضي: السطر عربي فيه تشكيل ونقط تحت خطّ الأساس، والافتراضي
+   المبنيّ للاتيني يجعلها تكاد تلامس السطر الذي تحتها. */
+.auth-head p  { margin: 0; color: var(--text-muted); line-height: 1.8; }
 
 .auth-tag {
   display: inline-flex; align-items: center; gap: var(--s-2);
@@ -1456,10 +1546,10 @@ body.is-auth {
 .auth-slot { min-block-size: var(--s-2); }
 .auth-slot:not(:empty) .alert { margin-block-end: var(--s-4); }
 
-.auth-form { display: grid; gap: var(--s-4); }
+.auth-form { display: grid; gap: clamp(var(--s-3), 2.6vh, var(--s-5)); }
 
 /* ——— الحقول ——— */
-.is-auth .field { display: grid; gap: var(--s-2); }
+.is-auth .field { display: grid; gap: var(--s-3); }
 .is-auth .field > label { font-size: var(--t-sm); font-weight: var(--w-medium); color: var(--text); }
 .is-auth input {
   min-block-size: 48px;          /* مساحة لمس مريحة، وارتفاع يوازن حجم البطاقة */
@@ -1550,16 +1640,18 @@ body.is-auth {
 
 .auth-note {
   display: flex; align-items: flex-start; gap: var(--s-2);
-  margin-block: var(--s-5) 0; padding-block-start: var(--s-4);
+  margin-block: clamp(var(--s-3), 2.6vh, var(--s-5)) 0;
+  padding-block-start: clamp(var(--s-3), 1.8vh, var(--s-4));
   border-block-start: 1px solid var(--border);
-  font-size: var(--t-xs); color: var(--text-muted); line-height: 1.8;
+  font-size: var(--t-sm); color: var(--text-muted); line-height: 1.9;
 }
-.auth-note svg { flex: none; margin-block-start: 3px; inline-size: 14px; block-size: 14px; }
+.auth-note svg { flex: none; margin-block-start: 4px; inline-size: 14px; block-size: 14px; }
 
 .auth-switch {
-  margin-block: var(--s-5) 0; padding-block-start: var(--s-4);
+  margin-block: clamp(var(--s-3), 2.6vh, var(--s-5)) 0;
+  padding-block-start: clamp(var(--s-3), 1.8vh, var(--s-4));
   border-block-start: 1px solid var(--border);
-  font-size: var(--t-sm); color: var(--text-muted);
+  font-size: var(--t-sm); color: var(--text-muted); line-height: 1.9;
 }
 .auth-switch a { font-weight: var(--w-bold); }
 
@@ -1625,6 +1717,19 @@ body.is-auth {
 @media (max-width: 420px) {
   .auth-card { padding: var(--s-4); border-radius: 14px; }
   .auth-head h1 { font-size: var(--t-xl); }
+}
+
+/* ——— شاشة قصيرة: البطاقة تبقى، وما حولها يتنحّى ———
+   الصفحة ارتفاعها ارتفاع الشاشة بالضبط، فعلى شاشة قصيرة يصير السؤال: ماذا
+   نُخرج؟ الجواب ليس تصغير النصّ — ذاك يُنقص الراحة في كل مقاس لأجل مقاسٍ
+   واحد. بل ما ليس من العمل: صفُّ الأرقام وسطرُ الطمأنة زينةٌ تُقرأ مرّة،
+   والجملة التعريفية تُقرأ لمن وصل للتوّ. البطاقة — الحقلان والزرّ — لا
+   تُمَسّ في أي ارتفاع. */
+@media (max-height: 1000px) {
+  .auth-facts, .auth-foot { display: none; }
+}
+@media (max-height: 870px) {
+  .auth-thesis { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

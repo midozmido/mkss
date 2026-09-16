@@ -14,13 +14,14 @@ import * as repo from './src/repo.js';
 import * as admin from './src/admin-repo.js';
 import * as monitor from './src/monitor.js';
 import {
-  esc, createRouter, readForm as readFormRaw, parseCookies, cookieHeader, sendHtml, sendJson, redirect,
+  esc, createRouter, readForm as readFormRaw, readMultipart, parseCookies, cookieHeader, sendHtml, sendJson, redirect,
   securityHeaders, clientIp, createRateLimiter, pick,
 } from './src/http-util.js';
 import * as pages from './src/views/pages.js';
 import * as adminViews from './src/views/admin.js';
 import * as billing from './src/billing.js';
 import * as chat from './src/chat.js';
+import * as uploads from './src/uploads.js';
 import * as billingViews from './src/views/billing.js';
 import * as chatViews from './src/views/chat.js';
 import * as authViews from './src/views/auth.js';
@@ -346,33 +347,87 @@ router.get('/billing', (ctx) => {
 
 router.post('/billing/claim', async (ctx) => {
   const f = await readForm(ctx.req);
+  let saved = null;
   try {
     const cents = Math.round(Number(f.amount) * 100);
+
+    // الإيصال يُحفَظ قبل الإشعار: لو رُفض الملفّ (نوعٌ لا نقبله) وقف كل شيء
+    // هنا برسالة تقول السبب، بدل أن يُسجَّل إشعارٌ بلا إيصال ويظنّ العميل
+    // أن صورته وصلت.
+    const file = (ctx.req.parsedFiles || []).find((x) => x.field === 'receipt');
+    if (file) saved = uploads.save(file);
+
     const id = billing.claimPayment(ctx.user.id, {
       invoiceId: f.invoiceId ? Number(f.invoiceId) : null,
       method: f.method,
       amountCents: cents,
       senderRef: f.senderRef,
+      receipt: saved,
     });
+
     // نُعلم الأدمن داخل الشات فورًا — أسرع قناة وصول لديه.
-    // ملاحظة داخلية: صياغتها موجَّهة للأدمن، والعميل رأى تأكيده في الصفحة.
+    //
+    // ‎visibility: 'all'‎ لا ‎'internal'‎: الداخلية تُكتب في القاعدة
+    // ‎read_by_admin = 1‎، ومعاينة المحادثة في اللوحة تفلتر ‎visibility='all'‎
+    // — فكان الإشعار يهبط مقروءًا ولا يظهر في القائمة أصلًا. أي أنه لم يكن
+    // يصل. وهو نصٌّ لا يضرّ العميلَ أن يراه: هو من أرسله.
     chat.notify(ctx.user.id, {
       role: 'system',
-      visibility: 'internal',
+      // ويُحسب غير مقروء: هذا هو الفرق بين إشعار وصل وإشعار سُجِّل.
+      alertAdmin: true,
       // «#» محايد اتجاهيًّا: بجوار رقم في نصّ عربي يرتدّ إلى يمين الرقم فيظهر
       // «رقم الإشعار 1#». والنصّ يُخزَّن في قاعدة البيانات بلا وسوم فلا سبيل
       // لعزله بـ‎<bdi>‎ — فالنقطتان تؤدّيان المعنى بلا رمز يتبعثر.
       body: `أبلغ العميل بتحويل ${(cents / 100).toFixed(2)} ج.م عبر ${
         { instapay: 'إنستا باي', vodafone: 'فودافون كاش', other: 'طريقة أخرى' }[f.method] || f.method
       }${f.senderRef ? ` من الرقم ${f.senderRef}` : ''}. رقم الإشعار: ${id}`,
+      meta: saved ? { kind: 'receipt', claimId: id, receiptName: saved.name, type: saved.type, bytes: saved.bytes } : null,
     });
     admin.audit(ctx.user.id, 'payment_claim', `claim#${id}`, f.method, ctx.ip);
     redirect(ctx.res, '/billing', {
-      headers: { 'Set-Cookie': flashCookie('ok', 'وصلنا إشعارك. سنؤكد السداد فور المطابقة.') },
+      headers: {
+        'Set-Cookie': flashCookie('ok', saved
+          ? 'وصلنا إشعارك ومعه صورة الإيصال. سنؤكد السداد فور المطابقة.'
+          : 'وصلنا إشعارك. سنؤكد السداد فور المطابقة.'),
+      },
     });
   } catch (e) {
+    // ملفٌّ حُفظ ثم فشل تسجيل الإشعار = بايتات على القرص لا يشير إليها صف.
+    if (saved) { try { uploads.remove(saved.name); } catch { /* التنظيف لا يحجب الخطأ */ } }
     redirect(ctx.res, '/billing', { headers: { 'Set-Cookie': flashCookie('danger', e.message) } });
   }
+});
+
+/**
+ * تنزيل إيصال — مسار محروس لا ملفّ ساكن.
+ *
+ * ‎data/uploads/‎ خارج ما يخدمه الخادم الساكن عمدًا: لو خُدمت بالاسم لصار
+ * كلُّ من عرف اسم ملفّ قادرًا على قراءة إيصال عميل آخر. هنا يُقرأ الصفّ
+ * أولًا، ولا يُرسَل شيء قبل أن يثبت أن الطالب مالكُه أو أدمن.
+ */
+router.get('/receipt/:name', (ctx) => {
+  const row = get(
+    'SELECT user_id, receipt_type FROM payment_claims WHERE receipt_name = ?',
+    ctx.params.name
+  );
+  const mayView = row && (ctx.user.role === 'admin' || row.user_id === ctx.user.id);
+  if (!mayView) {
+    return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, status: 404, message: 'الملف غير موجود' }), { status: 404 });
+  }
+  const file = uploads.read(ctx.params.name);
+  if (!file) {
+    return sendHtml(ctx.res, pages.errorPage({ user: ctx.user, status: 404, message: 'الملف غير موجود' }), { status: 404 });
+  }
+  ctx.res.writeHead(200, {
+    'Content-Type': row.receipt_type || 'application/octet-stream',
+    'Content-Length': file.size,
+    // ‎nosniff‎ يمنع المتصفّح من تخمين نوعٍ آخر لبايتات رفعها مستخدم،
+    // و‎sandbox‎ يقطع أي سكربت لو تسلّل نوعٌ يحمله رغم فحص التوقيع.
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; sandbox",
+    'Cache-Control': 'private, max-age=0, no-store',
+  });
+  ctx.res.end(file.bytes);
 });
 
 // —— الشات: العميل ——
@@ -872,7 +927,7 @@ router.get('/admin/settings', (ctx) => {
 });
 
 router.post('/admin/settings', async (ctx) => {
-  const f = pick(await readForm(ctx.req), ['pay_instapay', 'pay_vodafone', 'pay_whatsapp', 'pay_holder', 'trial_months', 'grace_days']);
+  const f = pick(await readForm(ctx.req), ['pay_instapay', 'pay_vodafone', 'pay_whatsapp', 'pay_holder', 'pay_holder_latin', 'trial_months', 'grace_days']);
   for (const [k, v] of Object.entries(f)) setting(k, String(v).slice(0, 120));
   admin.audit(ctx.user.id, 'update_settings', null, Object.keys(f).join(','), ctx.ip);
   redirect(ctx.res, '/admin/settings', { headers: { 'Set-Cookie': flashCookie('ok', 'حُفظت الإعدادات.') } });
@@ -911,20 +966,30 @@ const isPublic = (p) => PUBLIC_PATHS.has(p) || p.startsWith('/activate/');
  * والعميل لا يعرف أن للوحة الإدارة وجودًا أصلًا.
  */
 const SHARED_PATHS = new Set(['/logout', '/health', '/set-password']);
-const isShared = (p) => SHARED_PATHS.has(p) || p.startsWith('/activate/');
+// المرفق يخصّ الطرفين: العميل رفعه والأدمن يراجعه. والمسار نفسه يتحقّق من
+// الملكية صفًّا بصفّ، فليس فتحه هنا تخفيفًا للفصل بل تسليمٌ بأنه ليس شاشةً
+// لأحدهما دون الآخر.
+const isShared = (p) => SHARED_PATHS.has(p) || p.startsWith('/activate/') || p.startsWith('/receipt/');
 
 /**
  * ما يبقى مفتوحًا للعميل المقفول.
  * القاعدة: القفل يقفل المزايا، ولا يقفل طريق الدفع ولا قناة التواصل أبدًا —
  * عميل لا يرى ما عليه ولا يصل إليك لن يدفع أسرع، بل أبطأ.
  */
+/**
+ * المسارات التي تقبل ملفًّا مرفوعًا — قائمةٌ صريحة لا استنتاج من الترويسة.
+ * إضافةُ مسارٍ هنا قرارٌ يُتّخذ، لا أثرٌ جانبيّ لنموذج كُتب في مكان آخر.
+ */
+const UPLOAD_PATHS = new Set(['/billing/claim']);
+
 const OPEN_WHEN_LOCKED = new Set([
   '/billing', '/billing/claim',
   '/chat', '/chat/stream', '/chat/since', '/chat/new', '/chat/color',
   '/invoices', '/logout', '/health', '/guide',
 ]);
 const openWhenLocked = (p) =>
-  OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/') || p.startsWith('/help') || p.startsWith('/chat/');
+  OPEN_WHEN_LOCKED.has(p) || p.startsWith('/invoice/') || p.startsWith('/help')
+  || p.startsWith('/chat/') || p.startsWith('/receipt/');
 
 export function createApp() {
   return http.createServer(async (req, res) => {
@@ -990,11 +1055,22 @@ export function createApp() {
 
       // CSRF على كل POST من مستخدم مسجل
       if (req.method === 'POST' && user && !['/login', '/reset-request', '/set-password'].includes(pathname)) {
-        const form = await readFormRaw(req);
-        if (!auth.csrfOk(sid, form._csrf)) {
+        // نموذج فيه ملفّ لا يُقرأ بـ‎readFormRaw‎: هي تفكّ الجسم نصًّا بترميز
+        // ‎utf8‎ فتُفسد بايتات الصورة، وتستهلك التدفّق فلا يبقى للمسار ما
+        // يقرؤه. الفرع هنا لا في المسار، لأن فحص ‎CSRF‎ يسبق المسار دائمًا.
+        const multipart = /^multipart\/form-data/i.test(req.headers['content-type'] || '');
+        // ومسارُ الرفع وحده هو ما يُمنح سقف الستّة ميجابايت. بدون هذا السطر
+        // يكفي أن يكتب أحدٌ ترويسة ‎multipart‎ على **أي** نموذج — إرسال رسالة،
+        // تغيير لون محادثة — ليفتح لنفسه مئة ضعف الحدّ المسموح في مسار لا
+        // يقبل ملفًّا أصلًا. الميزة وسّعت الباب، وهذا يعيده إلى مقاسه.
+        const { fields, files } = multipart && UPLOAD_PATHS.has(pathname)
+          ? await readMultipart(req)
+          : { fields: await readFormRaw(req), files: [] };
+        if (!auth.csrfOk(sid, fields._csrf)) {
           return sendHtml(res, pages.errorPage({ user, status: 403, message: 'انتهت صلاحية النموذج. أعد المحاولة.' }), { status: 403 });
         }
-        req.parsedForm = form; // لا نقرأ الجسم مرتين
+        req.parsedForm = fields; // لا نقرأ الجسم مرتين
+        req.parsedFiles = files;
       }
 
       await route.handler({
@@ -1009,7 +1085,19 @@ export function createApp() {
       // المتصفّح ويظنّ الشبكة عنده — بلا إشارة إلى أن ما أرسله تجاوز الحدّ.
       if (Number.isInteger(e?.status) && e.status >= 400 && e.status < 500) {
         if (!res.headersSent) {
-          sendHtml(res, pages.errorPage({ status: e.status, message: e.message || 'طلب غير مقبول' }), { status: e.status });
+          // ‎Connection: close‎ ليست زينة هنا.
+          //
+          // حين يتجاوز الجسمُ الحدَّ نتوقّف عن قراءته ونردّ ٤١٣ — لكن بقيّة
+          // البايتات ما تزال في المقبس لم تُقرأ. ومع ‎keep-alive‎ يحاول Node
+          // أن يقرأ ما بقي على أنه **الطلب التالي**، فيراه هراءً: الطلب
+          // الذي يرسله المستخدم بعد ذلك يفشل قبل أن يصل. ظهر في الفحص
+          // بالضبط هكذا — طلبٌ سليم بعد ٤١٣ يموت بـ‎fetch failed‎، فيبدو
+          // للمستخدم أن الموقع سقط لأنه رفع ملفًّا كبيرًا مرّة.
+          //
+          // إغلاق الاتصال يجعل المقبس ينتهي عند هذا الرد، فيفتح المتصفّح
+          // غيره نظيفًا.
+          sendHtml(res, pages.errorPage({ status: e.status, message: e.message || 'طلب غير مقبول' }),
+                   { status: e.status, headers: { Connection: 'close' } });
         }
         return;
       }

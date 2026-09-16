@@ -572,6 +572,7 @@ export function authLayout({ title, body, variant = 'client', nonce = '' }) {
 <div class="auth-bg" aria-hidden="true">
   ${khatam()}
   <canvas class="probes" id="probes"></canvas>
+  <span class="auth-veil"></span>
   <span class="auth-glow"></span>
 </div>
 

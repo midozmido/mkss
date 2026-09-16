@@ -32,6 +32,7 @@ export function paymentSettings() {
     vodafone: setting('pay_vodafone') || '',
     whatsapp: setting('pay_whatsapp') || '',
     holder: setting('pay_holder') || '',
+    holderLatin: setting('pay_holder_latin') || '',
     trialMonths: Number(setting('trial_months') || 6),
     graceDays: Number(setting('grace_days') || 5),
   };
@@ -160,7 +161,7 @@ export function noteReminder(userId, kind) {
 
 const CLAIM_LIMIT_PER_DAY = 5;
 
-export function claimPayment(userId, { invoiceId = null, method, amountCents, senderRef, note }) {
+export function claimPayment(userId, { invoiceId = null, method, amountCents, senderRef, note, receipt = null }) {
   if (!['instapay', 'vodafone', 'other'].includes(method)) throw new Error('طريقة دفع غير معروفة');
   const cents = Number(amountCents);
   if (!Number.isFinite(cents) || cents <= 0) throw new Error('مبلغ غير صالح');
@@ -182,17 +183,28 @@ export function claimPayment(userId, { invoiceId = null, method, amountCents, se
       WHERE user_id = ? AND method = ? AND amount_cents = ? AND status = 'pending' AND at >= ?`,
     userId, method, Math.round(cents), new Date(Date.now() - 120_000).toISOString()
   );
-  if (dup) return dup.id;
+  if (dup) {
+    if (receipt?.name) {
+      const had = get('SELECT receipt_name FROM payment_claims WHERE id = ?', dup.id)?.receipt_name;
+      if (!had) {
+        run('UPDATE payment_claims SET receipt_name = ?, receipt_type = ?, receipt_bytes = ? WHERE id = ?',
+            receipt.name, receipt.type, receipt.bytes, dup.id);
+      }
+    }
+    return dup.id;
+  }
   if (invoiceId) {
     const owns = get('SELECT id FROM invoices WHERE id = ? AND user_id = ?', invoiceId, userId);
     if (!owns) throw new Error('فاتورة غير موجودة');
   }
   const r = run(
-    `INSERT INTO payment_claims(user_id, invoice_id, at, method, amount_cents, sender_ref, note)
-     VALUES(?,?,?,?,?,?,?)`,
+    `INSERT INTO payment_claims(user_id, invoice_id, at, method, amount_cents, sender_ref, note,
+                                receipt_name, receipt_type, receipt_bytes)
+     VALUES(?,?,?,?,?,?,?,?,?,?)`,
     userId, invoiceId, nowISO(), method, Math.round(cents),
     senderRef ? String(senderRef).slice(0, 60) : null,
-    note ? String(note).slice(0, 500) : null
+    note ? String(note).slice(0, 500) : null,
+    receipt?.name || null, receipt?.type || null, receipt?.bytes || null
   );
   return Number(r.lastInsertRowid);
 }

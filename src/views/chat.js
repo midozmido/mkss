@@ -68,6 +68,15 @@ export function bubble(m, viewerRole, { csrf = '', group = 'only', convId = null
         <button class="chip chip-strong" type="submit">${icon('chat')} تحدّث إلى الدعم الفني</button>
       </form>
     </div>`;
+  } else if (meta?.kind === 'receipt' && meta.receiptName) {
+    // الإيصال يصل في المحادثة، لا في جدولٍ يُفتح عمدًا: هذه أسرع قناة إلى
+    // الأدمن وأقربها إلى العميل. والرابط محروس — المسار يتحقّق من الملكية
+    // قبل أن يرسل بايتًا، فظهوره هنا لا يُغني عن ذلك ولا يُضعفه.
+    actions = `<div class="msg-actions">
+      <a class="chip chip-strong" href="/receipt/${esc(meta.receiptName)}" target="_blank" rel="noopener">
+        ${icon('receipt')} افتح صورة الإيصال
+      </a>
+    </div>`;
   }
 
   const isSystem = m.author_role === 'system';

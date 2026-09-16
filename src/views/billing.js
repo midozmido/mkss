@@ -7,7 +7,7 @@ import { money } from '../repo.js';
 const digits = (s) => String(s || '').replace(/\D/g, '');
 
 /** بطاقة طرق الدفع — إنستا باي وفودافون كاش على نفس الرقم */
-export function paymentMethods(cfg, { amountCents = null, reference = null } = {}) {
+export function paymentMethods(cfg, { amountCents = null } = {}) {
   const row = (name, label, number, hint) => `
     <div class="pay-method">
       <div class="pay-method-head">
@@ -26,7 +26,7 @@ export function paymentMethods(cfg, { amountCents = null, reference = null } = {
   return `<section class="card stack" aria-labelledby="pay-h">
     <div>
       <h2 id="pay-h">${icon('receipt')} طرق الدفع</h2>
-      <p class="faint" style="margin:0">حوّل على أي من الطريقتين، ثم أبلغنا بالتحويل من الزر أسفل الصفحة.</p>
+      <p class="faint" style="margin:0">حوّل على أي من الطريقتين، ثم ارفع صورة الإيصال من النموذج أسفل الصفحة.</p>
     </div>
 
     ${amountCents != null ? `<div class="pay-amount">
@@ -39,13 +39,13 @@ export function paymentMethods(cfg, { amountCents = null, reference = null } = {
       ${row('vodafone', 'فودافون كاش', cfg.vodafone, 'محفظة فودافون كاش')}
     </div>
 
-    ${cfg.holder ? `<p class="faint" style="margin:0">اسم المستلم: <b>${esc(cfg.holder)}</b></p>` : ''}
-
-    ${reference ? `<div class="alert alert-info">${icon('alert')}<div>
-      اكتب هذا الكود في خانة ملاحظات التحويل حتى نطابقه بفاتورتك فورًا:
-      <b class="mono ltr">${esc(reference)}</b>
-      <button class="btn btn-sm" type="button" data-copy="${esc(reference)}">نسخ</button>
-    </div></div>` : ''}
+    <div class="pay-holder">
+      <span class="faint">اسم المستلم</span>
+      <b>${esc(cfg.holder || 'محمد خالد')}</b>
+      <!-- الاسم اللاتيني معزول اتجاهيًّا: بجوار العربي بلا عزل يقفز ترتيب
+           الكلمتين فيُقرأ «Khaled Mohamed»، وهو اسمٌ آخر في خانة تحويل. -->
+      <span class="faint ltr" dir="ltr">${esc(cfg.holderLatin || 'Mohamed Khaled')}</span>
+    </div>
   </section>`;
 }
 
@@ -91,8 +91,6 @@ export function billingBanner(st, { link, href = '/billing' } = {}) {
 
 /** صفحة القفل — تظهر بدل المزايا، ويبقى فيها كل ما يلزم للدفع والتواصل */
 export function lockedPage({ user, st, cfg, link, claims = [], flash }) {
-  const inv = st.invoices[0];
-  const reference = inv?.reference_code || null;
 
   return layout({
     title: 'تفعيل الاشتراك',
@@ -117,7 +115,7 @@ export function lockedPage({ user, st, cfg, link, claims = [], flash }) {
     </div>
   </section>
 
-  ${paymentMethods(cfg, { amountCents: st.dueCents, reference })}
+  ${paymentMethods(cfg, { amountCents: st.dueCents })}
 
   ${claimForm(st, cfg)}
 
@@ -149,7 +147,6 @@ export function lockedPage({ user, st, cfg, link, claims = [], flash }) {
 
 /** صفحة الاشتراك في الحالات غير المقفولة */
 export function billingPage({ user, st, cfg, link, claims = [], flash }) {
-  const inv = st.invoices[0];
   return layout({
     title: 'الاشتراك والدفع',
     user,
@@ -169,7 +166,7 @@ export function billingPage({ user, st, cfg, link, claims = [], flash }) {
     : ''}
 
   ${st.dueCents > 0
-    ? paymentMethods(cfg, { amountCents: st.dueCents, reference: inv?.reference_code })
+    ? paymentMethods(cfg, { amountCents: st.dueCents })
     : `<div class="alert alert-ok">${icon('check')}<div>لا توجد مستحقات على حسابك. شكرًا لك.</div></div>
        ${paymentMethods(cfg)}`}
 
@@ -187,8 +184,10 @@ function claimForm(st, cfg) {
 
   return `<section class="card">
     <h2>أبلغنا بالتحويل</h2>
-    <p class="faint">إنستا باي وفودافون كاش لا يبلّغاننا تلقائيًا — أخبرنا بالتحويل ليُفعَّل حسابك أسرع.</p>
-    <form method="POST" action="/billing/claim" class="stack">
+    <p class="faint">إنستا باي وفودافون كاش لا يبلّغاننا تلقائيًا — ارفع صورة الإيصال ويصل إلينا في الحال.</p>
+    <!-- ‎enctype‎ ليست تفصيلًا: بدونها يرسل المتصفّح اسم الملفّ نصًّا ولا يرسل
+         الملفّ، فيصل الإشعار بلا إيصال ولا يشتكي أحد. -->
+    <form method="POST" action="/billing/claim" class="stack" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="${esc(st.csrf || '')}">
       ${st.invoices.length
         ? `<div class="field">
@@ -220,9 +219,30 @@ function claimForm(st, cfg) {
         </div>
       </div>
       <div class="field">
+        <label for="creceipt">صورة الإيصال</label>
+        <!-- زرّ المتصفّح الأصلي يكتب «Choose File / No file chosen» بالإنجليزية
+             ومن اليسار إلى اليمين، ولا سبيل إلى تغيير نصّه بـCSS. فنضع فوقه
+             صندوقًا عربيًّا، ويبقى الحقل نفسه في مكانه شفافًا يملأ الصندوق:
+             الضغط في أي موضع يفتح المنتقي، والنموذج يعمل بلا جافاسكربت كما
+             هو. اسم الملفّ المختار يظهر بـ‎app.js‎ إن وُجد، وغيابه لا يعطّل
+             شيئًا — الرفع يتمّ والصفحة تؤكّده بعد الإرسال.
+             و‎capture‎ متروكة عمدًا: أكثر الإيصالات لقطةُ شاشة في المعرض لا
+             صورةٌ تُلتقط، وتثبيتها تفتح الكاميرا أولًا. -->
+        <div class="filebox">
+          <input id="creceipt" name="receipt" type="file"
+                 accept="image/jpeg,image/png,image/webp,application/pdf"
+                 data-filebox aria-describedby="creceipt-hint">
+          <span class="filebox-face" aria-hidden="true">
+            <span class="filebox-btn">${icon('receipt')} اختر ملفًّا</span>
+            <span class="filebox-name" data-filebox-name>لم تختر ملفًّا بعد</span>
+          </span>
+        </div>
+        <div class="hint" id="creceipt-hint">لقطة شاشة التحويل من تطبيق البنك أو المحفظة — صورة أو PDF، حتى ٦ ميجابايت. تصل إلينا في المحادثة مباشرةً.</div>
+      </div>
+      <div class="field">
         <label for="cref">الرقم المحوَّل منه (اختياري)</label>
         <input id="cref" name="senderRef" maxlength="60" dir="ltr" placeholder="01xxxxxxxxx">
-        <div class="hint">يساعدنا على مطابقة التحويل بسرعة.</div>
+        <div class="hint">يساعدنا على مطابقة التحويل بسرعة إن لم ترفع صورة.</div>
       </div>
       <button class="btn btn-primary" type="submit">${icon('check')} أبلغت بالتحويل</button>
     </form>
@@ -238,13 +258,17 @@ function claimsList(claims) {
   return `<section class="card card-flush">
     <div class="card-head"><h2 style="margin:0">إشعارات التحويل التي أرسلتها</h2></div>
     <div class="table-scroll"><table>
-      <thead><tr><th>التاريخ</th><th>الطريقة</th><th>المبلغ</th><th>الحالة</th></tr></thead>
+      <thead><tr><th>التاريخ</th><th>الطريقة</th><th>المبلغ</th><th>الإيصال</th><th>الحالة</th></tr></thead>
       <tbody>${claims
         .map(
           (c) => `<tr>
         <td class="small">${esc(fmtDate(c.at, true))}</td>
         <td>${esc(label[c.method] || c.method)}</td>
-        <td class="num">${esc(money.format(c.amount_cents))}</td>
+        <!-- يراه العميل أيضًا لا الأدمن وحده: من رفع صورةً يحتاج أن يتأكّد
+             أن ما وصل هو ما قصده، لا أن يثق بأنها رُفعت. -->
+        <td>${c.receipt_name
+          ? `<a href="/receipt/${esc(c.receipt_name)}" target="_blank" rel="noopener">عرض</a>`
+          : '<span class="faint small">—</span>'}</td>
         <td>${badge(c.status)}</td>
       </tr>`
         )

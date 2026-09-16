@@ -177,6 +177,30 @@
     }
   });
 
+  // اسم الملفّ المختار في حقل الإيصال.
+  //
+  // الحقل الأصلي شفاف فوق وجهٍ نرسمه، ووجهُه لا يعرف ما اختير. هذا تحسين
+  // فوق الصحيح لا شرطٌ له: من عطّل الجافاسكربت يختار ملفًّا ويُرسل النموذج
+  // ويصل الإيصال — كل ما يفقده أن يقرأ الاسم قبل الإرسال.
+  document.addEventListener('change', function (e) {
+    var input = e.target;
+    if (!input || input.type !== 'file' || !input.hasAttribute('data-filebox')) return;
+    var box = input.parentNode;
+    var out = box && box.querySelector('[data-filebox-name]');
+    if (!out) return;
+    var f = input.files && input.files[0];
+    if (!f) {
+      out.textContent = 'لم تختر ملفًّا بعد';
+      out.removeAttribute('data-has-file');
+      return;
+    }
+    // الحجم بالميجابايت لأن السقف مكتوب بها في التلميح تحته — ورقمان
+    // بوحدتين مختلفتين على سطرين متجاورين يُقرآن تناقضًا.
+    var mb = f.size / 1048576;
+    out.textContent = f.name + ' · ' + (mb < 0.1 ? '<0.1' : mb.toFixed(1)) + ' ميجابايت';
+    out.setAttribute('data-has-file', '');
+  });
+
   // مزامنة مبلغ التحويل مع الفاتورة المختارة. الخادم يملأ القيمة الأولى
   // صحيحة أصلًا، فمن يعطّل الجافاسكربت يجد نموذجًا سليمًا لا مكسورًا —
   // هذا تحسين فوق الصحيح لا شرطٌ له.

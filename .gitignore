@@ -3,6 +3,11 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
+
+# إيصالات العملاء. ملفٌّ رفعه عميل لا يدخل مستودعًا أبدًا — لا في فرع
+# خاص ولا في لقطة، لأن ما يدخل تاريخ Git لا يخرج منه.
+data/uploads/
+data/backups/
 .env
 .DS_Store
 

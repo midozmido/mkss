@@ -3,6 +3,9 @@
 import { randomBytes } from 'node:crypto';
 
 const MAX_BODY_BYTES = 64 * 1024; // نماذجنا صغيرة — أي أكبر من هذا مشبوه
+// الرفع وحده يتجاوز ذلك: لقطة شاشة من هاتف حديث تبلغ بضعة ميجابايت. السقف
+// منفصل عن سقف النماذج عمدًا فلا يفتح الرفعُ البابَ على بقيّة المسارات.
+const MAX_UPLOAD_BYTES = 6 * 1024 * 1024;
 
 /**
  * تهريب HTML — يُطبَّق على **كل** مُخرَج.
@@ -77,6 +80,97 @@ export async function readForm(req) {
   const out = {};
   for (const [k, v] of params) out[k] = v;
   return out;
+}
+
+/**
+ * قراءة نموذج ‎multipart/form-data‎ — مكتوب هنا لأن المشروع بلا حزم.
+ *
+ * الحاجة إليه واحدة: إيصال التحويل. العميل يصوّر شاشة التحويل ويرفعها، فلا
+ * يكتب رقمًا ولا يطابق كودًا. وهذا كل ما يُسمح برفعه.
+ *
+ * ما يحرسه هذا البارسر:
+ *  • **سقف الحجم**: يُحسب على الجسم كلّه أثناء التدفّق، فلا يُخزَّن ما يتجاوزه
+ *    في الذاكرة أصلًا. رفعٌ ضخم يُقطع قبل أن يكلّفنا بايتًا زائدًا.
+ *  • **سقف عدد الأجزاء**: نموذج بألف جزء صغير يمرّ من سقف الحجم بسهولة.
+ *  • **الملفّات بالبايتات لا بالترويسة**: ‎Content-Type‎ الذي يرسله المتصفّح
+ *    من عند المستخدم، فلا يُصدَّق. النوع يُقرأ من توقيع الملف نفسه (‎§‎sniff‎).
+ *  • **اسم الملفّ الوارد يُهمَل تمامًا**: لا يُشتقّ منه مسار ولا امتداد. اسم
+ *    التخزين عشوائي، والامتداد من التوقيع المقروء. فلا ‎../‎ ولا ‎.php‎.
+ *
+ * يرجع ‎{ fields, files }‎: الحقول النصّية كما يرجعها ‎readForm‎، والملفّات
+ * ‎{ field, bytes, type, ext }‎ — مخزّنةً في الذاكرة، ومن يحفظها يقرّر أين.
+ */
+export async function readMultipart(req, { maxBytes = MAX_UPLOAD_BYTES, maxParts = 24 } = {}) {
+  const ctype = req.headers['content-type'] || '';
+  const m = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(ctype);
+  if (!m) throw Object.assign(new Error('نموذج غير مفهوم'), { status: 400 });
+  const boundary = Buffer.from(`--${(m[1] || m[2]).trim()}`);
+
+  const raw = await new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > maxBytes) {
+        req.pause();
+        reject(Object.assign(new Error('الملف أكبر من الحدّ المسموح'), { status: 413 }));
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+
+  const fields = {};
+  const files = [];
+  let at = raw.indexOf(boundary);
+  let parts = 0;
+  while (at !== -1) {
+    if (++parts > maxParts) throw Object.assign(new Error('أجزاء أكثر من اللازم'), { status: 400 });
+    let start = at + boundary.length;
+    if (raw[start] === 0x2d && raw[start + 1] === 0x2d) break;   // ‎--‎ الخاتمة
+    if (raw[start] === 0x0d) start += 2; else if (raw[start] === 0x0a) start += 1;
+
+    const headEnd = raw.indexOf('\r\n\r\n', start, 'utf8');
+    if (headEnd === -1) break;
+    const head = raw.toString('utf8', start, headEnd);
+    const next = raw.indexOf(boundary, headEnd);
+    if (next === -1) break;
+    // ‎CRLF‎ الذي يسبق الفاصل جزءٌ من الفاصل لا من المحتوى
+    let end = next;
+    if (raw[end - 2] === 0x0d && raw[end - 1] === 0x0a) end -= 2;
+    const body = raw.subarray(headEnd + 4, end);
+
+    const name = /name="([^"]*)"/i.exec(head)?.[1];
+    const filename = /filename="([^"]*)"/i.exec(head)?.[1];
+    if (name) {
+      // ‎filename‎ موجودة ولو فارغة ⇒ حقل ملفّ. الفارغة تعني «لم يختر شيئًا».
+      if (filename !== undefined) {
+        if (body.length) files.push({ field: name, bytes: body, ...sniff(body) });
+      } else {
+        fields[name] = body.toString('utf8');
+      }
+    }
+    at = next;
+  }
+  return { fields, files };
+}
+
+/**
+ * نوع الملفّ من بايتاته الأولى لا من ترويسة الطلب.
+ *
+ * ترويسة ‎Content-Type‎ يكتبها المتصفّح من عند المستخدم: من أراد رفع سكربت
+ * باسم ‎image/png‎ فعلها في سطر واحد. التوقيع لا يُزوَّر بالسهولة نفسها،
+ * وما لا نعرف توقيعه نرفضه — قائمة سماح لا قائمة منع.
+ */
+function sniff(b) {
+  const is = (...sig) => sig.every((v, i) => b[i] === v);
+  if (is(0xff, 0xd8, 0xff)) return { type: 'image/jpeg', ext: 'jpg' };
+  if (is(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return { type: 'image/png', ext: 'png' };
+  if (is(0x25, 0x50, 0x44, 0x46)) return { type: 'application/pdf', ext: 'pdf' };
+  if (is(0x52, 0x49, 0x46, 0x46) && b.toString('latin1', 8, 12) === 'WEBP') return { type: 'image/webp', ext: 'webp' };
+  return { type: null, ext: null };
 }
 
 /**
@@ -236,4 +330,4 @@ export function clientIp(req, { trustProxy = false } = {}) {
   return req.socket?.remoteAddress || 'unknown';
 }
 
-export { MAX_BODY_BYTES };
+export { MAX_BODY_BYTES, MAX_UPLOAD_BYTES };
